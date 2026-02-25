@@ -1545,7 +1545,7 @@ textarea.input{resize:vertical;min-height:90px;line-height:1.5;}
 
 
 <script>
-// BUILD_TAG: sidebar-v6-historyfix
+// BUILD_TAG: sidebar-v7-historyfix
 
 
 const QUIZ_QUESTIONS = [
@@ -2035,7 +2035,13 @@ const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
  * History cards route here via openChallenge(). Exported on window.
  */
 window.openResultDetailModal = function openResultDetailModal(dare) {
-  try {
+  
+  const formatN = (n) => {
+    const v = Number(n || 0);
+    try { return v.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+    catch { return String(Math.round(v)); }
+  };
+try {
     const pA = dare?.player_a_profile || {};
     const pB = dare?.player_b_profile || {};
     const aName = pA.username || pA.display_name || 'Player A';
@@ -2083,11 +2089,11 @@ window.openResultDetailModal = function openResultDetailModal(dare) {
           </div>
           <div class="mini-card">
             <div class="mini-label">Stake</div>
-            <div class="mini-value">₦${fmtN(stake)}</div>
+            <div class="mini-value">₦${formatN(stake)}</div>
           </div>
           <div class="mini-card">
             <div class="mini-label">Winner payout</div>
-            <div class="mini-value">₦${fmtN(winnerGets)}</div>
+            <div class="mini-value">₦${formatN(winnerGets)}</div>
           </div>
         </div>
 
