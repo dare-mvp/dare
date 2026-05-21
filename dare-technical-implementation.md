@@ -1,0 +1,1403 @@
+# DARE Technical Implementation Plan
+
+## Purpose
+
+This document translates the DARE product, market, wallet, trust, and mobile app documentation into an implementation plan for the real mobile application and backend.
+
+It is not a direct port of the prototype. The existing `index.html` is useful as a product reference, but the production system must be rebuilt around typed domain models, server-authoritative state transitions, append-only financial records, and testable service boundaries.
+
+## Source Documents
+
+This plan is grounded in:
+
+- `docs/01-product-brief.md`
+- `docs/02-market-and-positioning.md`
+- `docs/03-user-roles-and-journeys.md`
+- `docs/04-core-domain-model.md`
+- `docs/05-mvp-scope.md`
+- `docs/06-wallet-escrow-and-payments.md`
+- `docs/07-disputes-jury-and-trust.md`
+- `docs/08-security-risk-and-compliance.md`
+- `docs/09-mobile-app-information-architecture.md`
+- `docs/10-technical-architecture-principles.md`
+- `index.html` prototype
+- `dare-master-strategy.md`
+- `deep-research-report.md`
+
+## Non-Negotiable Engineering Constraints
+
+1. The mobile client is untrusted.
+2. Money movement is never client-authoritative.
+3. DARE outcomes are never client-authoritative.
+4. Trust score is never directly mutated by the client.
+5. DARE lifecycle must be modeled as explicit state transitions.
+6. Wallet ledger must be append-only.
+7. Payment webhooks must be verified and idempotent.
+8. Evidence media must be private by default.
+9. Admin actions must be audit-logged.
+10. Core business logic must have automated tests before launch.
+
+## MVP Technical Scope
+
+The first production MVP should implement Algorithmic DAREs only.
+
+Included:
+
+- Auth and profile
+- Age gate and KYC status fields
+- Wallet account
+- Deposit initialization and verified crediting
+- Withdrawal request queue
+- Append-only ledger
+- DARE creation
+- DARE acceptance
+- Escrow holds
+- Court ready-up
+- Server-authoritative match start
+- Quiz/algorithmic scoring
+- Settlement
+- Notifications
+- Dispute filing
+- Admin review foundation
+- Risk flags and audit logs
+
+Excluded from MVP:
+
+- Physical DAREs
+- Evidence-first DAREs
+- Honour DAREs with real stakes
+- Tournaments
+- Replicate Wager
+- USSD gateway
+- AI voice-to-DARE
+- Predictive matchmaking
+- Creator monetization
+- Multi-country launch
+
+## Recommended System Architecture
+
+```text
+apps/
+  mobile/
+    React Native or Expo mobile app
+  admin/
+    secure internal admin console
+
+packages/
+  domain/
+    shared TypeScript domain types, enums, schemas
+  api-client/
+    generated or typed API client
+  ui/
+    shared UI primitives, if using a monorepo
+  config/
+    lint, TypeScript, test config
+
+services/
+  api/
+    application API and business actions
+  workers/
+    reconciliation, notifications, risk jobs
+
+supabase/
+  migrations/
+  seed/
+  policies/
+
+docs/
+  product and architecture documentation
+```
+
+If the team chooses a smaller first step, `apps/mobile`, `apps/admin`, `packages/domain`, and `supabase/migrations` can still be created up front. The repository should not begin as another single-app prototype.
+
+## Stack Recommendation
+
+### Mobile App
+
+Preferred: React Native with Expo.
+
+Reasons:
+
+- Fast iteration for mobile MVP.
+- Good camera/media support when evidence DAREs arrive.
+- Strong TypeScript ecosystem.
+- Easier OTA/update workflows for beta.
+
+Risks:
+
+- Evidence capture, device attestation, and background behavior may eventually require native modules.
+- Realtime Court performance must be profiled on low-end Android devices.
+
+### Backend
+
+Preferred first implementation:
+
+- Postgres/Supabase for data, auth, RLS, realtime, and storage.
+- Server-side API layer for sensitive actions.
+- Supabase Edge Functions or a dedicated Node/Nest/Fastify API service.
+
+Decision rule:
+
+- Use Supabase direct reads for low-risk query surfaces where RLS is strong.
+- Use server actions/API endpoints for all sensitive mutations.
+
+Sensitive operations that must be API-only:
+
+- Create DARE with escrow hold
+- Accept DARE with escrow hold
+- Ready/start Court
+- Submit answer
+- Complete DARE
+- Settle payout
+- File dispute
+- Cast jury vote
+- Initialize deposit
+- Verify payment webhook
+- Request withdrawal
+- Admin action
+
+### Database
+
+Postgres with committed migrations.
+
+Requirements:
+
+- No manual schema drift.
+- Every table with `created_at`.
+- Sensitive tables with RLS policies.
+- Immutable ledger tables protected from normal update/delete.
+- Check constraints for enum-like fields.
+- Unique constraints for idempotency.
+
+### Realtime
+
+Supabase Realtime or equivalent.
+
+Realtime is only a delivery layer. It broadcasts server-approved events and presence. It does not decide scores, balances, readiness, winners, or payouts.
+
+### Payments
+
+Provider abstraction with Paystack first only if approved.
+
+Provider adapter interface:
+
+```ts
+interface PaymentProvider {
+  initializeDeposit(input: InitializeDepositInput): Promise<InitializeDepositResult>;
+  verifyTransaction(reference: string): Promise<VerifiedPayment>;
+  createTransferRecipient(input: TransferRecipientInput): Promise<TransferRecipientResult>;
+  initiateTransfer(input: TransferInput): Promise<TransferResult>;
+  verifyWebhook(input: WebhookVerificationInput): Promise<WebhookEvent>;
+}
+```
+
+Provider-specific details must not leak into wallet domain logic.
+
+## Domain Modules
+
+### Auth Module
+
+Responsibilities:
+
+- User session validation
+- User identity lookup
+- Account status checks
+- Admin role checks
+
+Out of scope:
+
+- Wallet authorization decisions
+- DARE lifecycle decisions
+
+### Profile Module
+
+Responsibilities:
+
+- Public profile
+- Username/display name validation
+- Avatar metadata
+- Trust/tier read model
+- KYC status display
+
+Sensitive fields such as risk status and KYC details should not be exposed in public profile payloads.
+
+### Wallet Module
+
+Responsibilities:
+
+- Wallet account creation
+- Ledger writes
+- Balance projections
+- Escrow holds
+- Escrow release
+- Withdrawal requests
+- Reconciliation hooks
+
+The wallet module is the only module that writes financial ledger entries.
+
+### Payments Module
+
+Responsibilities:
+
+- Deposit initialization
+- Webhook verification
+- Provider transaction verification
+- Provider reference idempotency
+- Withdrawal provider execution
+
+The payments module talks to the wallet module after verification. It does not directly mutate balances.
+
+### DARE Module
+
+Responsibilities:
+
+- DARE creation
+- DARE acceptance
+- DARE state transitions
+- Constitution binding
+- Stake and eligibility validation
+- Expiration and cancellation
+
+The DARE module calls wallet for escrow holds/releases. It must not write ledger entries directly.
+
+### Court Module
+
+Responsibilities:
+
+- Ready-up
+- Server-authoritative start time
+- Heartbeats
+- Quiz session
+- Answer submission
+- Score calculation
+- Completion decision
+- Forfeit handling
+
+Court uses the DARE module for lifecycle transitions and the wallet module for final settlement.
+
+### Jury Module
+
+Responsibilities:
+
+- Dispute case creation
+- Juror eligibility
+- Juror assignment
+- Blind evidence packet construction
+- Jury vote recording
+- Verdict calculation
+- Escalation
+
+### Evidence Module
+
+Responsibilities:
+
+- Signed upload/session generation
+- Evidence metadata
+- Content hash
+- Private signed access URLs
+- Evidence access logs
+
+Evidence is not core MVP for Algorithmic DAREs, but the schema should be designed early.
+
+### Notification Module
+
+Responsibilities:
+
+- Event-to-notification mapping
+- In-app inbox
+- Push notification dispatch
+- Mark read
+
+### Risk Module
+
+Responsibilities:
+
+- Velocity checks
+- Collusion signals
+- Device/IP relationship signals
+- Stake and withdrawal holds
+- Risk event creation
+- Admin review queue
+
+MVP risk can start as rules and audit logs. ML-based risk is later.
+
+### Admin Module
+
+Responsibilities:
+
+- Dispute review
+- User risk review
+- Ledger inspection
+- Freeze/unfreeze controls
+- Manual settlement escalation
+- Audit trail
+
+## Database Schema Direction
+
+The initial Supabase migration set now exists in `supabase/migrations/`. Treat the SQL migrations as the executable schema and this section as the conceptual table map for engineers.
+
+The physical migrations extend the original core map with launch-critical support tables and views: `dare_categories`, `dare_votes`, `dare_quiz_rounds`, `wallet_summary`, `withdrawal_requests`, `trust_events`, `responsible_gaming_settings`, `user_devices`, `kyc_verifications`, `moderation_reports`, and `jury_flags`. Server functions/RPCs remain the required enforcement layer for sensitive writes.
+
+### users
+
+If Supabase Auth is used, the auth user lives in `auth.users`; app-specific user state should live in `profiles` and supporting tables.
+
+### profiles
+
+```sql
+create table profiles (
+  id uuid primary key references auth.users(id),
+  username text unique not null,
+  display_name text,
+  avatar_url text,
+  country text,
+  city text,
+  trust_score integer not null default 0,
+  tier text not null default 'newcomer',
+  wins integer not null default 0,
+  losses integer not null default 0,
+  disputes integer not null default 0,
+  completed_dares integer not null default 0,
+  kyc_tier text not null default 'kyc0',
+  account_status text not null default 'active',
+  risk_status text not null default 'normal',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+### dares
+
+```sql
+create table dares (
+  id uuid primary key default gen_random_uuid(),
+  issuer_id uuid not null references profiles(id),
+  challenger_id uuid references profiles(id),
+  title text not null,
+  description text,
+  category text not null,
+  resolution_type text not null,
+  status text not null,
+  stake_amount integer not null,
+  currency text not null default 'NGN',
+  platform_fee integer not null default 0,
+  winner_payout integer not null default 0,
+  duration_seconds integer not null,
+  winner_id uuid references profiles(id),
+  created_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  started_at timestamptz,
+  completed_at timestamptz,
+  settled_at timestamptz,
+  expires_at timestamptz
+);
+```
+
+Recommended constraints:
+
+- `stake_amount > 0`
+- `duration_seconds between 30 and 3600`
+- `resolution_type in ('algorithmic','witnessed','evidenced','honour')`
+- `status in (...)`
+- `winner_id` must be issuer or challenger when settled, unless voided.
+
+### dare_constitutions
+
+```sql
+create table dare_constitutions (
+  id uuid primary key default gen_random_uuid(),
+  dare_id uuid not null references dares(id),
+  version integer not null default 1,
+  test text not null,
+  rules text not null,
+  proof_method text,
+  edge_cases text,
+  accepted_by_issuer_at timestamptz,
+  accepted_by_challenger_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (dare_id, version)
+);
+```
+
+### court_sessions
+
+```sql
+create table court_sessions (
+  id uuid primary key default gen_random_uuid(),
+  dare_id uuid not null unique references dares(id),
+  phase text not null default 'waiting',
+  player_a_ready boolean not null default false,
+  player_b_ready boolean not null default false,
+  server_start_time timestamptz,
+  server_end_time timestamptz,
+  player_a_heartbeat_at timestamptz,
+  player_b_heartbeat_at timestamptz,
+  reconnect_deadline timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+### quiz_questions
+
+For MVP, use a controlled question bank.
+
+```sql
+create table quiz_questions (
+  id uuid primary key default gen_random_uuid(),
+  category text not null,
+  prompt text not null,
+  options jsonb not null,
+  correct_option integer not null,
+  difficulty text not null default 'normal',
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+```
+
+### dare_quiz_answers
+
+```sql
+create table dare_quiz_answers (
+  id uuid primary key default gen_random_uuid(),
+  dare_id uuid not null references dares(id),
+  user_id uuid not null references profiles(id),
+  question_id uuid not null references quiz_questions(id),
+  selected_option integer not null,
+  correct boolean not null,
+  response_ms integer,
+  created_at timestamptz not null default now(),
+  unique (dare_id, user_id, question_id)
+);
+```
+
+### wallet_accounts
+
+```sql
+create table wallet_accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references profiles(id),
+  currency text not null default 'NGN',
+  status text not null default 'active',
+  created_at timestamptz not null default now()
+);
+```
+
+### ledger_entries
+
+```sql
+create table ledger_entries (
+  id uuid primary key default gen_random_uuid(),
+  wallet_account_id uuid not null references wallet_accounts(id),
+  dare_id uuid references dares(id),
+  payment_transaction_id uuid,
+  type text not null,
+  direction text not null,
+  amount integer not null,
+  currency text not null default 'NGN',
+  status text not null default 'posted',
+  idempotency_key text unique,
+  metadata jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+```
+
+Recommended constraints:
+
+- `amount > 0`
+- `direction in ('credit','debit')`
+- No updates or deletes except by privileged maintenance role.
+
+### payment_transactions
+
+```sql
+create table payment_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id),
+  provider text not null,
+  provider_reference text not null,
+  type text not null,
+  amount integer not null,
+  currency text not null default 'NGN',
+  status text not null,
+  raw_provider_payload jsonb,
+  initialized_at timestamptz not null default now(),
+  verified_at timestamptz,
+  unique (provider, provider_reference)
+);
+```
+
+### escrow_holds
+
+```sql
+create table escrow_holds (
+  id uuid primary key default gen_random_uuid(),
+  dare_id uuid not null references dares(id),
+  user_id uuid not null references profiles(id),
+  amount integer not null,
+  currency text not null default 'NGN',
+  status text not null default 'held',
+  held_at timestamptz not null default now(),
+  released_at timestamptz,
+  unique (dare_id, user_id)
+);
+```
+
+### jury_cases
+
+```sql
+create table jury_cases (
+  id uuid primary key default gen_random_uuid(),
+  dare_id uuid not null references dares(id),
+  opened_by_user_id uuid not null references profiles(id),
+  status text not null default 'filed',
+  reason text not null,
+  votes_needed integer not null default 3,
+  verdict text,
+  opened_at timestamptz not null default now(),
+  closed_at timestamptz,
+  escalated_at timestamptz
+);
+```
+
+### jury_assignments
+
+```sql
+create table jury_assignments (
+  id uuid primary key default gen_random_uuid(),
+  jury_case_id uuid not null references jury_cases(id),
+  juror_id uuid not null references profiles(id),
+  status text not null default 'assigned',
+  blind_side_mapping jsonb not null default '{}',
+  assigned_at timestamptz not null default now(),
+  claimed_at timestamptz,
+  due_at timestamptz,
+  completed_at timestamptz,
+  unique (jury_case_id, juror_id)
+);
+```
+
+### jury_votes
+
+```sql
+create table jury_votes (
+  id uuid primary key default gen_random_uuid(),
+  jury_case_id uuid not null references jury_cases(id),
+  juror_id uuid not null references profiles(id),
+  vote text not null,
+  rationale text not null,
+  created_at timestamptz not null default now(),
+  unique (jury_case_id, juror_id)
+);
+```
+
+### notifications
+
+```sql
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id),
+  type text not null,
+  title text not null,
+  body text not null,
+  action jsonb,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+```
+
+### audit_logs
+
+```sql
+create table audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  actor_user_id uuid references profiles(id),
+  actor_type text not null,
+  action text not null,
+  target_type text not null,
+  target_id uuid,
+  metadata jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+```
+
+### risk_events
+
+```sql
+create table risk_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id),
+  dare_id uuid references dares(id),
+  type text not null,
+  severity text not null,
+  status text not null default 'open',
+  evidence jsonb not null default '{}',
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz
+);
+```
+
+## API Contract Direction
+
+Use action endpoints for sensitive workflows. The examples below assume a REST API, but the same contracts can be implemented as Supabase Edge Functions or server actions.
+
+### Auth / Profile
+
+#### `GET /me`
+
+Returns the authenticated user's app profile and capability flags.
+
+Response:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "username": "ada",
+    "displayName": "Ada",
+    "trustScore": 120,
+    "tier": "newcomer",
+    "kycTier": "kyc1",
+    "accountStatus": "active"
+  },
+  "capabilities": {
+    "canCreateDare": true,
+    "canAcceptDare": true,
+    "canWithdraw": true,
+    "canJury": false
+  }
+}
+```
+
+#### `PATCH /profiles/me`
+
+Updates non-sensitive profile fields.
+
+Sensitive fields blocked:
+
+- trust_score
+- tier
+- kyc_tier
+- account_status
+- risk_status
+- wallet fields
+
+### Wallet
+
+#### `GET /wallet`
+
+Returns wallet projection.
+
+```json
+{
+  "currency": "NGN",
+  "available": 250000,
+  "escrowed": 100000,
+  "pending": 0,
+  "held": 0,
+  "limits": {
+    "maxStakePerDare": 100000,
+    "dailyDepositRemaining": 500000
+  }
+}
+```
+
+#### `POST /wallet/deposits/init`
+
+Input:
+
+```json
+{
+  "amount": 500000,
+  "currency": "NGN",
+  "provider": "paystack"
+}
+```
+
+Server behavior:
+
+1. Validate amount and limits.
+2. Create payment transaction.
+3. Initialize provider transaction.
+4. Return provider checkout payload.
+
+#### `POST /webhooks/paystack`
+
+Server behavior:
+
+1. Verify signature.
+2. Parse event.
+3. Verify transaction with provider where required.
+4. Enforce idempotency by provider reference.
+5. Credit ledger only after verified success.
+6. Emit notification and wallet update event.
+
+### DARE
+
+#### `POST /dares`
+
+Input:
+
+```json
+{
+  "title": "Name 20 African capitals in 60 seconds",
+  "category": "knowledge",
+  "resolutionType": "algorithmic",
+  "durationSeconds": 60,
+  "stakeAmount": 50000,
+  "currency": "NGN",
+  "constitution": {
+    "test": "Name 20 African capitals in 60 seconds",
+    "rules": "Answers must be typed before the timer ends.",
+    "proofMethod": "Platform scoring",
+    "edgeCases": "Tie refunds both players minus no fee."
+  },
+  "targetUsername": null
+}
+```
+
+Server behavior:
+
+1. Validate auth and account status.
+2. Validate KYC and stake limits.
+3. Validate challenge fields.
+4. Calculate fee and payout.
+5. Create DARE.
+6. Create immutable constitution.
+7. Hold issuer stake in escrow.
+8. Return DARE detail.
+
+#### `POST /dares/{id}/accept`
+
+Server behavior:
+
+1. Lock DARE row or use serializable transaction.
+2. Confirm status is open or targeted to user.
+3. Confirm user is not issuer.
+4. Confirm wallet availability.
+5. Hold challenger stake.
+6. Update DARE to accepted/ready_check.
+7. Create Court session.
+8. Notify issuer.
+
+#### `POST /dares/{id}/ready`
+
+Server behavior:
+
+1. Confirm user is participant.
+2. Mark player ready.
+3. If both ready, set server start time.
+4. Broadcast `court_started`.
+
+#### `POST /dares/{id}/answers`
+
+Input:
+
+```json
+{
+  "questionId": "uuid",
+  "selectedOption": 2,
+  "responseMs": 3400
+}
+```
+
+Server behavior:
+
+1. Confirm active Court session.
+2. Confirm user is participant.
+3. Confirm answer is within time.
+4. Score answer.
+5. Store answer once.
+6. Broadcast score update.
+
+#### `POST /dares/{id}/complete`
+
+Server-only or privileged internal endpoint.
+
+Server behavior:
+
+1. Confirm match ended.
+2. Compute winner.
+3. Write DARE completed status.
+4. Set dispute deadline or settle immediately, depending on policy.
+5. If settling, call wallet settlement.
+
+### Disputes / Jury
+
+#### `POST /dares/{id}/disputes`
+
+Server behavior:
+
+1. Confirm user is participant.
+2. Confirm dispute window.
+3. Confirm DARE status allows dispute.
+4. Create jury case.
+5. Move DARE to dispute_pending or jury_open.
+6. Hold escrow.
+7. Notify opponent and admins/jurors.
+
+#### `POST /jury-cases/{id}/votes`
+
+Server behavior:
+
+1. Confirm juror assignment.
+2. Confirm case open.
+3. Confirm rationale present.
+4. Store immutable vote.
+5. If vote threshold reached, calculate verdict.
+6. Trigger settlement workflow.
+
+## State Machines
+
+### DARE State Machine
+
+```text
+draft
+  -> open
+  -> targeted_pending
+
+open
+  -> accepted
+  -> expired
+  -> cancelled
+
+targeted_pending
+  -> accepted
+  -> open
+  -> declined
+  -> expired
+
+accepted
+  -> ready_check
+  -> cancelled
+
+ready_check
+  -> active
+  -> forfeited
+
+active
+  -> awaiting_result
+  -> forfeited
+
+awaiting_result
+  -> completed
+  -> dispute_pending
+
+completed
+  -> settled
+  -> dispute_pending
+
+dispute_pending
+  -> jury_open
+  -> voided
+
+jury_open
+  -> jury_closed
+  -> escalated
+
+jury_closed
+  -> settled
+
+forfeited
+  -> settled
+
+voided
+  -> settled
+```
+
+### Wallet Entry Lifecycle
+
+```text
+pending -> posted -> reversed
+pending -> failed
+```
+
+Ledger entries should almost always be created as `posted` only after the domain action is confirmed. Provider-facing payment records can carry longer pending states.
+
+### Payment Transaction Lifecycle
+
+```text
+initialized
+  -> provider_pending
+  -> verified_success
+  -> verified_failed
+  -> expired
+  -> reversed
+```
+
+### Court Phase Lifecycle
+
+```text
+waiting
+  -> ready_check
+  -> countdown
+  -> active
+  -> awaiting_result
+  -> completed
+  -> disputed
+  -> forfeited
+```
+
+## Realtime Channels
+
+### `court:{dareId}`
+
+Events:
+
+- `court_started`
+- `timer_sync`
+- `score_update`
+- `question_revealed`
+- `answer_recorded`
+- `chat_message`
+- `state_transition`
+- `court_completed`
+
+### `presence:court:{dareId}`
+
+Presence:
+
+- participant online status
+- spectator count
+- reconnect state
+
+Presence is informational. The server still owns heartbeats and forfeits.
+
+### `user:{userId}`
+
+Events:
+
+- `notification_created`
+- `wallet_updated`
+- `dare_updated`
+- `jury_assigned`
+- `risk_hold_created`
+
+## Mobile App Implementation
+
+### Feature Modules
+
+```text
+src/
+  app/
+    navigation/
+    providers/
+  features/
+    auth/
+    feed/
+    create-dare/
+    court/
+    wallet/
+    profile/
+    notifications/
+    jury/
+  shared/
+    api/
+    domain/
+    ui/
+    storage/
+    telemetry/
+    validation/
+```
+
+### Navigation
+
+Primary tabs:
+
+- Feed
+- Create
+- Court
+- Wallet
+- Profile
+
+Secondary:
+
+- Notifications
+- Jury
+- Settings
+- Support
+
+Admin should be a separate app or locked-down admin web console, not a consumer tab.
+
+### Client State Management
+
+Use server state tooling for remote data and a small local state layer for UI state.
+
+Recommended split:
+
+- Remote/server state: TanStack Query or equivalent.
+- Local UI state: Zustand, Redux Toolkit, or React context for small scopes.
+- Form state: React Hook Form plus schema validation.
+
+Do not keep canonical DARE, wallet, or score state only in local memory.
+
+### Offline Strategy
+
+Allowed offline/local persistence:
+
+- Draft DARE forms
+- Last known profile
+- Last known feed cache with stale indicator
+- DARE constitution after acceptance
+
+Not allowed offline:
+
+- Wallet success
+- Escrow state mutation
+- DARE acceptance
+- Score submission after deadline without server validation
+- Settlement
+
+### Court Reconnect
+
+Court screen must handle:
+
+- reconnecting
+- server time resync
+- heartbeat failure
+- grace period warning
+- forfeit confirmation if server marks forfeit
+
+## Security Implementation Requirements
+
+### RLS / Authorization
+
+RLS policies should enforce:
+
+- Users can read their own wallet records.
+- Users cannot update ledger entries.
+- Users can read DAREs that are public or involve them.
+- Participants can read their Court session.
+- Jurors can read only assigned jury cases.
+- Admin tables require admin role.
+
+Sensitive writes should go through functions/API, not client table updates.
+
+### Rate Limits
+
+Rate limit:
+
+- login attempts
+- DARE creation
+- DARE acceptance
+- answer submission
+- chat messages
+- dispute filing
+- jury voting
+- deposit initialization
+- withdrawal requests
+
+### Audit Logging
+
+Audit:
+
+- admin actions
+- wallet adjustments
+- escrow release
+- DARE settlement
+- dispute verdicts
+- account freezes
+- payout retries
+- webhook processing anomalies
+
+### Secrets
+
+Never ship:
+
+- payment secret keys
+- service role keys
+- admin tokens
+- storage signing secrets
+
+Mobile app may contain public anon keys only if RLS/policies are strong and all sensitive mutations go through server actions.
+
+## Testing Strategy
+
+### Unit Tests
+
+Required:
+
+- fee calculation
+- tier calculation
+- DARE state transition rules
+- wallet balance projection
+- ledger entry construction
+- webhook idempotency logic
+- trust score changes
+- juror eligibility
+- dispute window validation
+
+### Integration Tests
+
+Required:
+
+- create DARE with escrow
+- accept DARE with escrow
+- insufficient balance
+- double accept race
+- answer submission
+- completion and settlement
+- dispute creates jury case and freezes settlement
+- webhook credits wallet once
+- withdrawal request creates pending ledger entry
+
+### Database Tests
+
+Required:
+
+- RLS policies
+- constraints
+- unique idempotency keys
+- no update/delete on ledger by normal role
+- participant visibility
+- juror visibility
+
+### End-To-End Tests
+
+MVP flows:
+
+1. Register -> deposit -> create DARE.
+2. Second user accepts -> both ready -> answer -> result -> settlement.
+3. User files dispute -> admin reviews.
+4. Payment webhook duplicate does not double-credit.
+5. User loses connection during Court and reconnects.
+
+## Observability
+
+### Metrics
+
+- deposit initialization count
+- deposit success rate
+- webhook verification failures
+- ledger imbalance count
+- DARE creation rate
+- DARE acceptance rate
+- open-to-accepted time
+- court reconnect count
+- settlement duration
+- dispute rate
+- admin action count
+- risk hold count
+
+### Logs
+
+Structured logs should include:
+
+- request id
+- user id when available
+- DARE id when available
+- wallet account id when available
+- payment provider reference when available
+- state transition from/to
+- error code
+
+### Alerts
+
+Alert on:
+
+- ledger imbalance
+- webhook failures above threshold
+- duplicate provider reference attempts
+- payout failure spike
+- settlement job failures
+- high dispute spike
+- suspicious repeated matchup spike
+
+## Implementation Phases
+
+### Phase 0: Compliance And Architecture Readiness
+
+Deliverables:
+
+- final jurisdiction decision
+- payment provider approval path
+- KYC/AML operating assumptions
+- database migration framework
+- monorepo scaffold
+- CI baseline
+- lint/test/format setup
+
+Exit criteria:
+
+- sensitive money flows are approved at the architecture level
+- no code paths planned for client-side settlement
+
+### Phase 1: Domain, Database, And Auth
+
+Deliverables:
+
+- domain package
+- enums and validation schemas
+- auth integration
+- profiles
+- wallet accounts
+- initial RLS
+- audit logs
+
+Exit criteria:
+
+- user can register and read own profile/wallet projection
+- tests cover auth/profile/wallet visibility
+
+### Phase 2: Wallet And Payments Sandbox
+
+Deliverables:
+
+- payment provider abstraction
+- deposit init
+- webhook verification
+- ledger credit
+- wallet projection
+- withdrawal request queue
+- reconciliation job skeleton
+
+Exit criteria:
+
+- duplicate webhook cannot double credit
+- ledger projection tests pass
+
+### Phase 3: DARE Create And Accept
+
+Deliverables:
+
+- DARE schema
+- constitution schema
+- create endpoint
+- accept endpoint
+- escrow hold
+- feed read model
+- notifications
+
+Exit criteria:
+
+- two users can create and accept DARE in sandbox with escrow holds
+- double acceptance race is tested
+
+### Phase 4: Court And Algorithmic Resolution
+
+Deliverables:
+
+- Court session
+- ready-up endpoint
+- server start time
+- quiz questions
+- answer endpoint
+- scoring
+- result calculation
+- realtime Court updates
+
+Exit criteria:
+
+- MVP DARE can complete end-to-end without manual DB edits
+- server computes winner
+
+### Phase 5: Settlement
+
+Deliverables:
+
+- escrow release
+- payout ledger
+- platform fee ledger
+- trust score updates
+- result notification
+- settlement audit logs
+
+Exit criteria:
+
+- settlement is idempotent
+- ledger remains balanced
+- result cannot be forged from client
+
+### Phase 6: Dispute And Admin Foundation
+
+Deliverables:
+
+- dispute filing
+- jury case creation
+- escrow hold during dispute
+- admin dispute queue
+- admin case detail
+- manual verdict/settlement path with audit log
+
+Exit criteria:
+
+- disputed DARE cannot settle accidentally
+- admin action is auditable
+
+### Phase 7: Closed Beta Hardening
+
+Deliverables:
+
+- rate limits
+- risk events
+- support runbooks
+- production monitoring
+- error budgets
+- privacy and terms screens
+- responsible play controls
+
+Exit criteria:
+
+- launch gates in `docs/05-mvp-scope.md` and `docs/08-security-risk-and-compliance.md` are satisfied
+
+## Prototype Migration Map
+
+### Keep
+
+- DARE Feed concept
+- five-step constitution builder
+- Court concept
+- timer and ready-up concept
+- stake preview
+- wallet transparency
+- result overlay concept
+- jury room concept
+- notification concept
+- admin risk view concept
+
+### Replace
+
+- inline `onclick` handlers with typed mobile components
+- browser direct Supabase writes with API actions
+- mutable client balance updates with ledger projection
+- client-side payout settlement with server settlement
+- client-side result calculation with server scoring
+- `innerHTML` rendering with typed UI components
+- monolithic global state with feature modules
+
+## Engineering Definition Of Done
+
+A feature is not done until:
+
+- domain types are updated
+- API contract is documented
+- migration is committed if schema changes
+- RLS/authorization is implemented when data is sensitive
+- unit tests cover core logic
+- integration tests cover critical path
+- telemetry is emitted
+- error states are handled
+- mobile UI handles loading, empty, failure, and retry states
+- security review checklist passes for sensitive workflows
+
+## Open Technical Decisions
+
+1. Supabase Edge Functions vs dedicated API service.
+2. Expo managed workflow vs bare React Native.
+3. Payment provider for first approved launch.
+4. Initial KYC vendor and identity flow.
+5. Whether issuer stake locks at DARE creation or at first acceptance.
+6. Whether MVP settlement waits for a dispute window or settles instantly with reversible hold.
+7. Admin console stack.
+8. Realtime provider and fallback behavior.
+9. Evidence storage provider for post-MVP evidence DAREs.
+10. Exact trust score formula.
+
+## Recommended Immediate Next Steps
+
+1. Decide stack shape: Expo + Supabase Edge Functions, or Expo + dedicated API.
+2. Draft actual SQL migrations for Phase 1 and Phase 2.
+3. Define TypeScript domain enums and schemas.
+4. Build wallet ledger tests before wallet UI.
+5. Build DARE state machine tests before DARE UI.
+6. Create admin console requirements before real-money beta.
