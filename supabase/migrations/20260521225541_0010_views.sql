@@ -8,7 +8,8 @@
 -- Available balance derived from posted ledger entries.
 -- Escrow and pending amounts are NOT included here;
 -- use wallet_summary for the full breakdown.
-create or replace view wallet_balance_projection as
+create or replace view wallet_balance_projection
+with (security_invoker = true) as
 select
   le.wallet_account_id,
   le.user_id,
@@ -27,7 +28,8 @@ group by le.wallet_account_id, le.user_id, le.currency;
 -- Full wallet dashboard for a user: available + escrowed + pending
 -- + held/frozen balances. Joins ledger projection with escrow holds
 -- and pending withdrawals.
-create or replace view wallet_summary as
+create or replace view wallet_summary
+with (security_invoker = true) as
 select
   wa.id                         as wallet_account_id,
   wa.user_id,
@@ -66,7 +68,8 @@ left join (
 -- ── public_dare_feed ─────────────────────────────────────────
 -- Safe read model for the main feed. Excludes internal risk data,
 -- full constitution for targeted DAREs, and private participant data.
-create or replace view public_dare_feed as
+create or replace view public_dare_feed
+with (security_invoker = true) as
 select
   d.id,
   d.title,
@@ -111,7 +114,8 @@ where d.status in ('open','active','completed','settled')
 -- Spectator-safe Court state for live viewing.
 -- Does not expose answer correctness, private heartbeat signals,
 -- or hidden evidence during an active match.
-create or replace view active_court_public_state as
+create or replace view active_court_public_state
+with (security_invoker = true) as
 select
   d.id                  as dare_id,
   d.title,

@@ -20,6 +20,7 @@ This plan is grounded in:
 - `docs/08-security-risk-and-compliance.md`
 - `docs/09-mobile-app-information-architecture.md`
 - `docs/10-technical-architecture-principles.md`
+- `docs/11-server-actions-and-rpc-contracts.md`
 - `index.html` prototype
 - `dare-master-strategy.md`
 - `deep-research-report.md`
@@ -150,10 +151,13 @@ Sensitive operations that must be API-only:
 - Complete DARE
 - Settle payout
 - File dispute
+- Upload/confirm dispute evidence
 - Cast jury vote
 - Initialize deposit
 - Verify payment webhook
 - Request withdrawal
+- Update responsible gaming limits
+- Activate self-exclusion
 - Admin action
 
 ### Database
@@ -639,7 +643,9 @@ create table risk_events (
 
 ## API Contract Direction
 
-Use action endpoints for sensitive workflows. The examples below assume a REST API, but the same contracts can be implemented as Supabase Edge Functions or server actions.
+Use action endpoints for sensitive workflows. The canonical action/RPC contract now lives in `docs/11-server-actions-and-rpc-contracts.md`; the examples below remain a high-level summary.
+
+For the first implementation, prefer Supabase Edge Functions for authenticated HTTP actions and provider webhooks, with private Postgres functions for transactional state changes that need row locks, ledger writes, escrow writes, and audit logs.
 
 ### Auth / Profile
 
@@ -836,6 +842,28 @@ Server behavior:
 6. Hold escrow.
 7. Notify opponent and admins/jurors.
 
+#### `POST /admin/jury-cases/{id}/resolve`
+
+Server behavior:
+
+1. Confirm actor is an admin.
+2. Confirm jury case is still unresolved.
+3. Record manual verdict and admin rationale.
+4. Move jury case to settlement pending.
+5. Return DARE to completed state with resolved winner or void outcome.
+6. Expire dispute window so the settlement endpoint can release or refund escrow.
+
+#### `POST /admin/jury-cases/{id}/assign`
+
+Server behavior:
+
+1. Confirm actor is an admin.
+2. Confirm case is filed or already in assignment/voting state.
+3. Select eligible opted-in jurors outside the DARE participants.
+4. Create assignments with deadlines and blind side mapping.
+5. Notify assigned jurors.
+6. Move case to jury voting and DARE to jury open.
+
 #### `POST /jury-cases/{id}/votes`
 
 Server behavior:
@@ -867,6 +895,8 @@ targeted_pending
   -> declined
   -> expired
 
+Cancellation of `open` and `targeted_pending` DAREs is implemented through `POST /dares/{id}/cancel`, which writes a compensating escrow-release ledger entry and refunds the issuer hold.
+
 accepted
   -> ready_check
   -> cancelled
@@ -878,6 +908,8 @@ ready_check
 active
   -> awaiting_result
   -> forfeited
+
+Active-match forfeits are implemented through `POST /dares/{id}/forfeit`. The action sets the opponent as winner, applies a trust penalty to the forfeiting participant, and leaves escrow release to the settlement endpoint.
 
 awaiting_result
   -> completed
@@ -962,6 +994,18 @@ Presence:
 - reconnect state
 
 Presence is informational. The server still owns heartbeats and forfeits.
+
+Active Court heartbeat is implemented through `POST /court/{dareId}/heartbeat`. It updates participant heartbeat columns and a reconnect deadline under server-side participant, Court phase, and rate-limit checks.
+
+Responsible gaming limit settings are implemented through `PATCH /responsible-gaming/settings`. Stricter limits apply immediately. Limit increases are stored as pending values with a 24-hour effective timestamp and are only promoted by server-side logic, keeping the mobile client out of limit enforcement decisions.
+
+Self-exclusion is implemented through `POST /responsible-gaming/self-exclude`. It marks the responsible gaming settings as excluded, limits the account, disables jury opt-in, cancels open issuer DAREs with escrow refunds, and forfeits active participant DAREs to the opponent so settlement can follow the standard escrow path.
+
+Dispute evidence is implemented through `POST /dares/{id}/evidence` and `POST /dares/{id}/evidence/confirm`. The request action creates a pending evidence object and signed private Storage upload URL. The confirm action marks the evidence uploaded and attaches it to the issuer or challenger side of the active jury case.
+
+KYC review is implemented through `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide`. The current flow supports internal/manual review and preserves provider optionality; raw identity documents should stay with the chosen KYC provider or private storage, not in Postgres JSON.
+
+Scheduled backend maintenance is implemented with `pg_cron` for expired idempotency cleanup, active Court expiry, and automatic settlement of completed DAREs after the dispute window closes.
 
 ### `user:{userId}`
 

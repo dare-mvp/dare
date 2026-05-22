@@ -6,7 +6,7 @@
 
 -- ── Extensions ───────────────────────────────────────────────
 create extension if not exists pgcrypto;   -- gen_random_uuid(), crypt()
-create extension if not exists citext;     -- case-insensitive username comparisons
+create extension if not exists citext with schema extensions; -- case-insensitive username comparisons
 
 -- Optional: enable after MVP if fuzzy username search is needed
 -- create extension if not exists pg_trgm;
@@ -16,6 +16,7 @@ create extension if not exists citext;     -- case-insensitive username comparis
 create or replace function set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
@@ -32,6 +33,7 @@ create or replace function ledger_immutability_guard()
 returns trigger
 language plpgsql
 security definer
+set search_path = public
 as $$
 begin
   raise exception

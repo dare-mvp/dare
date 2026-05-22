@@ -6,7 +6,7 @@ This document defines the first production database schema direction for DARE. I
 
 The schema is designed for the MVP described in `docs/05-mvp-scope.md`: Algorithmic DAREs, wallet ledger, escrow, Court ready-up, quiz scoring, settlement, notifications, dispute foundation, admin review, and risk/audit logging.
 
-Current implementation status: the initial Supabase migration set now exists under `supabase/migrations/`. The executable schema is the migration series from `0001_extensions.sql` through `0012_reference_data.sql`, plus `20260521223920_harden_existing_rls_auto_enable.sql` for remote project hardening; this document remains the product and architecture reference for why those tables, policies, and read models exist.
+Current implementation status: the initial Supabase migration set now exists under `supabase/migrations/`. Local migration filenames now match the remote Supabase migration history for project `dhzcoywgiyrbsiiwlstw`, including the post-deployment RLS/index performance cleanup; this document remains the product and architecture reference for why those tables, policies, and read models exist.
 
 ## Design Principles
 
@@ -1268,21 +1268,43 @@ Never include production credentials in seed files.
 
 Implemented migration sequence:
 
-1. `0001_extensions.sql` - extensions and helper functions.
-2. `0002_profiles.sql` - categories, profiles, notifications.
-3. `0003_wallet.sql` - wallet accounts, payment transactions, ledger entries.
-4. `0004_dares.sql` - DAREs, constitutions, escrow holds, spectator votes.
-5. `0005_court_and_quiz.sql` - Court sessions, chat, quiz questions, quiz rounds, quiz answers.
-6. `0006_disputes_jury_evidence.sql` - evidence, jury cases, assignments, votes, jury flags.
-7. `0007_audit_risk.sql` - audit logs, risk events, device records, KYC records, moderation reports.
-8. `0008_responsible_gaming.sql` - trust events and responsible gaming settings.
-9. `0009_withdrawal_requests.sql` - withdrawal request lifecycle.
-10. `0010_views.sql` - wallet, feed, and Court read-model views.
-11. `0011_rls.sql` - RLS policies for all tables.
-12. `0012_reference_data.sql` - production-safe reference data.
-13. `20260521223920_harden_existing_rls_auto_enable.sql` - remote project hardening for an existing dashboard-generated RLS helper function.
+1. `20260521225146_0001_extensions.sql` - extensions and helper functions.
+2. `20260521225208_0002_profiles.sql` - categories, profiles, notifications.
+3. `20260521225229_0003_wallet.sql` - wallet accounts, payment transactions, ledger entries.
+4. `20260521225301_0004_dares.sql` - DAREs, constitutions, escrow holds, spectator votes.
+5. `20260521225338_0005_court_and_quiz.sql` - Court sessions, chat, quiz questions, quiz rounds, quiz answers.
+6. `20260521225406_0006_disputes_jury_evidence.sql` - evidence, jury cases, assignments, votes, jury flags.
+7. `20260521225432_0007_audit_risk.sql` - audit logs, risk events, device records, KYC records, moderation reports.
+8. `20260521225447_0008_responsible_gaming.sql` - trust events and responsible gaming settings.
+9. `20260521225519_0009_withdrawal_requests.sql` - withdrawal request lifecycle.
+10. `20260521225541_0010_views.sql` - wallet, feed, and Court read-model views.
+11. `20260521225635_0011_rls.sql` - RLS policies for all tables.
+12. `20260521225644_0012_reference_data.sql` - production-safe reference data.
+13. `20260521225650_20260521223920_harden_existing_rls_auto_enable.sql` - remote project hardening for an existing dashboard-generated RLS helper function.
+14. `20260521225742_20260521225726_harden_function_paths_and_extensions.sql` - function search path and extension schema hardening.
+15. `20260521230705_optimize_rls_and_indexes.sql` - FK index coverage, RLS initPlan optimization, and consolidated read policies.
+16. `20260521233000_request_withdrawal_rpc.sql` - atomic service-role withdrawal queue RPC.
+17. `20260521234500_dare_action_rpcs.sql` - atomic service-role DARE create and accept RPCs.
+18. `20260522000000_court_ready_rpc.sql` - atomic Court ready-up and quiz round assignment RPC.
+19. `20260522001500_submit_answer_rpc.sql` - authoritative quiz answer submission and scoring RPC.
+20. `20260522003000_complete_and_settle_rpcs.sql` - authoritative completion and escrow settlement RPCs.
+21. `20260522004500_dispute_admin_rpcs.sql` - dispute filing and manual admin verdict RPCs.
+22. `20260522010000_jury_assignment_vote_rpcs.sql` - jury assignment and immutable vote tally RPCs.
+23. `20260522011500_cancel_dare_rpc.sql` - open DARE cancellation and issuer escrow refund RPC.
+24. `20260522013000_forfeit_dare_rpc.sql` - active DARE forfeit and settlement handoff RPC.
+25. `20260522014500_court_heartbeat_rpc.sql` - active Court participant heartbeat RPC.
+26. `20260522020000_notification_read_rpcs.sql` - notification read state RPCs.
+27. `20260522021500_responsible_gaming_settings_rpc.sql` - responsible gaming limit updates with delayed increases.
+28. `20260522023000_self_exclusion_rpc.sql` - responsible gaming self-exclusion and DARE cleanup RPC.
+29. `20260522024500_evidence_upload_rpcs.sql` - evidence upload request and jury-case attachment RPCs.
+30. `20260522030000_0013_idempotency.sql` - service-role idempotency store for state-changing actions.
+31. `20260522030100_0014_deposit_totals_rpc.sql` - rolling deposit total RPC for cumulative responsible-gaming limits.
+32. `20260522030200_0015_pg_cron_jobs.sql` - pg_cron maintenance and active Court expiry jobs.
+33. `20260522031000_0016_kyc_submit_rpc.sql` - user KYC submission RPC.
+34. `20260522032000_0017_kyc_decide_rpc.sql` - admin KYC decision and latest-status RPCs.
+35. `20260522033000_0018_auto_settle_cron.sql` - scheduled auto-settlement for completed DAREs after dispute windows close.
 
-Server functions/RPCs are still the next implementation layer. They should enforce state transitions, payment idempotency, escrow settlement, quiz scoring, withdrawal processing, trust-score writes, responsible gaming limits, and audit logging.
+Server functions/RPCs are now being implemented incrementally. The action layer currently covers profile reads/updates, jury opt-in preferences, notification read state, responsible gaming limit settings with delayed increases, cumulative deposit limit checks, self-exclusion with open/active DARE cleanup, sandbox deposit initialization/webhook handling, withdrawal queue creation, DARE create/accept/cancel with escrow, active-match forfeit, Court ready-up with quiz assignment and heartbeat, authoritative answer scoring, escrow settlement after completion/forfeit, dispute filing, evidence upload/confirmation, manual admin dispute resolution, jury assignment, jury voting, KYC submit/status/admin decision, idempotency cleanup, scheduled active Court expiry, and scheduled post-dispute auto-settlement. Remaining functions should enforce deeper operational admin workflows.
 
 ## Database Test Requirements
 
