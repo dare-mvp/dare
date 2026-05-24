@@ -14,9 +14,11 @@ type PaystackEvent = {
   event?: string;
   data?: {
     reference?: string;
+    transfer_code?: string;
     amount?: number;
     currency?: string;
     status?: string;
+    reason?: string;
   };
 };
 
@@ -36,6 +38,18 @@ type WalletAccountRow = {
   user_id: string;
   currency: string;
   status: string;
+};
+
+type WithdrawalRequestRow = {
+  id: string;
+  user_id: string;
+  wallet_account_id: string;
+  amount: number;
+  currency: string;
+  provider: string | null;
+  provider_transfer_reference: string | null;
+  status: string;
+  ledger_entry_id: string | null;
 };
 
 const defaultDependencies: WebhookDependencies = {
@@ -62,16 +76,29 @@ export function createPaystackWebhookHandler(
       );
 
       const event = parsePaystackEvent(rawBody);
-      if (event.event !== "charge.success") {
-        return json({ ok: true, ignored: true, event: event.event ?? null });
+      if (event.event === "charge.success") {
+        const result = await processSuccessfulCharge(
+          request,
+          dependencies.createServiceClient(),
+          event,
+        );
+        return json({ ok: true, data: result });
       }
 
-      const result = await processSuccessfulCharge(
-        request,
-        dependencies.createServiceClient(),
-        event,
-      );
-      return json({ ok: true, data: result });
+      if (
+        event.event === "transfer.success" ||
+        event.event === "transfer.failed" ||
+        event.event === "transfer.reversed"
+      ) {
+        const result = await processTransferEvent(
+          request,
+          dependencies.createServiceClient(),
+          event,
+        );
+        return json({ ok: true, data: result });
+      }
+
+      return json({ ok: true, ignored: true, event: event.event ?? null });
     } catch (error) {
       const actionError = error instanceof ActionError
         ? error
@@ -208,6 +235,69 @@ async function processSuccessfulCharge(
   return { reference, status: "verified_success" };
 }
 
+async function processTransferEvent(
+  request: Request,
+  serviceClient: SupabaseActionClient,
+  event: PaystackEvent,
+): Promise<
+  {
+    reference: string;
+    withdrawalRequestId: string;
+    status: "completed" | "failed" | "reversed" | "already_processed";
+  }
+> {
+  const reference = transferReference(event);
+  const amount = requireEventNumber(event.data?.amount, "data.amount");
+  const currency = requireEventString(event.data?.currency, "data.currency");
+  const providerStatus = requireEventString(event.data?.status, "data.status");
+  const withdrawal = await getWithdrawalRequest(serviceClient, reference);
+
+  assertWithdrawalMatches(withdrawal, amount, currency);
+
+  if (event.event === "transfer.success") {
+    if (providerStatus !== "success") {
+      throw new ActionError("INVALID_STATE", {
+        message: "Paystack transfer was not successful.",
+      });
+    }
+    return await completeWithdrawal(
+      request,
+      serviceClient,
+      withdrawal,
+      reference,
+      event,
+    );
+  }
+
+  if (event.event === "transfer.failed") {
+    if (providerStatus !== "failed") {
+      throw new ActionError("INVALID_STATE", {
+        message: "Paystack transfer was not failed.",
+      });
+    }
+    return await failWithdrawal(
+      request,
+      serviceClient,
+      withdrawal,
+      reference,
+      event,
+    );
+  }
+
+  if (providerStatus !== "reversed") {
+    throw new ActionError("INVALID_STATE", {
+      message: "Paystack transfer was not reversed.",
+    });
+  }
+  return await reverseWithdrawal(
+    request,
+    serviceClient,
+    withdrawal,
+    reference,
+    event,
+  );
+}
+
 async function getPaymentTransaction(
   client: SupabaseActionClient,
   reference: string,
@@ -227,6 +317,24 @@ async function getPaymentTransaction(
   return data;
 }
 
+async function getWithdrawalRequest(
+  client: SupabaseActionClient,
+  reference: string,
+): Promise<WithdrawalRequestRow> {
+  const { data, error } = await client.from<WithdrawalRequestRow>(
+    "withdrawal_requests",
+  )
+    .select(
+      "id,user_id,wallet_account_id,amount,currency,provider,provider_transfer_reference,status,ledger_entry_id",
+    )
+    .eq("provider_transfer_reference", reference)
+    .maybeSingle();
+
+  if (error) throw new ActionError("INTERNAL_ERROR", { cause: error });
+  if (!data) throw new ActionError("NOT_FOUND");
+  return data;
+}
+
 function assertTransactionMatches(
   transaction: PaymentTransactionRow,
   amount: number,
@@ -239,6 +347,25 @@ function assertTransactionMatches(
   if (transaction.amount !== amount || transaction.currency !== currency) {
     throw new ActionError("INVALID_STATE", {
       message: "Paystack amount or currency does not match the transaction.",
+    });
+  }
+}
+
+function assertWithdrawalMatches(
+  withdrawal: WithdrawalRequestRow,
+  amount: number,
+  currency: string,
+): void {
+  if (
+    withdrawal.provider !== null &&
+    withdrawal.provider !== "paystack"
+  ) {
+    throw new ActionError("INVALID_STATE");
+  }
+
+  if (withdrawal.amount !== amount || withdrawal.currency !== currency) {
+    throw new ActionError("INVALID_STATE", {
+      message: "Paystack amount or currency does not match the withdrawal.",
     });
   }
 }
@@ -301,6 +428,36 @@ async function insertLedgerEntry(
   }
 }
 
+async function insertWithdrawalLedgerEntry(
+  client: SupabaseActionClient,
+  withdrawal: WithdrawalRequestRow,
+  type: "withdrawal_completed" | "reversal",
+  direction: "debit" | "credit",
+  idempotencyKey: string,
+  reference: string,
+): Promise<void> {
+  const { error } = await client.from("ledger_entries").insert({
+    wallet_account_id: withdrawal.wallet_account_id,
+    user_id: withdrawal.user_id,
+    type,
+    direction,
+    amount: withdrawal.amount,
+    currency: withdrawal.currency,
+    status: "posted",
+    idempotency_key: idempotencyKey,
+    metadata: {
+      provider: "paystack",
+      provider_reference: reference,
+      withdrawal_request_id: withdrawal.id,
+    },
+  });
+
+  if (error) {
+    if (error.code === "23505") return;
+    throw new ActionError("INTERNAL_ERROR", { cause: error });
+  }
+}
+
 async function updatePaymentTransaction(
   client: SupabaseActionClient,
   transactionId: string,
@@ -313,6 +470,192 @@ async function updatePaymentTransaction(
       raw_provider_payload: event,
     })
     .eq("id", transactionId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw new ActionError("INTERNAL_ERROR", { cause: error });
+}
+
+async function updateProviderPaymentTransaction(
+  client: SupabaseActionClient,
+  reference: string,
+  status: "verified_success" | "verified_failed" | "reversed",
+  event: PaystackEvent,
+): Promise<void> {
+  const { error } = await client.from("payment_transactions")
+    .update({
+      status,
+      verified_at: new Date().toISOString(),
+      raw_provider_payload: event,
+    })
+    .eq("provider", "paystack")
+    .eq("provider_reference", reference)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw new ActionError("INTERNAL_ERROR", { cause: error });
+}
+
+async function completeWithdrawal(
+  request: Request,
+  client: SupabaseActionClient,
+  withdrawal: WithdrawalRequestRow,
+  reference: string,
+  event: PaystackEvent,
+): Promise<{
+  reference: string;
+  withdrawalRequestId: string;
+  status: "completed" | "already_processed";
+}> {
+  if (withdrawal.status === "completed") {
+    return {
+      reference,
+      withdrawalRequestId: withdrawal.id,
+      status: "already_processed",
+    };
+  }
+
+  if (!["pending", "processing"].includes(withdrawal.status)) {
+    throw new ActionError("INVALID_STATE");
+  }
+
+  await insertWithdrawalLedgerEntry(
+    client,
+    withdrawal,
+    "withdrawal_completed",
+    "debit",
+    `paystack:${reference}:withdrawal_completed`,
+    reference,
+  );
+  await updateWithdrawalRequest(client, withdrawal.id, {
+    provider: "paystack",
+    status: "completed",
+    processed_at: new Date().toISOString(),
+    failure_reason: null,
+  });
+  await updateProviderPaymentTransaction(
+    client,
+    reference,
+    "verified_success",
+    event,
+  );
+  await insertTransferAuditLog(
+    request,
+    client,
+    withdrawal,
+    reference,
+    "wallet.withdrawal_completed",
+    event,
+  );
+
+  return { reference, withdrawalRequestId: withdrawal.id, status: "completed" };
+}
+
+async function failWithdrawal(
+  request: Request,
+  client: SupabaseActionClient,
+  withdrawal: WithdrawalRequestRow,
+  reference: string,
+  event: PaystackEvent,
+): Promise<{
+  reference: string;
+  withdrawalRequestId: string;
+  status: "failed" | "already_processed";
+}> {
+  if (withdrawal.status === "failed") {
+    return {
+      reference,
+      withdrawalRequestId: withdrawal.id,
+      status: "already_processed",
+    };
+  }
+
+  if (!["pending", "processing"].includes(withdrawal.status)) {
+    throw new ActionError("INVALID_STATE");
+  }
+
+  await updateWithdrawalRequest(client, withdrawal.id, {
+    provider: "paystack",
+    status: "failed",
+    processed_at: new Date().toISOString(),
+    failure_reason: event.data?.reason ?? "provider_failed",
+  });
+  await updateProviderPaymentTransaction(
+    client,
+    reference,
+    "verified_failed",
+    event,
+  );
+  await insertTransferAuditLog(
+    request,
+    client,
+    withdrawal,
+    reference,
+    "wallet.withdrawal_failed",
+    event,
+  );
+
+  return { reference, withdrawalRequestId: withdrawal.id, status: "failed" };
+}
+
+async function reverseWithdrawal(
+  request: Request,
+  client: SupabaseActionClient,
+  withdrawal: WithdrawalRequestRow,
+  reference: string,
+  event: PaystackEvent,
+): Promise<{
+  reference: string;
+  withdrawalRequestId: string;
+  status: "reversed" | "already_processed";
+}> {
+  if (withdrawal.status === "reversed") {
+    return {
+      reference,
+      withdrawalRequestId: withdrawal.id,
+      status: "already_processed",
+    };
+  }
+
+  if (withdrawal.status !== "completed") {
+    throw new ActionError("INVALID_STATE");
+  }
+
+  await insertWithdrawalLedgerEntry(
+    client,
+    withdrawal,
+    "reversal",
+    "credit",
+    `paystack:${reference}:withdrawal_reversed`,
+    reference,
+  );
+  await updateWithdrawalRequest(client, withdrawal.id, {
+    provider: "paystack",
+    status: "reversed",
+    processed_at: new Date().toISOString(),
+    failure_reason: event.data?.reason ?? "provider_reversed",
+  });
+  await updateProviderPaymentTransaction(client, reference, "reversed", event);
+  await insertTransferAuditLog(
+    request,
+    client,
+    withdrawal,
+    reference,
+    "wallet.withdrawal_reversed",
+    event,
+  );
+
+  return { reference, withdrawalRequestId: withdrawal.id, status: "reversed" };
+}
+
+async function updateWithdrawalRequest(
+  client: SupabaseActionClient,
+  withdrawalRequestId: string,
+  values: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await client.from("withdrawal_requests")
+    .update(values)
+    .eq("id", withdrawalRequestId)
     .select("id")
     .maybeSingle();
 
@@ -342,6 +685,39 @@ async function insertAuditLog(
   });
 
   if (error) throw new ActionError("INTERNAL_ERROR", { cause: error });
+}
+
+async function insertTransferAuditLog(
+  request: Request,
+  client: SupabaseActionClient,
+  withdrawal: WithdrawalRequestRow,
+  reference: string,
+  action: string,
+  event: PaystackEvent,
+): Promise<void> {
+  const { error } = await client.from("audit_logs").insert({
+    actor_user_id: withdrawal.user_id,
+    actor_type: "provider",
+    action,
+    target_type: "withdrawal_request",
+    target_id: withdrawal.id,
+    metadata: {
+      provider: "paystack",
+      reference,
+      event: event.event,
+    },
+    ip_address: firstForwardedIp(request.headers.get("x-forwarded-for")),
+    user_agent: request.headers.get("user-agent"),
+  });
+
+  if (error) throw new ActionError("INTERNAL_ERROR", { cause: error });
+}
+
+function transferReference(event: PaystackEvent): string {
+  return requireEventString(
+    event.data?.reference ?? event.data?.transfer_code,
+    "data.reference",
+  );
 }
 
 function requireEventString(value: unknown, path: string): string {

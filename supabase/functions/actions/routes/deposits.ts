@@ -54,7 +54,7 @@ type DepositTotalsRow = {
 type DepositInitResponse = {
   paymentTransactionId: string;
   provider: "paystack";
-  mode: "sandbox";
+  mode: PaystackMode;
   reference: string;
   authorizationUrl: string;
   accessCode: string;
@@ -63,12 +63,34 @@ type DepositInitResponse = {
   status: "initialized";
 };
 
+type PaystackMode = "test" | "live";
+
+type PaystackInitializeParams = {
+  amount: number;
+  currency: "NGN";
+  email: string;
+  reference: string;
+};
+
+type PaystackInitializeResult = {
+  authorizationUrl: string;
+  accessCode: string;
+  reference: string;
+  mode: PaystackMode;
+};
+
+export type PaystackInitializer = (
+  params: PaystackInitializeParams,
+) => Promise<PaystackInitializeResult>;
+
 export async function initializeDeposit(
   request: Request,
   client: SupabaseActionClient,
   serviceClient: SupabaseActionClient,
+  paystackInitializer: PaystackInitializer = initializePaystackTransaction,
 ): Promise<{ requestId: string; data: DepositInitResponse }> {
   const authUser = await requireAuthenticatedUser(client);
+  const email = requirePaymentEmail(authUser.email);
   const envelope = await parseActionEnvelope(request, {
     requireIdempotencyKey: true,
     validatePayload: validateDepositPayload,
@@ -102,13 +124,25 @@ export async function initializeDeposit(
 
   const paymentTransactionId = crypto.randomUUID();
   const reference = `dare_dep_${keyHash.slice(0, 24)}`;
+  const paystack = await paystackInitializer({
+    amount: envelope.payload.amount,
+    currency: envelope.payload.currency,
+    email,
+    reference,
+  });
+  if (paystack.reference !== reference) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", {
+      message: "Payment provider returned a mismatched transaction reference.",
+    });
+  }
+
   const data: DepositInitResponse = {
     paymentTransactionId,
     provider: "paystack",
-    mode: "sandbox",
-    reference,
-    authorizationUrl: `https://checkout.paystack.com/sandbox_${reference}`,
-    accessCode: `sandbox_${reference}`,
+    mode: paystack.mode,
+    reference: paystack.reference,
+    authorizationUrl: paystack.authorizationUrl,
+    accessCode: paystack.accessCode,
     amount: envelope.payload.amount,
     currency: envelope.payload.currency,
     status: "initialized",
@@ -121,6 +155,7 @@ export async function initializeDeposit(
     reference,
     envelope.payload,
     keyHash,
+    paystack.mode,
   );
   await insertAuditLog(
     request,
@@ -132,7 +167,7 @@ export async function initializeDeposit(
       currency: envelope.payload.currency,
       provider: envelope.payload.provider,
       reference,
-      sandbox: true,
+      mode: paystack.mode,
     },
   );
   await storeIdempotencyResult(
@@ -145,6 +180,111 @@ export async function initializeDeposit(
   );
 
   return { requestId: envelope.requestId, data };
+}
+
+async function initializePaystackTransaction(
+  params: PaystackInitializeParams,
+): Promise<PaystackInitializeResult> {
+  const secretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
+  if (!secretKey) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", {
+      message: "PAYSTACK_SECRET_KEY is not configured.",
+    });
+  }
+
+  const abort = new AbortController();
+  const timeoutId = setTimeout(() => abort.abort(), 10_000);
+  let response: Response;
+  try {
+    response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      signal: abort.signal,
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: String(params.amount),
+        currency: params.currency,
+        email: params.email,
+        reference: params.reference,
+        callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") || undefined,
+      }),
+    });
+  } catch (error) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", { cause: error });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", { cause: error });
+  }
+
+  if (!response.ok) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", {
+      details: { status: response.status },
+    });
+  }
+
+  const payload = assertPaystackInitializeResponse(body);
+  return {
+    authorizationUrl: payload.authorization_url,
+    accessCode: payload.access_code,
+    reference: payload.reference,
+    mode: getPaystackMode(secretKey),
+  };
+}
+
+function assertPaystackInitializeResponse(
+  value: unknown,
+): {
+  authorization_url: string;
+  access_code: string;
+  reference: string;
+} {
+  const body = assertRecord(value, "paystackResponse");
+  if (body.status !== true) {
+    throw new ActionError("PROVIDER_UNAVAILABLE", {
+      message: "Paystack did not initialize the transaction.",
+    });
+  }
+
+  const data = assertRecord(body.data, "paystackResponse.data");
+  return {
+    authorization_url: assertNonEmptyString(
+      data.authorization_url,
+      "paystackResponse.data.authorization_url",
+    ),
+    access_code: assertNonEmptyString(
+      data.access_code,
+      "paystackResponse.data.access_code",
+    ),
+    reference: assertNonEmptyString(
+      data.reference,
+      "paystackResponse.data.reference",
+    ),
+  };
+}
+
+function getPaystackMode(secretKey: string): PaystackMode {
+  return secretKey.startsWith("sk_live_") ? "live" : "test";
+}
+
+function requirePaymentEmail(email: string | null | undefined): string {
+  return assertNonEmptyString(email, "user.email");
+}
+
+function assertNonEmptyString(value: unknown, path: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new ActionError("VALIDATION_FAILED", {
+      message: `${path} must be a non-empty string.`,
+    });
+  }
+  return value.trim();
 }
 
 function validateDepositPayload(value: unknown): DepositPayload {
@@ -287,6 +427,7 @@ async function insertPaymentTransaction(
   reference: string,
   payload: DepositPayload,
   keyHash: string,
+  mode: PaystackMode,
 ): Promise<void> {
   const { error } = await serviceClient.from("payment_transactions").insert({
     id,
@@ -298,7 +439,7 @@ async function insertPaymentTransaction(
     currency: payload.currency,
     status: "initialized",
     raw_provider_payload: {
-      sandbox: true,
+      provider_mode: mode,
       idempotency_key_hash: keyHash,
     },
   });

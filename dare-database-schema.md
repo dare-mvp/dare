@@ -1291,7 +1291,7 @@ Implemented migration sequence:
 21. `20260522004500_dispute_admin_rpcs.sql` - dispute filing and manual admin verdict RPCs.
 22. `20260522010000_jury_assignment_vote_rpcs.sql` - jury assignment and immutable vote tally RPCs.
 23. `20260522011500_cancel_dare_rpc.sql` - open DARE cancellation and issuer escrow refund RPC.
-24. `20260522013000_forfeit_dare_rpc.sql` - active DARE forfeit and settlement handoff RPC.
+24. `20260522013000_forfeit_dare_rpc.sql` - active DARE forfeit RPC, superseded by `20260524000000_mobile_critical_gap_fixes.sql` for immediate settlement.
 25. `20260522014500_court_heartbeat_rpc.sql` - active Court participant heartbeat RPC.
 26. `20260522020000_notification_read_rpcs.sql` - notification read state RPCs.
 27. `20260522021500_responsible_gaming_settings_rpc.sql` - responsible gaming limit updates with delayed increases.
@@ -1303,8 +1303,14 @@ Implemented migration sequence:
 33. `20260522031000_0016_kyc_submit_rpc.sql` - user KYC submission RPC.
 34. `20260522032000_0017_kyc_decide_rpc.sql` - admin KYC decision and latest-status RPCs.
 35. `20260522033000_0018_auto_settle_cron.sql` - scheduled auto-settlement for completed DAREs after dispute windows close.
+36. `20260524000000_mobile_critical_gap_fixes.sql` - Paystack-ready settlement workflow fixes: immediate forfeit settlement, stale-heartbeat forfeits, jury quorum expiry, expanded auto-settlement, and trust event coverage.
+37. `20260524010000_high_priority_gap_fixes.sql` - jury blind-packet randomization, user-device anti-collusion checks, Court ready-up KYC enforcement, and responsible-gaming cooling-off enforcement.
+38. `20260524020000_wallet_storage_fee_fixes.sql` - signup wallet provisioning, `dare-evidence` storage bucket bootstrap, internal platform wallet setup, and platform-fee-aware DARE creation/settlement.
+39. `20260524021000_fix_platform_wallet_select.sql` - local forward correction for the platform wallet lookup row shape in `settle_dare_action`.
+40. `20260524030000_rate_limits_webhooks_cron_jury_guards.sql` - Postgres-backed action rate limits, idempotent required pg_cron scheduling with verification RPC, jury vote immutability and participant-assignment guards, and refreshed jury assignment filtering.
+41. `20260524031000_withdrawal_pending_projection_fix.sql` - pending withdrawal balances now follow `withdrawal_requests` state so completed, failed, reversed, or cancelled transfers stop reserving funds.
 
-Server functions/RPCs are now being implemented incrementally. The action layer currently covers profile reads/updates, jury opt-in preferences, notification read state, responsible gaming limit settings with delayed increases, cumulative deposit limit checks, self-exclusion with open/active DARE cleanup, sandbox deposit initialization/webhook handling, withdrawal queue creation, DARE create/accept/cancel with escrow, active-match forfeit, Court ready-up with quiz assignment and heartbeat, authoritative answer scoring, escrow settlement after completion/forfeit, dispute filing, evidence upload/confirmation, manual admin dispute resolution, jury assignment, jury voting, KYC submit/status/admin decision, idempotency cleanup, scheduled active Court expiry, and scheduled post-dispute auto-settlement. Remaining functions should enforce deeper operational admin workflows.
+Server functions/RPCs are now being implemented incrementally. The action layer currently covers profile reads/updates, automatic wallet provisioning, Postgres-backed rate limits for high-risk actions, jury opt-in preferences, notification read state, responsible gaming limit settings with delayed increases and cooling-off enforcement, cumulative deposit limit checks, self-exclusion with open/active DARE cleanup, Paystack deposit initialization and deposit/withdrawal webhook handling, withdrawal queue creation and provider-state-aware pending balance projection, DARE create/accept/cancel with escrow and platform fee projection, active-match forfeit with immediate settlement, Court ready-up with KYC validation, quiz assignment, and heartbeat, authoritative answer scoring, escrow settlement after completion/forfeit with winner payout and platform fee ledgering, dispute filing, evidence upload/confirmation through the `dare-evidence` bucket, manual admin dispute resolution, jury assignment with blind-packet randomization, participant filtering, and device anti-collusion checks, immutable jury voting with quorum handling, KYC submit/status/admin decision, idempotency cleanup, verified scheduled active Court expiry, stale-heartbeat forfeit, jury quorum expiry, action-rate-limit cleanup, and scheduled post-dispute auto-settlement. Remaining functions should enforce deeper operational admin workflows.
 
 ## Database Test Requirements
 
@@ -1544,24 +1550,25 @@ create index trust_events_dare_idx on trust_events (dare_id) where dare_id is no
 
 ---
 
-#### GAP-07: Platform fee wallet is unresolved (Open Decision #3 — resolve)
+#### GAP-07: Platform fee wallet is resolved
 
-`ledger_entries` has a `platform_fee` type but no wallet account to credit it to. Without a platform fee account, revenue cannot be reconciled, juror reward pools cannot be funded from fee income, and financial reporting is incomplete.
+`ledger_entries` has a `platform_fee` type and the migration set now creates an internal `dare_platform` profile with an active NGN wallet account to receive those entries. Without this account, revenue cannot be reconciled, juror reward pools cannot be funded from fee income, and financial reporting is incomplete.
 
-Resolve Open Decision #3: create a system wallet account during setup.
+The implemented setup creates the system user/profile/wallet during migration.
 
 ```sql
--- In seed/system setup (not user-facing):
-insert into wallet_accounts (id, user_id, currency, status)
+insert into profiles (id, username, display_name, kyc_tier, account_status, risk_status)
 values (
-  '00000000-0000-0000-0000-000000000001',  -- well-known constant
-  '<system-profile-id>',
-  'NGN',
-  'active'
+  '00000000-0000-4000-8000-000000000001',
+  'dare_platform',
+  'DARE Platform',
+  'kyc3',
+  'active',
+  'normal'
 );
 ```
 
-All `platform_fee` ledger entries credit this account. Juror rewards debit it. The system profile is a special non-auth profile created during setup.
+All `platform_fee` ledger entries credit this account. Juror rewards can later debit it. The system profile is internal-only and is not seeded with a known password.
 
 ---
 

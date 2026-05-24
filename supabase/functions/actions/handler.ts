@@ -1,5 +1,6 @@
 import { ActionError } from "./_shared/errors.ts";
 import { corsPreflightResponse, isCorsPreflight } from "./_shared/cors.ts";
+import { enforceActionRateLimit } from "./_shared/rate_limit.ts";
 import { errorResponse, successResponse } from "./_shared/response.ts";
 import {
   createServiceClient,
@@ -10,7 +11,10 @@ import { submitAnswer } from "./routes/answers.ts";
 import { markDareReady, recordCourtHeartbeat } from "./routes/court.ts";
 import { acceptDare, cancelDare, createDare } from "./routes/dares.ts";
 import { forfeitDare } from "./routes/dare_lifecycle.ts";
-import { initializeDeposit } from "./routes/deposits.ts";
+import {
+  initializeDeposit,
+  type PaystackInitializer,
+} from "./routes/deposits.ts";
 import { fileDispute, resolveJuryCase } from "./routes/disputes.ts";
 import {
   confirmEvidenceUpload,
@@ -41,11 +45,13 @@ type RouteContext = {
   pathname: string;
   getClient: () => SupabaseActionClient;
   getServiceClient: () => SupabaseActionClient;
+  paystackInitializer?: PaystackInitializer;
 };
 
 type HandlerDependencies = {
   createClient: (request: Request) => SupabaseActionClient;
   createServiceClient?: () => SupabaseActionClient;
+  paystackInitializer?: PaystackInitializer;
 };
 
 const defaultDependencies: HandlerDependencies = {
@@ -76,6 +82,7 @@ export function createHandler(
             defaultDependencies.createServiceClient!;
           return factory();
         },
+        paystackInitializer: dependencies.paystackInitializer,
       });
     } catch (error) {
       return errorResponse(error, requestId);
@@ -98,6 +105,13 @@ async function route(context: RouteContext): Promise<Response> {
       context.requestId,
     );
   }
+
+  await enforceActionRateLimit(
+    context.request.method,
+    actionPath,
+    context.getClient,
+    context.getServiceClient,
+  );
 
   if (context.request.method === "GET" && matchesPath(actionPath, ["me"])) {
     return successResponse(await getMe(context.getClient()), context.requestId);
@@ -192,6 +206,7 @@ async function route(context: RouteContext): Promise<Response> {
       context.request,
       context.getClient(),
       context.getServiceClient(),
+      context.paystackInitializer,
     );
     return successResponse(result.data, result.requestId);
   }
