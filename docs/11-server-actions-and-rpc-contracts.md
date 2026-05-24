@@ -1102,7 +1102,7 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 - Item 1: shared envelope, error, response, CORS, idempotency, and validation utilities plus Deno tests.
 - Item 2: `GET /me` and `PATCH /profiles/me` routes using an authenticated, RLS-scoped Supabase client. Profile updates accept only safe display/profile fields.
 - Item 3: `POST /wallet/deposits/init` initializes a real Paystack transaction from the configured secret key without crediting the wallet. `paystack-webhook` verifies `x-paystack-signature`, confirms matching successful charges, and writes one `deposit_confirmed` ledger entry per provider reference.
-- Item 4: `POST /wallet/withdrawals` queues a pending withdrawal through `request_withdrawal`, an atomic service-role RPC that locks the wallet account, checks withdrawable balance, inserts `withdrawal_pending` ledger state, and creates the operational queue row. Paystack transfer webhooks now process `transfer.success`, `transfer.failed`, and `transfer.reversed` for queued provider payouts; pending balance projections only reserve withdrawals whose request status is still `pending` or `processing`.
+- Item 4: `POST /wallet/withdrawals` queues a pending withdrawal through `request_withdrawal`, an atomic service-role RPC that locks the wallet account, checks withdrawable balance, inserts `withdrawal_pending` ledger state, and creates the operational queue row. `withdrawal-processor` claims pending requests through `claim_paystack_withdrawals`, creates Paystack transfer recipients, and initiates Paystack transfers. Paystack transfer webhooks process `transfer.success`, `transfer.failed`, and `transfer.reversed` for queued provider payouts; pending balance projections only reserve withdrawals whose request status is still `pending` or `processing`.
 - Item 5: `POST /dares` and `POST /dares/{id}/accept` are backed by service-role RPCs that atomically create DARE rows, constitutions, escrow holds, posted `escrow_hold` ledger entries, and the initial `ready_check` Court session on acceptance.
 - Item 6: `POST /dares/{id}/ready` marks participant readiness and, when both players are ready, atomically assigns quiz rounds and moves the Court/DARE to `active` with server timestamps.
 - Item 7: `POST /dares/{id}/answers` submits a quiz answer through a service-role RPC that computes correctness and response time server-side and updates Court score counters.
@@ -1123,7 +1123,7 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 1. Create shared action envelope, error types, and validation utilities.
 2. Implement `GET /me` and profile update.
 3. Implement wallet deposit initialization through Paystack and webhook-backed wallet crediting.
-4. Implement withdrawal request queue without automatic payout.
+4. Implement withdrawal request queue, Paystack transfer execution, and transfer webhook reconciliation.
 5. Implement `create_dare` and `accept_dare` transactional functions.
 6. Implement Court ready-up and question assignment.
 7. Implement answer submission and scoring.
