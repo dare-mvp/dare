@@ -644,7 +644,7 @@ Transactional behavior:
 
 Settlement must be all-or-nothing.
 
-Implemented Postgres function: `public.settle_dare_action(...)`, executable only by `service_role`. It settles after the dispute window, releases escrow to the winner or refunds tied matches, records payout/refund ledger entries, updates profile counters/trust events, and returns safely on already-settled DAREs.
+Implemented Postgres function: `public.settle_dare_action(...)`, executable only by `service_role`. It settles after the dispute window, releases escrow to the winner net of the platform fee or refunds tied matches, records payout/refund/platform-fee ledger entries, updates profile counters/trust events, and returns safely on already-settled DAREs.
 
 ### `POST /dares/{id}/disputes`
 
@@ -1051,6 +1051,8 @@ Minimum MVP limits:
 
 Implementation can begin with Postgres-backed counters or an external low-latency limiter. High-risk money actions should use database checks even if an external limiter is added.
 
+Implemented Postgres-backed limiter: `public.consume_action_rate_limit(...)` stores per-user action counters in `action_rate_limits`. The action handler enforces the MVP limits for DARE creation, DARE acceptance, answer submission, deposit init, withdrawal requests, dispute filing, and KYC submission before dispatching the mutation route. Heartbeat keeps its tighter RPC-level limiter.
+
 ## Observability And Audit
 
 Every action should log:
@@ -1099,28 +1101,28 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 
 - Item 1: shared envelope, error, response, CORS, idempotency, and validation utilities plus Deno tests.
 - Item 2: `GET /me` and `PATCH /profiles/me` routes using an authenticated, RLS-scoped Supabase client. Profile updates accept only safe display/profile fields.
-- Item 3: `POST /wallet/deposits/init` creates a sandbox Paystack authorization payload without crediting the wallet. `paystack-webhook` verifies `x-paystack-signature`, confirms matching successful charges, and writes one `deposit_confirmed` ledger entry per provider reference.
-- Item 4: `POST /wallet/withdrawals` queues a pending withdrawal through `request_withdrawal`, an atomic service-role RPC that locks the wallet account, checks withdrawable balance, inserts `withdrawal_pending` ledger state, and creates the operational queue row without starting an automatic payout.
+- Item 3: `POST /wallet/deposits/init` initializes a real Paystack transaction from the configured secret key without crediting the wallet. `paystack-webhook` verifies `x-paystack-signature`, confirms matching successful charges, and writes one `deposit_confirmed` ledger entry per provider reference.
+- Item 4: `POST /wallet/withdrawals` queues a pending withdrawal through `request_withdrawal`, an atomic service-role RPC that locks the wallet account, checks withdrawable balance, inserts `withdrawal_pending` ledger state, and creates the operational queue row. Paystack transfer webhooks now process `transfer.success`, `transfer.failed`, and `transfer.reversed` for queued provider payouts; pending balance projections only reserve withdrawals whose request status is still `pending` or `processing`.
 - Item 5: `POST /dares` and `POST /dares/{id}/accept` are backed by service-role RPCs that atomically create DARE rows, constitutions, escrow holds, posted `escrow_hold` ledger entries, and the initial `ready_check` Court session on acceptance.
 - Item 6: `POST /dares/{id}/ready` marks participant readiness and, when both players are ready, atomically assigns quiz rounds and moves the Court/DARE to `active` with server timestamps.
 - Item 7: `POST /dares/{id}/answers` submits a quiz answer through a service-role RPC that computes correctness and response time server-side and updates Court score counters.
 - Item 8: `POST /dares/{id}/complete` recomputes final scores and marks completion; `POST /dares/{id}/settle` reconciles escrow after the dispute window with idempotent payout/refund ledger entries.
 - Item 9: `POST /dares/{id}/disputes` files a dispute and freezes settlement; `POST /admin/jury-cases/{id}/resolve` records an admin verdict and returns the DARE to the normal settlement path.
-- Item 10: `POST /admin/jury-cases/{id}/assign` assigns eligible jurors and `POST /jury-cases/{id}/votes` records immutable juror votes, tallies quorum, and returns resolved verdicts to the settlement path.
+- Item 10: `POST /admin/jury-cases/{id}/assign` assigns eligible jurors while excluding participants and colluding device clusters, and `POST /jury-cases/{id}/votes` records DB-immutable juror votes, tallies quorum, and returns resolved verdicts to the settlement path.
 - Item 11: `PATCH /profiles/me/jury` lets eligible users opt into the jury pool and set preferred jury categories through the action layer.
 - Item 12: `POST /dares/{id}/cancel` cancels open or targeted-pending DAREs and refunds the issuer escrow with a compensating ledger entry.
-- Item 13: `POST /dares/{id}/forfeit` records active-match forfeits, assigns the opponent as winner, applies a trust penalty, and hands off to settlement.
+- Item 13: `POST /dares/{id}/forfeit` records active-match forfeits, assigns the opponent as winner, applies trust events, and immediately settles escrow to the winner.
 - Item 14: `POST /court/{dareId}/heartbeat` records active participant presence with server-side rate limiting and reconnect deadline updates.
 - Item 15: `PATCH /notifications/{id}/read` and `POST /notifications/read-all` update notification read state through ownership-checked RPCs.
 - Item 16: `PATCH /responsible-gaming/settings` applies stricter user limits immediately and stages limit increases behind a 24-hour effective timestamp.
 - Item 17: `POST /responsible-gaming/self-exclude` activates self-exclusion, limits the account, cancels open issuer DAREs with refunds, and forfeits active participant DAREs to the opponent.
 - Item 18: `POST /dares/{id}/evidence` creates signed upload targets and `POST /dares/{id}/evidence/confirm` attaches uploaded evidence to the active jury case.
 - Item 19: `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide` implement the internal/manual KYC review flow.
-- Item 20: `pg_cron` maintenance jobs purge expired idempotency records, expire active Court sessions, and auto-settle completed DAREs after the dispute window.
+- Item 20: `pg_cron` maintenance jobs are explicitly rescheduled by migration and can be verified with `verify_required_cron_jobs()`. They purge expired idempotency/rate-limit records, expire active Court sessions, forfeit stale heartbeat sessions, expire no-quorum jury cases, and auto-settle completed/forfeited DAREs after the dispute window or jury verdict.
 
 1. Create shared action envelope, error types, and validation utilities.
 2. Implement `GET /me` and profile update.
-3. Implement wallet deposit initialization and Paystack webhook as no-real-money sandbox flow.
+3. Implement wallet deposit initialization through Paystack and webhook-backed wallet crediting.
 4. Implement withdrawal request queue without automatic payout.
 5. Implement `create_dare` and `accept_dare` transactional functions.
 6. Implement Court ready-up and question assignment.
@@ -1130,7 +1132,7 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 10. Implement jury assignment/voting after manual dispute path is stable.
 11. Implement jury profile opt-in and category preferences.
 12. Implement open DARE cancellation and issuer escrow refund.
-13. Implement active DARE forfeit and settlement handoff.
+13. Implement active DARE forfeit with immediate settlement.
 14. Implement active Court heartbeat.
 15. Implement notification read state actions.
 16. Implement responsible gaming limit settings with delayed increases.

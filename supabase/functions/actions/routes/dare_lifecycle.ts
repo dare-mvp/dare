@@ -14,19 +14,19 @@ import { mapDareQueryError } from "./dare_errors.ts";
 
 type ForfeitDareRpcRow = {
   dare_id: string;
-  status: "forfeited";
+  status: "forfeited" | "settled";
   forfeiter_id: string;
   winner_id: string;
-  court_phase: "forfeited";
+  court_phase: "forfeited" | "completed";
   completed_at: string;
 };
 
 export type ForfeitDareResponse = {
   dareId: string;
-  status: "forfeited";
+  status: "forfeited" | "settled";
   forfeiterId: string;
   winnerId: string;
-  courtPhase: "forfeited";
+  courtPhase: "forfeited" | "completed";
   completedAt: string;
 };
 
@@ -141,7 +141,7 @@ async function insertForfeitNotifications(
       user_id: data.winnerId,
       type: "match_result",
       title: "Opponent forfeited",
-      body: "This DARE is ready for settlement.",
+      body: "Your winnings have been settled.",
       action: { type: "dare", dareId: data.dareId },
     },
   ];

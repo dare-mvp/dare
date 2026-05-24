@@ -104,7 +104,9 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "invalid_self_exclusion_duration",
       "invalid_self_exclusion_reason",
       "self_exclusion_active",
+      "cooling_off_active",
       "escrow_not_found",
+      "platform_wallet_not_found",
     ].includes(
       error.message ?? "",
     )

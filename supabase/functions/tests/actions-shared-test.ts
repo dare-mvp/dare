@@ -549,13 +549,23 @@ Deno.test("POST /responsible-gaming/self-exclude cancels open and forfeits activ
   assertEquals(state.escrowHolds[0].status, "refunded");
 });
 
-Deno.test("POST /wallet/deposits/init creates a sandbox transaction once", async () => {
+Deno.test("POST /wallet/deposits/init initializes Paystack once", async () => {
   const state = createFakeState();
   const client = fakeClient(state);
   const serviceClient = fakeClient(state);
+  let providerCalls = 0;
   const testHandler = createHandler({
     createClient: () => client,
     createServiceClient: () => serviceClient,
+    paystackInitializer: (params) => {
+      providerCalls += 1;
+      return Promise.resolve({
+        mode: "test",
+        reference: params.reference,
+        authorizationUrl: `https://checkout.paystack.com/${params.reference}`,
+        accessCode: `access_${params.reference}`,
+      });
+    },
   });
 
   const requestBody = {
@@ -586,10 +596,11 @@ Deno.test("POST /wallet/deposits/init creates a sandbox transaction once", async
   const body = await first.json();
   const replayBody = await replay.json();
   assertEquals(body.ok, true);
-  assertEquals(body.data.mode, "sandbox");
+  assertEquals(body.data.mode, "test");
   assertEquals(body.data.provider, "paystack");
   assertEquals(body.data.amount, 100000);
   assertEquals(body.data.reference, replayBody.data.reference);
+  assertEquals(providerCalls, 1);
   assertEquals(state.paymentTransactions.length, 1);
   assertEquals(state.auditLogs.length, 1);
   assertEquals(state.idempotencyRecords.length, 1);
@@ -636,6 +647,50 @@ Deno.test("paystack webhook verifies signature and avoids double credit", async 
   assertEquals(replay.status, 200);
   assertEquals(state.paymentTransactions[0].status, "verified_success");
   assertEquals(state.ledgerEntries.length, 1);
+  assertEquals(state.auditLogs.length, 1);
+});
+
+Deno.test("paystack webhook completes withdrawal transfer payouts once", async () => {
+  const state = createFakeState();
+  state.withdrawalRequests.push({
+    id: "423e4567-e89b-12d3-a456-426614174000",
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 100000,
+    currency: "NGN",
+    provider: "paystack",
+    provider_transfer_reference: "dare_wd_reference",
+    status: "processing",
+    ledger_entry_id: "523e4567-e89b-12d3-a456-426614174000",
+  });
+
+  const secret = "sk_test_unit_secret";
+  const rawBody = JSON.stringify({
+    event: "transfer.success",
+    data: {
+      reference: "dare_wd_reference",
+      amount: 100000,
+      currency: "NGN",
+      status: "success",
+    },
+  });
+  const signature = await hmacSha512Hex(rawBody, secret);
+  const testHandler = createPaystackWebhookHandler({
+    createServiceClient: () => fakeClient(state),
+    getSecret: () => secret,
+  });
+
+  const first = await testHandler(webhookRequest(rawBody, signature));
+  const replay = await testHandler(webhookRequest(rawBody, signature));
+
+  assertEquals(first.status, 200);
+  assertEquals(replay.status, 200);
+  assertEquals(state.withdrawalRequests[0].status, "completed");
+  assertEquals(
+    state.ledgerEntries.filter((entry) => entry.type === "withdrawal_completed")
+      .length,
+    1,
+  );
   assertEquals(state.auditLogs.length, 1);
 });
 
@@ -768,6 +823,46 @@ Deno.test("POST /dares creates an open DARE with issuer escrow", async () => {
   assertEquals(state.ledgerEntries.length, 1);
   assertEquals(state.ledgerEntries[0].type, "escrow_hold");
   assertEquals(state.idempotencyRecords.length, 1);
+});
+
+Deno.test("POST /dares is blocked by action rate limits before mutation", async () => {
+  const state = createFakeState();
+  state.rateLimitDenials.add("create_dare:minute");
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "create-dare:rate-limited",
+        payload: {
+          title: "Name 20 African capitals in 60 seconds",
+          category: "knowledge",
+          stakeAmount: 50000,
+          currency: "NGN",
+          durationSeconds: 60,
+          targetUsername: null,
+          constitution: {
+            test: "Name 20 African capitals in 60 seconds",
+            rules: "Answers must be submitted before the timer ends.",
+            proofMethod: "Platform scoring",
+            edgeCases: "Tie refunds both players.",
+          },
+        },
+      },
+      "http://localhost/functions/v1/actions/dares",
+    ),
+  );
+
+  assertEquals(response.status, 429);
+  const body = await response.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.error.code, "RATE_LIMITED");
+  assertEquals(state.dares.length, 0);
+  assertEquals(state.ledgerEntries.length, 0);
 });
 
 Deno.test("POST /dares/{id}/accept escrows challenger and creates court", async () => {
@@ -974,6 +1069,26 @@ Deno.test("POST /dares/{id}/forfeit marks opponent winner before settlement", as
     dare_id: dareId,
     phase: "active",
   });
+  state.escrowHolds.push(
+    {
+      id: "a23e4567-e89b-12d3-a456-426614174000",
+      dare_id: dareId,
+      user_id: state.user.id,
+      wallet_account_id: state.wallet.wallet_account_id,
+      amount: 50000,
+      currency: "NGN",
+      status: "held",
+    },
+    {
+      id: "c23e4567-e89b-12d3-a456-426614174000",
+      dare_id: dareId,
+      user_id: challengerId,
+      wallet_account_id: "333e4567-e89b-12d3-a456-426614174000",
+      amount: 50000,
+      currency: "NGN",
+      status: "held",
+    },
+  );
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
     createServiceClient: () => fakeClient(state),
@@ -993,13 +1108,18 @@ Deno.test("POST /dares/{id}/forfeit marks opponent winner before settlement", as
   assertEquals(response.status, 200);
   const body = await response.json();
   assertEquals(body.ok, true);
-  assertEquals(body.data.status, "forfeited");
+  assertEquals(body.data.status, "settled");
   assertEquals(body.data.forfeiterId, state.user.id);
   assertEquals(body.data.winnerId, challengerId);
-  assertEquals(state.dares[0].status, "forfeited");
+  assertEquals(state.dares[0].status, "settled");
   assertEquals(state.dares[0].winner_id, challengerId);
-  assertEquals(state.courtSessions[0].phase, "forfeited");
-  assertEquals(state.profile.trust_score, 110);
+  assertEquals(state.courtSessions[0].phase, "completed");
+  assertEquals(
+    state.escrowHolds.every((hold) => hold.status === "released"),
+    true,
+  );
+  assertEquals(state.ledgerEntries[0].type, "payout");
+  assertEquals(state.profile.trust_score, 105);
   assertEquals(state.auditLogs[0].action, "dare.forfeited");
   assertEquals(state.notifications.length, 2);
 });
@@ -2166,8 +2286,10 @@ function createFakeState() {
     auditLogs: [] as Record<string, unknown>[],
     idempotencyRecords: [] as Record<string, unknown>[],
     ledgerEntries: [] as Record<string, unknown>[],
+    trustEvents: [] as Record<string, unknown>[],
     notifications: [] as Record<string, unknown>[],
     kycVerifications: [] as Record<string, unknown>[],
+    rateLimitDenials: new Set<string>(),
   };
 }
 
@@ -2202,6 +2324,12 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
           }] as T,
           error: null,
         });
+      }
+
+      if (functionName === "consume_action_rate_limit") {
+        return fakeConsumeActionRateLimitRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
       }
 
       if (functionName === "mark_notification_read_action") {
@@ -2353,6 +2481,24 @@ function fakeMarkNotificationReadRpc(
       notification_id: notification.id,
       is_read: notification.is_read,
       read_at: notification.read_at,
+    }],
+    error: null,
+  });
+}
+
+function fakeConsumeActionRateLimitRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const scope = String(args.p_scope);
+  const allowed = !state.rateLimitDenials.has(scope);
+  return Promise.resolve({
+    data: [{
+      allowed,
+      limit_count: args.p_limit,
+      remaining: allowed ? Number(args.p_limit) - 1 : 0,
+      reset_at: "2026-05-21T01:00:00.000Z",
+      retry_after_seconds: allowed ? 0 : 60,
     }],
     error: null,
   });
@@ -2797,6 +2943,21 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
       });
     }
 
+    if (this.table === "withdrawal_requests") {
+      const data = this.state.withdrawalRequests.find((record) =>
+        matchesFilters(record, this.#filters)
+      );
+
+      if (data && this.#updateValues) {
+        Object.assign(data, this.#updateValues);
+      }
+
+      return Promise.resolve({
+        data: data as T | undefined ?? null,
+        error: null,
+      });
+    }
+
     if (this.table === "wallet_accounts") {
       const row = {
         id: this.state.wallet.wallet_account_id,
@@ -3153,17 +3314,28 @@ function fakeForfeitDareRpc(
   dare.dispute_deadline_at = "2026-05-21T00:02:00.000Z";
   court.phase = "forfeited";
   state.profile.trust_score = Math.max(0, state.profile.trust_score - 10);
+  state.trustEvents.push({
+    user_id: args.p_actor_user_id,
+    event_type: "dare_forfeit",
+    delta: -10,
+    resulting_score: state.profile.trust_score,
+    dare_id: dare.id,
+  });
 
-  return Promise.resolve({
-    data: [{
-      dare_id: dare.id,
-      status: dare.status,
-      forfeiter_id: args.p_actor_user_id,
-      winner_id: dare.winner_id,
-      court_phase: court.phase,
-      completed_at: dare.completed_at,
-    }],
-    error: null,
+  return fakeSettleDareRpc(state, args).then((result) => {
+    if (result.error) return result;
+
+    return {
+      data: [{
+        dare_id: dare.id,
+        status: dare.status,
+        forfeiter_id: args.p_actor_user_id,
+        winner_id: dare.winner_id,
+        court_phase: court.phase,
+        completed_at: dare.completed_at,
+      }],
+      error: null,
+    };
   });
 }
 
@@ -3517,6 +3689,43 @@ function fakeSettleDareRpc(
     hold.release_ledger_entry_id = payout.id;
   }
   dare.status = "settled";
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (court) court.phase = "completed";
+  const winnerIsCurrentUser = dare.winner_id === state.profile.id;
+  const loserId = dare.winner_id === dare.issuer_id
+    ? dare.challenger_id
+    : dare.issuer_id;
+  if (winnerIsCurrentUser) {
+    state.profile.wins = (state.profile.wins as number) + 1;
+    state.profile.trust_score = Math.min(
+      1000,
+      (state.profile.trust_score as number) + 10,
+    );
+  } else if (loserId === state.profile.id) {
+    state.profile.losses = (state.profile.losses as number) + 1;
+    state.profile.trust_score = Math.max(
+      0,
+      (state.profile.trust_score as number) - 5,
+    );
+  }
+  state.trustEvents.push(
+    {
+      user_id: dare.winner_id,
+      event_type: "dare_win",
+      delta: 10,
+      resulting_score: winnerIsCurrentUser ? state.profile.trust_score : 130,
+      dare_id: dare.id,
+    },
+    {
+      user_id: loserId,
+      event_type: "dare_loss",
+      delta: -5,
+      resulting_score: loserId === state.profile.id
+        ? state.profile.trust_score
+        : 115,
+      dare_id: dare.id,
+    },
+  );
 
   return Promise.resolve({
     data: [settleDareRpcRow(dare, totalHeld, 0, 1)],
@@ -3810,21 +4019,59 @@ function fakeCastJuryVoteRpc(
   state.juryVotes.push(vote);
   assignment.status = "completed";
   assignment.completed_at = "2026-05-21T00:00:00.000Z";
+  const jurorProfile = state.jurorProfiles.find((row) =>
+    row.id === args.p_juror_id
+  );
+  if (jurorProfile) {
+    jurorProfile.trust_score = Math.min(
+      1000,
+      (jurorProfile.trust_score as number) + 2,
+    );
+    state.trustEvents.push({
+      user_id: args.p_juror_id,
+      event_type: "jury_vote_completed",
+      delta: 2,
+      resulting_score: jurorProfile.trust_score,
+      jury_case_id: juryCase.id,
+    });
+  }
 
   const votesForCase = state.juryVotes.filter((row) =>
     row.jury_case_id === juryCase.id
   );
   if (votesForCase.length >= (juryCase.votes_needed as number)) {
-    const bCount = votesForCase.filter((row) => row.vote === "B").length;
     const aCount = votesForCase.filter((row) => row.vote === "A").length;
-    juryCase.verdict = bCount > aCount ? "B" : "A";
-    juryCase.status = "settlement_pending";
-    dare.status = "completed";
-    dare.winner_id = juryCase.verdict === "B"
-      ? dare.challenger_id
-      : dare.issuer_id;
-    const court = state.courtSessions.find((row) => row.dare_id === dare.id);
-    if (court) court.phase = "completed";
+    const bCount = votesForCase.filter((row) => row.vote === "B").length;
+    const voidCount = votesForCase.filter((row) => row.vote === "void").length;
+    const escalateCount = votesForCase.filter((row) =>
+      row.vote === "escalate"
+    ).length;
+    const maxDecision = Math.max(aCount, bCount, voidCount);
+    const verdict = escalateCount >= maxDecision
+      ? "escalate"
+      : aCount > bCount && aCount > voidCount
+      ? "A"
+      : bCount > aCount && bCount > voidCount
+      ? "B"
+      : voidCount > aCount && voidCount > bCount
+      ? "void"
+      : "escalate";
+    juryCase.verdict = verdict;
+
+    if (verdict === "escalate") {
+      juryCase.status = "escalated";
+      dare.status = "dispute_pending";
+    } else {
+      juryCase.status = "settlement_pending";
+      dare.status = "completed";
+      dare.winner_id = verdict === "B"
+        ? dare.challenger_id
+        : verdict === "A"
+        ? dare.issuer_id
+        : null;
+      const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+      if (court) court.phase = "completed";
+    }
   }
 
   return Promise.resolve({
