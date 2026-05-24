@@ -518,6 +518,107 @@ Deno.test("completed withdrawal requests no longer reserve pending balance", asy
   }
 });
 
+Deno.test("claim_paystack_withdrawals atomically marks pending withdrawals processing", async () => {
+  const sql = createSql();
+  const ids = idSet("94000000");
+
+  try {
+    await cleanup(sql, [ids.issuer]);
+    await createProfile(sql, ids.issuer, "issuer_gap_wd_claim");
+    const [wallet] = await sql<{ id: string }[]>`
+      select id::text
+      from wallet_accounts
+      where user_id = ${ids.issuer}
+        and currency = 'NGN'
+    `;
+    const ledgerId = uuid("94000000-0000-4000-8000-000000000010");
+    const withdrawalId = uuid("94000000-0000-4000-8000-000000000011");
+
+    await sql`
+      insert into ledger_entries (
+        id,
+        wallet_account_id,
+        user_id,
+        type,
+        direction,
+        amount,
+        currency,
+        status,
+        idempotency_key
+      )
+      values (
+        ${ledgerId},
+        ${wallet.id},
+        ${ids.issuer},
+        'withdrawal_pending',
+        'debit',
+        10000,
+        'NGN',
+        'pending',
+        'withdrawal_claim_test'
+      )
+    `;
+    await sql`
+      insert into withdrawal_requests (
+        id,
+        user_id,
+        wallet_account_id,
+        amount,
+        currency,
+        bank_code,
+        account_number,
+        account_name,
+        status,
+        ledger_entry_id
+      )
+      values (
+        ${withdrawalId},
+        ${ids.issuer},
+        ${wallet.id},
+        10000,
+        'NGN',
+        '058',
+        '0123456789',
+        'Ada Lovelace',
+        'pending',
+        ${ledgerId}
+      )
+    `;
+
+    const [claimed] = await sql<{
+      withdrawal_request_id: string;
+      provider_transfer_reference: string;
+      retry_count: number;
+    }[]>`
+      select withdrawal_request_id::text, provider_transfer_reference, retry_count
+      from claim_paystack_withdrawals(1)
+    `;
+    assertEquals(claimed.withdrawal_request_id, withdrawalId);
+    assertEquals(
+      claimed.provider_transfer_reference,
+      "wd_94000000000040008000000000000011",
+    );
+    assertEquals(claimed.retry_count, 1);
+
+    const [row] = await sql<{ status: string; provider: string }[]>`
+      select status, provider
+      from withdrawal_requests
+      where id = ${withdrawalId}
+    `;
+    assertEquals(row.status, "processing");
+    assertEquals(row.provider, "paystack");
+
+    const second = await sql`
+      select *
+      from claim_paystack_withdrawals(1)
+    `;
+    assertEquals(second.length, 0);
+  } finally {
+    await cleanup(sql, [ids.issuer]);
+    await sql.end();
+  }
+});
+
 function createSql(): Sql {
   return postgres(dbUrl, { max: 1 });
 }

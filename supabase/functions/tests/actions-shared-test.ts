@@ -15,6 +15,7 @@ import {
 } from "../actions/_shared/validation.ts";
 import { createHandler, handler } from "../actions/handler.ts";
 import { createPaystackWebhookHandler } from "../paystack-webhook/handler.ts";
+import { createWithdrawalProcessorHandler } from "../withdrawal-processor/handler.ts";
 import {
   type QueryResponse,
   type SupabaseActionClient,
@@ -742,6 +743,82 @@ Deno.test("POST /wallet/withdrawals queues a request without automatic payout", 
   assertEquals(state.notifications.length, 1);
   assertEquals(state.auditLogs.length, 1);
   assertEquals(state.idempotencyRecords.length, 1);
+});
+
+Deno.test("withdrawal processor creates Paystack recipient and initiates transfer", async () => {
+  const state = createFakeState();
+  state.withdrawalRequests.push({
+    id: "423e4567-e89b-12d3-a456-426614174000",
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 100000,
+    currency: "NGN",
+    bank_code: "058",
+    account_number: "0123456789",
+    account_name: "Ada Lovelace",
+    provider: null,
+    provider_recipient_code: null,
+    provider_transfer_reference: null,
+    status: "pending",
+    retry_count: 0,
+    ledger_entry_id: "523e4567-e89b-12d3-a456-426614174000",
+  });
+  const transferCalls: Record<string, unknown>[] = [];
+  const testHandler = createWithdrawalProcessorHandler({
+    createServiceClient: () => fakeClient(state),
+    getPaystackSecret: () => "sk_test_unit_secret",
+    getProcessorSecret: () => "processor_secret",
+    paystackClient: {
+      createRecipient: (params) =>
+        Promise.resolve({
+          recipientCode: `RCP_${params.withdrawalRequestId.slice(0, 8)}`,
+          raw: { status: true },
+        }),
+      initiateTransfer: (params) => {
+        transferCalls.push(params);
+        return Promise.resolve({
+          reference: params.reference,
+          status: "pending",
+          raw: { status: true, data: { reference: params.reference } },
+        });
+      },
+    },
+  });
+
+  const response = await testHandler(
+    new Request("http://localhost/functions/v1/withdrawal-processor", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        authorization: "Bearer processor_secret",
+      },
+      body: JSON.stringify({ limit: 1 }),
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.claimed, 1);
+  assertEquals(body.data.initiated, 1);
+  assertEquals(state.withdrawalRequests[0].status, "processing");
+  assertEquals(state.withdrawalRequests[0].provider, "paystack");
+  assertEquals(
+    state.withdrawalRequests[0].provider_transfer_reference,
+    "wd_423e4567e89b12d3a456426614174000",
+  );
+  assertEquals(
+    state.withdrawalRequests[0].provider_recipient_code,
+    "RCP_423e4567",
+  );
+  assertEquals(state.paymentTransactions.length, 1);
+  assertEquals(state.paymentTransactions[0].type, "withdrawal");
+  assertEquals(state.paymentTransactions[0].status, "provider_pending");
+  assertEquals(transferCalls.length, 1);
+  assertEquals(
+    transferCalls[0].reference,
+    state.withdrawalRequests[0].provider_transfer_reference,
+  );
 });
 
 Deno.test("POST /wallet/withdrawals rejects insufficient funds", async () => {
@@ -2311,6 +2388,12 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
     ): Promise<QueryResponse<T>> {
       if (functionName === "request_withdrawal") {
         return fakeRequestWithdrawalRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "claim_paystack_withdrawals") {
+        return fakeClaimPaystackWithdrawalsRpc(state, args) as Promise<
           QueryResponse<T>
         >;
       }
@@ -4161,6 +4244,45 @@ function fakeRequestWithdrawalRpc(
     }],
     error: null,
   });
+}
+
+function fakeClaimPaystackWithdrawalsRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const limit = Number(args.p_limit ?? 10);
+  const rows = state.withdrawalRequests
+    .filter((request) =>
+      request.status === "pending" &&
+      (request.provider === null || request.provider === "paystack") &&
+      Number(request.retry_count ?? 0) < 3
+    )
+    .slice(0, limit)
+    .map((request) => {
+      request.status = "processing";
+      request.provider = "paystack";
+      request.retry_count = Number(request.retry_count ?? 0) + 1;
+      request.failure_reason = null;
+      request.provider_transfer_reference ??= `wd_${
+        String(request.id).replaceAll("-", "")
+      }`;
+
+      return {
+        withdrawal_request_id: request.id,
+        user_id: request.user_id,
+        wallet_account_id: request.wallet_account_id,
+        amount: request.amount,
+        currency: request.currency,
+        bank_code: request.bank_code,
+        account_number: request.account_number,
+        account_name: request.account_name,
+        provider_recipient_code: request.provider_recipient_code ?? null,
+        provider_transfer_reference: request.provider_transfer_reference,
+        retry_count: request.retry_count,
+      };
+    });
+
+  return Promise.resolve({ data: rows, error: null });
 }
 
 function fakeSubmitKycRpc(
