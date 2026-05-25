@@ -82,6 +82,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "question_window_closed",
       "question_not_assigned",
       "question_not_delivered",
+      "no_question_available",
       "court_still_active",
       "dispute_window_open",
       "dispute_window_closed",

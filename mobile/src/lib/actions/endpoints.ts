@@ -210,6 +210,21 @@ export type SubmitAnswerResponse = {
   selectedOption: number;
 };
 
+export type CurrentCourtQuestionResponse = {
+  answeredRounds: number;
+  courtSessionId: string;
+  dareId: string;
+  options: string[];
+  phase: 'active';
+  prompt: string;
+  questionId: string;
+  roundIndex: number;
+  scoreA: number;
+  scoreB: number;
+  serverEndTime: string;
+  totalRounds: number;
+};
+
 export type ForfeitDareResponse = {
   completedAt: string;
   courtPhase: 'forfeited' | 'completed';
@@ -322,6 +337,37 @@ export type SelfExcludeResponse = {
   userId: string;
 };
 
+export type SubmitKycPayload = {
+  documents: Record<string, unknown>;
+  kycTierRequested: 'kyc1' | 'kyc2' | 'kyc3';
+};
+
+export type SubmitKycResponse = {
+  kycTierRequested: string;
+  kycVerificationId: string;
+  status: 'pending';
+  submittedAt: string;
+  userId: string;
+};
+
+export type CastJuryVotePayload = {
+  rationale: string;
+  vote: 'A' | 'B' | 'void' | 'escalate';
+};
+
+export type CastJuryVoteResponse = {
+  assignmentId: string;
+  dareId: string;
+  dareStatus: 'jury_open' | 'completed' | 'dispute_pending';
+  juryCaseId: string;
+  status: 'jury_voting' | 'settlement_pending' | 'escalated';
+  verdict: 'A' | 'B' | 'void' | 'escalate' | null;
+  voteId: string;
+  votesCast: number;
+  votesNeeded: number;
+  winnerId: string | null;
+};
+
 export function getMe(options: Pick<ActionRequestOptions, 'signal'> = {}) {
   return callAction<MeResponse>('/me', options);
 }
@@ -425,6 +471,10 @@ export function submitDareAnswer(dareId: string, payload: SubmitAnswerPayload) {
   );
 }
 
+export function getCurrentCourtQuestion(dareId: string) {
+  return callAction<CurrentCourtQuestionResponse>(`/court/${dareId}/question`);
+}
+
 export function forfeitDare(dareId: string) {
   return postAction<ForfeitDareResponse, Record<string, never>>(
     `/dares/${dareId}/forfeit`,
@@ -470,6 +520,22 @@ export function selfExclude(payload: SelfExcludePayload) {
     '/responsible-gaming/self-exclude',
     payload,
     'self-exclusion',
+  );
+}
+
+export function submitKyc(payload: SubmitKycPayload) {
+  return postAction<SubmitKycResponse, SubmitKycPayload>(
+    '/kyc/submit',
+    payload,
+    'kyc-submit',
+  );
+}
+
+export function castJuryVote(juryCaseId: string, payload: CastJuryVotePayload) {
+  return postAction<CastJuryVoteResponse, CastJuryVotePayload>(
+    `/jury-cases/${juryCaseId}/votes`,
+    payload,
+    'jury-vote',
   );
 }
 

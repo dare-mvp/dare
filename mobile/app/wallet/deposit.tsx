@@ -33,7 +33,7 @@ export default function DepositScreen() {
     <WalletFlowFrame
       eyebrow="Deposit"
       onBack={() => router.back()}
-      title="Add money to wallet."
+      title="Add money."
       subtitle="Deposits remain pending until provider confirmation is received."
     >
       {data.source === 'mock' && !error ? (

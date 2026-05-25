@@ -3,14 +3,16 @@ import { ArrowRight, Clock3, ShieldCheck } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
+import { ErrorState } from '../../src/components/ui/ErrorState';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { JuryFlowFrame } from '../../src/features/jury/components/JuryFlowFrame';
-import { juryAssignment } from '../../src/mocks/jury';
+import { useJuryAssignment } from '../../src/features/jury/useJuryAssignment';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function JuryAssignmentScreen() {
   const router = useRouter();
+  const { assignment, error, loading } = useJuryAssignment();
 
   return (
     <JuryFlowFrame
@@ -19,17 +21,44 @@ export default function JuryAssignmentScreen() {
       title="Review this case?"
       subtitle="Accept only if you can vote before the assignment expires."
     >
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <StatusBadge label={juryAssignment.category.toUpperCase()} tone="neutral" />
-          <Text style={styles.reward}>{juryAssignment.rewardLabel}</Text>
+      {assignment?.source === 'mock' && !error ? (
+        <InlineAlert
+          tone="info"
+          title={loading ? 'Syncing assignment' : 'Preview assignment'}
+          message={loading ? 'Checking for live jury assignments.' : 'Live assignment details appear after sign-in and sync.'}
+        />
+      ) : null}
+
+      {error ? (
+        <InlineAlert
+          tone="danger"
+          title="Assignment unavailable"
+          message={error}
+        />
+      ) : null}
+
+      {!assignment && !loading ? (
+        <ErrorState
+          body="No jury assignment is waiting for your vote right now."
+          onRetry={() => router.replace('/jury')}
+          retryLabel="Back to jury"
+          title="No assignment"
+        />
+      ) : null}
+
+      {assignment ? (
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <StatusBadge label={assignment.category.toUpperCase()} tone="neutral" />
+            <Text style={styles.reward}>{assignment.rewardLabel}</Text>
+          </View>
+          <Text style={styles.title}>{assignment.title}</Text>
+          <View style={styles.metaRow}>
+            <Clock3 color={colors.warning} size={18} />
+            <Text style={styles.meta}>{assignment.dueLabel}</Text>
+          </View>
         </View>
-        <Text style={styles.title}>{juryAssignment.title}</Text>
-        <View style={styles.metaRow}>
-          <Clock3 color={colors.warning} size={18} />
-          <Text style={styles.meta}>{juryAssignment.dueLabel}</Text>
-        </View>
-      </View>
+      ) : null}
 
       <View style={styles.panel}>
         <CheckLine text="Packets are anonymized as A and B." />
@@ -45,9 +74,16 @@ export default function JuryAssignmentScreen() {
 
       <ActionButton
         accessibilityLabel="Accept jury assignment"
+        disabled={!assignment}
         icon={<ArrowRight color={colors.text} size={18} />}
         label="Accept assignment"
-        onPress={() => router.push('/jury/vote')}
+        onPress={() => {
+          if (!assignment) return;
+          router.push({
+            pathname: '/jury/vote',
+            params: { caseId: assignment.caseId },
+          });
+        }}
       />
     </JuryFlowFrame>
   );

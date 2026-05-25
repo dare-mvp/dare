@@ -7,8 +7,8 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
 import { Screen } from '../../src/components/ui/Screen';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { useDareDetail } from '../../src/features/feed/useDareDetail';
 import { useMe } from '../../src/features/me/useMe';
-import { getFeaturedDareById } from '../../src/mocks/home';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 const platformFeeRate = 0.05;
@@ -16,17 +16,17 @@ const platformFeeRate = 0.05;
 export default function DareDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, error, loading } = useMe();
-  const dare = id ? getFeaturedDareById(id) : undefined;
+  const { data, error: meError, loading: meLoading } = useMe();
+  const { dare, error: detailError, loading: detailLoading, source } = useDareDetail(id);
 
   if (!dare) {
     return (
       <Screen padded>
         <DetailHeader onBack={() => router.back()} title="DARE not found" />
         <InlineAlert
-          tone="danger"
-          title="Unable to load DARE"
-          message="This challenge is not available right now."
+          tone={detailLoading ? 'info' : 'danger'}
+          title={detailLoading ? 'Loading DARE' : 'Unable to load DARE'}
+          message={detailLoading ? 'Fetching the latest challenge details.' : detailError ?? 'This challenge is not available right now.'}
         />
       </Screen>
     );
@@ -42,19 +42,27 @@ export default function DareDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <DetailHeader onBack={() => router.back()} title="Accept DARE" />
 
-        {data.source === 'mock' && !error ? (
+        {(source === 'mock' || data.source === 'mock') && !meError ? (
           <InlineAlert
             tone="info"
-            title={loading ? 'Syncing account' : 'Preview data'}
-            message={loading ? 'Acceptance eligibility is loading.' : 'Live acceptance checks appear after sign-in and sync.'}
+            title={meLoading || detailLoading ? 'Syncing DARE' : 'Preview data'}
+            message={meLoading || detailLoading ? 'Acceptance eligibility is loading.' : 'Live DARE details and acceptance checks appear after sign-in and sync.'}
           />
         ) : null}
 
-        {error ? (
+        {meError ? (
           <InlineAlert
             tone="danger"
             title="Acceptance eligibility unavailable"
-            message={error}
+            message={meError}
+          />
+        ) : null}
+
+        {detailError && source === 'server' ? (
+          <InlineAlert
+            tone="danger"
+            title="DARE detail unavailable"
+            message={detailError}
           />
         ) : null}
 

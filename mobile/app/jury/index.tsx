@@ -6,11 +6,12 @@ import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { JuryFlowFrame } from '../../src/features/jury/components/JuryFlowFrame';
-import { jurySummary } from '../../src/mocks/jury';
+import { useJurySummary } from '../../src/features/jury/useJurySummary';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function JuryHomeScreen() {
   const router = useRouter();
+  const jurySummary = useJurySummary();
 
   return (
     <JuryFlowFrame
@@ -19,10 +20,29 @@ export default function JuryHomeScreen() {
       title="Review blind cases."
       subtitle="Jury votes use anonymized evidence packets. Timely votes can improve trust."
     >
+      {jurySummary.source === 'mock' && !jurySummary.error ? (
+        <InlineAlert
+          tone="info"
+          title={jurySummary.loading ? 'Syncing jury' : 'Preview jury'}
+          message={jurySummary.loading ? 'Jury eligibility is loading.' : 'Live jury assignments appear after sign-in and sync.'}
+        />
+      ) : null}
+
+      {jurySummary.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Jury sync failed"
+          message={jurySummary.error}
+        />
+      ) : null}
+
       <View style={styles.hero}>
         <Vote color={colors.purple} size={30} />
         <View style={styles.heroCopy}>
-          <StatusBadge label={jurySummary.eligibility.toUpperCase()} tone="success" />
+          <StatusBadge
+            label={jurySummary.eligibility.toUpperCase()}
+            tone={jurySummary.eligibility === 'Eligible' ? 'success' : 'warning'}
+          />
           <Text style={styles.heroTitle}>Jury opt-in active</Text>
           <Text style={styles.heroText}>You can receive assignments in your selected categories.</Text>
         </View>

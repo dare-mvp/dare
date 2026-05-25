@@ -4,10 +4,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../../src/components/ui/ActionButton';
 import { ErrorState } from '../../../src/components/ui/ErrorState';
+import { InlineAlert } from '../../../src/components/ui/InlineAlert';
 import { MoneyAmount } from '../../../src/components/ui/MoneyAmount';
 import { StatusBadge } from '../../../src/components/ui/StatusBadge';
 import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFrame';
-import { getFeaturedDareById } from '../../../src/mocks/home';
+import { useDareDetail } from '../../../src/features/feed/useDareDetail';
 import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
 
 const platformFeeRate = 0.05;
@@ -21,7 +22,7 @@ export default function AcceptReceiptScreen() {
     stakeAmount?: string;
     status?: string;
   }>();
-  const dare = id ? getFeaturedDareById(id) : undefined;
+  const { dare, error, loading } = useDareDetail(id);
 
   if (!dare) {
     return (
@@ -31,12 +32,20 @@ export default function AcceptReceiptScreen() {
         title="Receipt not found."
         subtitle="This acceptance record is not available right now."
       >
-        <ErrorState
-          body="Return to the feed and choose another DARE."
-          onRetry={() => router.replace('/(tabs)')}
-          retryLabel="Back to feed"
-          title="Unable to load receipt"
-        />
+        {loading ? (
+          <InlineAlert
+            tone="info"
+            title="Loading receipt"
+            message="Fetching the accepted DARE details."
+          />
+        ) : (
+          <ErrorState
+            body={error ?? 'Return to the feed and choose another DARE.'}
+            onRetry={() => router.replace('/(tabs)')}
+            retryLabel="Back to feed"
+            title="Unable to load receipt"
+          />
+        )}
       </DareFlowFrame>
     );
   }

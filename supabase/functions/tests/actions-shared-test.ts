@@ -1361,6 +1361,56 @@ Deno.test("POST /dares/{id}/answers scores from server question data", async () 
   assertEquals(state.idempotencyRecords.length, 1);
 });
 
+Deno.test("GET /court/{dareId}/question returns prompt without answer key", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const questionId = state.quizQuestions[0].id;
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    category: "knowledge",
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+    score_a: 0,
+    score_b: 0,
+    server_start_time: "2026-05-21T00:00:00.000Z",
+    server_end_time: "2099-05-21T00:01:00.000Z",
+  });
+  state.dareQuizRounds.push({
+    id: "e23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    question_id: questionId,
+    round_index: 0,
+    question_delivered_at_a: null,
+    question_delivered_at_b: null,
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    new Request(
+      `http://localhost/functions/v1/actions/court/${dareId}/question`,
+      { method: "GET" },
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.questionId, questionId);
+  assertEquals(body.data.roundIndex, 0);
+  assertEquals(body.data.options, ["A", "B", "C", "D"]);
+  assertEquals("correctOption" in body.data, false);
+  assertEquals("correct_option" in body.data, false);
+});
+
 Deno.test("POST /dares/{id}/complete determines winner from answers", async () => {
   const state = createFakeState();
   state.profile.is_admin = true;
@@ -2356,6 +2406,8 @@ function createFakeState() {
       id: `10000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
       category: "knowledge",
       active: true,
+      prompt: `Question ${index + 1}`,
+      options: ["A", "B", "C", "D"],
       correct_option: 2,
     })) as Record<string, unknown>[],
     dareQuizRounds: [] as Record<string, unknown>[],
@@ -2471,6 +2523,12 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
 
       if (functionName === "record_court_heartbeat_action") {
         return fakeCourtHeartbeatRpc(state, args) as Promise<QueryResponse<T>>;
+      }
+
+      if (functionName === "get_current_court_question_action") {
+        return fakeCurrentCourtQuestionRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
       }
 
       if (functionName === "submit_dare_answer_action") {
@@ -3661,6 +3719,89 @@ function fakeSubmitAnswerRpc(
       score_a: court.score_a,
       score_b: court.score_b,
       phase: court.phase,
+    }],
+    error: null,
+  });
+}
+
+function fakeCurrentCourtQuestionRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const dare = state.dares.find((row) => row.id === args.p_dare_id);
+  if (!dare) {
+    return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+
+  if (
+    args.p_user_id !== dare.issuer_id && args.p_user_id !== dare.challenger_id
+  ) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
+  }
+
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) {
+    return Promise.resolve({ data: [], error: { message: "court_not_found" } });
+  }
+
+  if (dare.status !== "active" || court.phase !== "active") {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_court_state" },
+    });
+  }
+
+  const answered = state.dareQuizAnswers.filter((answer) =>
+    answer.dare_id === dare.id && answer.user_id === args.p_user_id
+  );
+  const round = state.dareQuizRounds
+    .filter((row) => row.dare_id === dare.id)
+    .sort((a, b) => Number(a.round_index) - Number(b.round_index))
+    .find((row) =>
+      !answered.some((answer) => answer.question_id === row.question_id)
+    );
+
+  if (!round) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "no_question_available" },
+    });
+  }
+
+  const question = state.quizQuestions.find((row) =>
+    row.id === round.question_id
+  );
+  if (!question) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "question_not_found" },
+    });
+  }
+
+  if (args.p_user_id === dare.issuer_id) {
+    round.question_delivered_at_a = round.question_delivered_at_a ??
+      "2026-05-21T00:03:00.000Z";
+  } else {
+    round.question_delivered_at_b = round.question_delivered_at_b ??
+      "2026-05-21T00:03:00.000Z";
+  }
+
+  return Promise.resolve({
+    data: [{
+      answered_rounds: answered.length,
+      court_session_id: court.id,
+      dare_id: dare.id,
+      options: question.options,
+      phase: court.phase,
+      prompt: question.prompt,
+      question_id: question.id,
+      round_index: round.round_index,
+      score_a: court.score_a,
+      score_b: court.score_b,
+      server_end_time: court.server_end_time,
+      total_rounds: state.dareQuizRounds.filter((row) =>
+        row.dare_id === dare.id
+      ).length,
     }],
     error: null,
   });

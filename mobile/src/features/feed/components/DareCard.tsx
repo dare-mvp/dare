@@ -17,6 +17,8 @@ export type DareFeedItem = {
   actionLabel: string;
   playerA: PlayerSummary;
   playerB?: PlayerSummary;
+  scoreA?: number;
+  scoreB?: number;
   viewers?: number;
 };
 

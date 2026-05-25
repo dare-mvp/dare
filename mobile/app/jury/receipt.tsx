@@ -5,20 +5,24 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { JuryFlowFrame } from '../../src/features/jury/components/JuryFlowFrame';
-import { juryAssignment } from '../../src/mocks/jury';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
-
-const receiptLines = [
-  { label: 'Case', value: juryAssignment.caseId.toUpperCase() },
-  { label: 'Reward', value: juryAssignment.rewardLabel },
-  { label: 'Status', value: 'Vote submitted' },
-  { label: 'Trust event', value: 'Pending verdict' },
-];
 
 export default function JuryReceiptScreen() {
   const router = useRouter();
-  const { vote } = useLocalSearchParams<{ vote?: string }>();
+  const { caseId, status, vote, votesCast, votesNeeded } = useLocalSearchParams<{
+    caseId?: string;
+    status?: string;
+    vote?: string;
+    votesCast?: string;
+    votesNeeded?: string;
+  }>();
   const submittedVote = vote === 'B' ? 'B' : 'A';
+  const receiptLines = [
+    { label: 'Case', value: caseId ? caseId.toUpperCase() : 'PREVIEW' },
+    { label: 'Votes', value: votesCast && votesNeeded ? `${votesCast}/${votesNeeded}` : 'Pending tally' },
+    { label: 'Status', value: status ? formatLabel(status) : 'Vote submitted' },
+    { label: 'Trust event', value: 'Pending verdict' },
+  ];
 
   return (
     <JuryFlowFrame
@@ -50,6 +54,10 @@ export default function JuryReceiptScreen() {
       />
     </JuryFlowFrame>
   );
+}
+
+function formatLabel(value: string) {
+  return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 const styles = StyleSheet.create({

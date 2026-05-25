@@ -9,9 +9,9 @@ import { InlineAlert } from '../../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../../src/components/ui/StatusBadge';
 import { TrustBadge } from '../../../src/components/ui/TrustBadge';
 import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFrame';
+import { useDareDetail } from '../../../src/features/feed/useDareDetail';
 import { useMe } from '../../../src/features/me/useMe';
 import { acceptDare } from '../../../src/lib/actions/endpoints';
-import { getFeaturedDareById } from '../../../src/mocks/home';
 import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
 import { useState } from 'react';
 
@@ -20,10 +20,10 @@ const platformFeeRate = 0.05;
 export default function AcceptDareScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, error, loading } = useMe();
+  const { data, error: meError, loading: meLoading } = useMe();
+  const { dare, error: detailError, loading: detailLoading, source } = useDareDetail(id);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const dare = id ? getFeaturedDareById(id) : undefined;
 
   if (!dare) {
     return (
@@ -33,12 +33,20 @@ export default function AcceptDareScreen() {
         title="DARE not found."
         subtitle="This challenge is not available right now."
       >
-        <ErrorState
-          body="Return to the feed and choose another open DARE."
-          onRetry={() => router.replace('/(tabs)')}
-          retryLabel="Back to feed"
-          title="Unable to load DARE"
-        />
+        {detailLoading ? (
+          <InlineAlert
+            tone="info"
+            title="Loading DARE"
+            message="Fetching the latest acceptance details."
+          />
+        ) : (
+          <ErrorState
+            body={detailError ?? 'Return to the feed and choose another open DARE.'}
+            onRetry={() => router.replace('/(tabs)')}
+            retryLabel="Back to feed"
+            title="Unable to load DARE"
+          />
+        )}
       </DareFlowFrame>
     );
   }
@@ -54,19 +62,27 @@ export default function AcceptDareScreen() {
       title="Accept review."
       subtitle="Accepting locks your stake and opens ready-up after confirmation."
     >
-      {data.source === 'mock' && !error ? (
+      {(source === 'mock' || data.source === 'mock') && !meError ? (
         <InlineAlert
           tone="info"
-          title={loading ? 'Syncing account' : 'Preview data'}
-          message={loading ? 'Acceptance eligibility is loading.' : 'Live escrow checks appear after sign-in and sync.'}
+          title={meLoading || detailLoading ? 'Syncing DARE' : 'Preview data'}
+          message={meLoading || detailLoading ? 'Acceptance eligibility is loading.' : 'Live DARE details and escrow checks appear after sign-in and sync.'}
         />
       ) : null}
 
-      {error ? (
+      {meError ? (
         <InlineAlert
           tone="danger"
           title="Acceptance eligibility unavailable"
-          message={error}
+          message={meError}
+        />
+      ) : null}
+
+      {detailError && source === 'server' ? (
+        <InlineAlert
+          tone="danger"
+          title="DARE detail unavailable"
+          message={detailError}
         />
       ) : null}
 

@@ -8,7 +8,11 @@ import {
   type SupabaseActionClient,
 } from "./_shared/supabase.ts";
 import { submitAnswer } from "./routes/answers.ts";
-import { markDareReady, recordCourtHeartbeat } from "./routes/court.ts";
+import {
+  getCurrentCourtQuestion,
+  markDareReady,
+  recordCourtHeartbeat,
+} from "./routes/court.ts";
 import { acceptDare, cancelDare, createDare } from "./routes/dares.ts";
 import { forfeitDare } from "./routes/dare_lifecycle.ts";
 import {
@@ -273,6 +277,22 @@ async function route(context: RouteContext): Promise<Response> {
       context.getServiceClient(),
     );
     return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "question"
+  ) {
+    return successResponse(
+      await getCurrentCourtQuestion(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+      ),
+      context.requestId,
+    );
   }
 
   if (

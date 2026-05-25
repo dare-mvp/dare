@@ -1,0 +1,216 @@
+import { useCallback, useEffect, useState } from 'react';
+
+import { supabaseClient } from '../../lib/supabase/client';
+import { getFeaturedDareById } from '../../mocks/home';
+import { DareFeedItem } from './components/DareCard';
+import { mapPublicDareFeedRow, PublicDareFeedRow } from './publicDareFeed';
+
+type DetailSource = 'mock' | 'server';
+
+type DareDetailState = {
+  dare: DareFeedItem | null;
+  error: string | null;
+  loading: boolean;
+  refresh: () => Promise<void>;
+  source: DetailSource;
+};
+
+const detailColumns = [
+  'id',
+  'title',
+  'category',
+  'resolution_type',
+  'status',
+  'stake_amount',
+  'created_at',
+  'issuer_username',
+  'issuer_trust_score',
+  'issuer_tier',
+  'challenger_username',
+  'challenger_trust_score',
+  'score_a',
+  'score_b',
+  'court_phase',
+].join(',');
+
+type ParticipantDareRow = {
+  category: string;
+  challenger_id: string | null;
+  created_at: string;
+  id: string;
+  issuer_id: string;
+  resolution_type: string;
+  stake_amount: number;
+  status: string;
+  title: string;
+};
+
+type ParticipantCourtRow = {
+  phase: string | null;
+  score_a: number | null;
+  score_b: number | null;
+};
+
+export function useDareDetail(id?: string): DareDetailState {
+  const [dare, setDare] = useState<DareFeedItem | null>(() => getInitialDare(id));
+  const [source, setSource] = useState<DetailSource>(() => (isUuid(id) ? 'server' : 'mock'));
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(id && isUuid(id) && supabaseClient));
+
+  const load = useCallback(async () => {
+    if (!id) {
+      setDare(null);
+      setSource('mock');
+      setError('Missing DARE id.');
+      setLoading(false);
+      return;
+    }
+
+    if (!isUuid(id)) {
+      setDare(getFeaturedDareById(id) ?? null);
+      setSource('mock');
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!supabaseClient) {
+      setDare(null);
+      setSource('mock');
+      setError('Backend is not configured, so this live DARE cannot be loaded.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const { data, error: queryError } = await supabaseClient
+      .from('public_dare_feed')
+      .select(detailColumns)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (queryError) {
+      setDare(null);
+      setSource('server');
+      setError(queryError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data) {
+      setDare(mapPublicDareFeedRow(data as unknown as PublicDareFeedRow));
+      setSource('server');
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    const participantDare = await fetchParticipantDare(id);
+    if (!participantDare.ok) {
+      setDare(null);
+      setSource('server');
+      setError(participantDare.error);
+      setLoading(false);
+      return;
+    }
+
+    setDare(participantDare.dare);
+    setSource('server');
+    setError(participantDare.dare ? null : 'This DARE is not available right now.');
+    setLoading(false);
+  }, [id]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadMounted() {
+      if (!mounted) return;
+      await load();
+    }
+
+    void loadMounted();
+
+    return () => {
+      mounted = false;
+    };
+  }, [load]);
+
+  return { dare, error, loading, refresh: load, source };
+}
+
+function getInitialDare(id?: string) {
+  if (!id || isUuid(id)) return null;
+  return getFeaturedDareById(id) ?? null;
+}
+
+function isUuid(value?: string) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value));
+}
+
+async function fetchParticipantDare(id: string) {
+  if (!supabaseClient) {
+    return { dare: null, error: 'Backend is not configured.', ok: false as const };
+  }
+
+  const { data: dare, error: dareError } = await supabaseClient
+    .from('dares')
+    .select('id,title,category,resolution_type,status,stake_amount,created_at,issuer_id,challenger_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (dareError) return { dare: null, error: dareError.message, ok: false as const };
+  if (!dare) return { dare: null, error: null, ok: true as const };
+
+  const { data: court } = await supabaseClient
+    .from('court_sessions')
+    .select('phase,score_a,score_b')
+    .eq('dare_id', id)
+    .maybeSingle();
+
+  return {
+    dare: mapParticipantDare(dare as unknown as ParticipantDareRow, court as ParticipantCourtRow | null),
+    error: null,
+    ok: true as const,
+  };
+}
+
+function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow | null): DareFeedItem {
+  const status = court?.phase === 'disputed' || row.status === 'dispute_pending' || row.status === 'jury_open'
+    ? 'disputed'
+    : row.status === 'active'
+    ? 'active'
+    : row.status === 'open'
+    ? 'open'
+    : row.status === 'ready_check'
+    ? 'live'
+    : 'completed';
+
+  return {
+    actionLabel: status === 'disputed' ? 'Review dispute' : 'View DARE',
+    category: formatLabel(row.category),
+    createdAgo: row.created_at ? 'Created' : '',
+    id: row.id,
+    playerA: {
+      accent: 'ember',
+      name: 'Issuer',
+      tier: 'Player A',
+      trustScore: 0,
+    },
+    playerB: row.challenger_id ? {
+      accent: 'ice',
+      name: 'Challenger',
+      tier: 'Player B',
+      trustScore: 0,
+    } : undefined,
+    resolution: formatLabel(row.resolution_type),
+    scoreA: court?.score_a ?? undefined,
+    scoreB: court?.score_b ?? undefined,
+    stakeKobo: row.stake_amount,
+    status,
+    title: row.title,
+  };
+}
+
+function formatLabel(value: string) {
+  return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}

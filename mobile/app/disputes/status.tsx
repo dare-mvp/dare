@@ -7,7 +7,7 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { DisputeFlowFrame } from '../../src/features/disputes/components/DisputeFlowFrame';
 import { DisputeStepRow } from '../../src/features/disputes/components/DisputeStepRow';
-import { activeCourtSession } from '../../src/mocks/court';
+import { useDareDetail } from '../../src/features/feed/useDareDetail';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function DisputeStatusScreen() {
@@ -16,6 +16,7 @@ export default function DisputeStatusScreen() {
     dareId?: string;
     juryCaseId?: string;
   }>();
+  const { dare, error: dareError, loading: dareLoading, source } = useDareDetail(dareId);
 
   return (
     <DisputeFlowFrame
@@ -24,11 +25,27 @@ export default function DisputeStatusScreen() {
       title="Review in progress."
       subtitle="Settlement remains pending while the dispute path is open."
     >
+      {source === 'mock' && !dareError ? (
+        <InlineAlert
+          tone="info"
+          title={dareLoading ? 'Loading DARE' : 'Preview dispute'}
+          message={dareLoading ? 'Fetching dispute details.' : 'Live dispute status appears after sign-in and sync.'}
+        />
+      ) : null}
+
+      {dareError ? (
+        <InlineAlert
+          tone="danger"
+          title="DARE details unavailable"
+          message={dareError}
+        />
+      ) : null}
+
       <View style={styles.hero}>
         <Scale color={colors.purple} size={30} />
         <View style={styles.heroCopy}>
           <StatusBadge label="UNDER REVIEW" tone="neutral" />
-          <Text style={styles.title}>{activeCourtSession.title}</Text>
+          <Text style={styles.title}>{dare?.title ?? 'DARE unavailable'}</Text>
           <Text style={styles.body}>
             {juryCaseId
               ? `Evidence has been received for case ${juryCaseId}.`

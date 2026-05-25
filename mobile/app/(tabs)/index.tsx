@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { ReactNode, useMemo, useState } from 'react';
 import {
   Flame,
   PlusCircle,
@@ -14,13 +15,16 @@ import { TopBar } from '../../src/components/ui/TopBar';
 import { EmptyState } from '../../src/components/ui/EmptyState';
 import { getCategoryVisual } from '../../src/features/feed/categoryVisuals';
 import { DareCard } from '../../src/features/feed/components/DareCard';
+import { DareFeedItem } from '../../src/features/feed/components/DareCard';
 import { LivePulsePanel } from '../../src/features/feed/components/LivePulsePanel';
 import { usePublicDareFeed } from '../../src/features/feed/usePublicDareFeed';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
-const filters = [
+type FeedFilter = 'All' | 'Live Now' | 'Open' | 'Upcoming' | 'History' | string;
+
+const filters: Array<{ icon?: ReactNode; label: FeedFilter }> = [
   { label: 'All' },
   { icon: <LiveNowIcon />, label: 'Live Now' },
   { label: 'Open' },
@@ -32,16 +36,16 @@ const filters = [
   }),
 ];
 
-const leaders = [
-  { rank: 1, name: 'Ada', score: '910 pts' },
-  { rank: 2, name: 'Kade', score: '820 pts' },
-  { rank: 3, name: 'Ikenna', score: '770 pts' },
-];
-
 export default function FeedScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
   const feed = usePublicDareFeed();
+  const [selectedFilter, setSelectedFilter] = useState<FeedFilter>('All');
+  const filteredItems = useMemo(
+    () => feed.items.filter((item) => matchesFeedFilter(item, selectedFilter)),
+    [feed.items, selectedFilter],
+  );
+  const leaders = useMemo(() => getTopPlayers(feed.items), [feed.items]);
 
   return (
     <Screen>
@@ -52,7 +56,7 @@ export default function FeedScreen() {
         title="DARE Feed"
       />
       <FlatList
-        data={feed.items}
+        data={filteredItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         ListEmptyComponent={
@@ -101,12 +105,13 @@ export default function FeedScreen() {
             ) : null}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-              {filters.map((filter, index) => (
+              {filters.map((filter) => (
                 <FilterChip
                   icon={filter.icon}
                   key={filter.label}
                   label={filter.label}
-                  selected={index === 0}
+                  onPress={() => setSelectedFilter(filter.label)}
+                  selected={selectedFilter === filter.label}
                 />
               ))}
             </ScrollView>
@@ -157,6 +162,35 @@ export default function FeedScreen() {
 
 function LiveNowIcon() {
   return <Flame color={colors.danger} size={14} />;
+}
+
+function matchesFeedFilter(item: DareFeedItem, filter: FeedFilter) {
+  if (filter === 'All') return true;
+  if (filter === 'Live Now') return item.status === 'live' || item.status === 'active';
+  if (filter === 'Open') return item.status === 'open';
+  if (filter === 'Upcoming') return item.status === 'open';
+  if (filter === 'History') return item.status === 'completed' || item.status === 'disputed';
+  return item.category.toLowerCase() === filter.toLowerCase();
+}
+
+function getTopPlayers(items: DareFeedItem[]) {
+  const players = new Map<string, number>();
+
+  for (const item of items) {
+    players.set(item.playerA.name, Math.max(players.get(item.playerA.name) ?? 0, item.playerA.trustScore));
+    if (item.playerB) {
+      players.set(item.playerB.name, Math.max(players.get(item.playerB.name) ?? 0, item.playerB.trustScore));
+    }
+  }
+
+  return Array.from(players.entries())
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 3)
+    .map(([name, score], index) => ({
+      name,
+      rank: index + 1,
+      score: `${score.toLocaleString()} pts`,
+    }));
 }
 
 const styles = StyleSheet.create({

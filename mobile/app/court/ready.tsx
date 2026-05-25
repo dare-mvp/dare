@@ -8,21 +8,34 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
 import { CourtPhaseCard } from '../../src/features/court/components/CourtPhaseCard';
+import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { useMe } from '../../src/features/me/useMe';
 import { isUuid } from '../../src/lib/ids';
-import { markDareReady } from '../../src/lib/actions/endpoints';
-import { activeCourtSession } from '../../src/mocks/court';
+import { markDareReady, ReadyDareResponse } from '../../src/lib/actions/endpoints';
 import { colors, fonts, radius, spacing } from '../../src/theme/tokens';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function CourtReadyScreen() {
   const router = useRouter();
   const { dareId } = useLocalSearchParams<{ dareId?: string }>();
   const { data, error, loading } = useMe();
+  const court = useActiveCourtSession(dareId);
   const [submitting, setSubmitting] = useState(false);
+  const [readyState, setReadyState] = useState<ReadyDareResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const session = { ...activeCourtSession, phase: 'ready' as const };
-  const canReady = data.capabilities.canAcceptDare && !submitting;
+  const session = court.session ? { ...court.session, phase: 'ready' as const } : null;
+  const canReady = data.capabilities.canAcceptDare && !submitting && readyState?.phase !== 'ready_check';
+
+  useEffect(() => {
+    if (court.source !== 'server' || court.session?.phase !== 'active') return;
+
+    router.replace({
+      pathname: '/court/countdown',
+      params: {
+        dareId: court.session.dareId ?? dareId,
+      },
+    });
+  }, [court.session?.dareId, court.session?.phase, court.source, dareId, router]);
 
   return (
     <CourtFlowFrame
@@ -47,6 +60,14 @@ export default function CourtReadyScreen() {
         />
       ) : null}
 
+      {court.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Court state unavailable"
+          message={court.error}
+        />
+      ) : null}
+
       {submitError ? (
         <InlineAlert
           tone="danger"
@@ -55,16 +76,32 @@ export default function CourtReadyScreen() {
         />
       ) : null}
 
-      <ConnectionBanner state="connected" message="Keep the app open while both players ready up." />
-      <CourtPhaseCard
-        body="Ready-up protects both players from accidental starts and stale sessions."
-        statusLabel="READY-UP"
-        statusTone="warning"
-        title={session.title}
-      >
-        <PlayerReadyRow name={session.playerA.name} ready={session.playerA.isReady} you />
-        <PlayerReadyRow name={session.playerB.name} ready={session.playerB.isReady} />
-      </CourtPhaseCard>
+      {readyState?.phase === 'ready_check' ? (
+        <InlineAlert
+          tone="info"
+          title="Ready confirmed"
+          message="Waiting for the other player. This screen will move forward once the court becomes active."
+        />
+      ) : null}
+
+      <ConnectionBanner state={session?.connectionState ?? 'connected'} message="Keep the app open while both players ready up." />
+      {session ? (
+        <CourtPhaseCard
+          body="Ready-up protects both players from accidental starts and stale sessions."
+          statusLabel="READY-UP"
+          statusTone="warning"
+          title={session.title}
+        >
+          <PlayerReadyRow name={session.playerA.name} ready={readyState?.playerAReady ?? session.playerA.isReady} you={session.playerA.isYou} />
+          <PlayerReadyRow name={session.playerB.name} ready={readyState?.playerBReady ?? session.playerB.isReady} you={session.playerB.isYou} />
+        </CourtPhaseCard>
+      ) : (
+        <InlineAlert
+          tone={court.loading ? 'info' : 'warning'}
+          title={court.loading ? 'Loading court' : 'No active ready-up'}
+          message={court.loading ? 'Checking your court session.' : 'Accept a DARE before entering ready-up.'}
+        />
+      )}
       <InlineAlert
         tone="warning"
         title="Leaving can affect the match"
@@ -74,7 +111,7 @@ export default function CourtReadyScreen() {
         accessibilityLabel="Confirm ready"
         disabled={!canReady}
         icon={<CheckCircle2 color={colors.text} size={18} />}
-        label={submitting ? 'Confirming' : 'Confirm ready'}
+        label={readyState?.phase === 'ready_check' ? 'Waiting opponent' : submitting ? 'Confirming' : 'Confirm ready'}
         onPress={() => {
           void handleReady();
         }}
@@ -98,13 +135,18 @@ export default function CourtReadyScreen() {
     }
 
     setSubmitting(false);
-    router.push({
-      pathname: '/court/countdown',
-      params: {
-        courtSessionId: result.data.courtSessionId,
-        dareId: result.data.dareId,
-      },
-    });
+    setReadyState(result.data);
+    await court.refresh();
+
+    if (result.data.phase === 'active') {
+      router.replace({
+        pathname: '/court/countdown',
+        params: {
+          courtSessionId: result.data.courtSessionId,
+          dareId: result.data.dareId,
+        },
+      });
+    }
   }
 }
 

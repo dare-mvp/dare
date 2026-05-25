@@ -3,18 +3,19 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../../src/components/ui/ActionButton';
 import { ErrorState } from '../../../src/components/ui/ErrorState';
+import { InlineAlert } from '../../../src/components/ui/InlineAlert';
 import { MoneyAmount } from '../../../src/components/ui/MoneyAmount';
 import { StatusBadge } from '../../../src/components/ui/StatusBadge';
 import { WalletFlowFrame } from '../../../src/features/wallet/components/WalletFlowFrame';
-import { walletSummary } from '../../../src/mocks/wallet';
+import { useWalletTransaction } from '../../../src/features/wallet/useWalletTransaction';
 import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
 
 export default function TransactionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const transaction = walletSummary.transactions.find((item) => item.id === id);
+  const { error, loading, source, transaction } = useWalletTransaction(id);
 
-  if (!transaction) {
+  if (!transaction && !loading) {
     return (
       <WalletFlowFrame
         eyebrow="Transaction"
@@ -22,11 +23,35 @@ export default function TransactionDetailScreen() {
         title="Transaction not found."
         subtitle="The selected wallet record is not available right now."
       >
+        {error ? (
+          <InlineAlert
+            tone="danger"
+            title="Transaction sync failed"
+            message={error}
+          />
+        ) : null}
         <ErrorState
           body="Return to wallet and choose another transaction."
           onRetry={() => router.replace('/(tabs)/wallet')}
           retryLabel="Back to wallet"
           title="Unable to load transaction"
+        />
+      </WalletFlowFrame>
+    );
+  }
+
+  if (!transaction) {
+    return (
+      <WalletFlowFrame
+        eyebrow="Transaction"
+        onBack={() => router.back()}
+        title="Details."
+        subtitle="Loading wallet record from confirmed ledger entries."
+      >
+        <InlineAlert
+          tone="info"
+          title="Loading transaction"
+          message="Fetching the latest ledger record."
         />
       </WalletFlowFrame>
     );
@@ -43,6 +68,14 @@ export default function TransactionDetailScreen() {
       title="Details."
       subtitle="Wallet records are confirmation-based and cannot be edited from the app."
     >
+      {source === 'mock' ? (
+        <InlineAlert
+          tone="info"
+          title="Preview transaction"
+          message="Live transaction details appear after sign-in and sync."
+        />
+      ) : null}
+
       <View style={styles.hero}>
         <StatusBadge
           label={transaction.status.toUpperCase()}

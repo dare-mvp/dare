@@ -1,35 +1,17 @@
 import { useRouter } from 'expo-router';
-import { Bell, LockKeyhole, Shield, Smartphone } from 'lucide-react-native';
+import { Bell, LockKeyhole, Smartphone } from 'lucide-react-native';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
+import { useMe } from '../../src/features/me/useMe';
 import { ProfileFlowFrame } from '../../src/features/profile/components/ProfileFlowFrame';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
-const settings = [
-  {
-    body: 'Manage push and in-app notification preferences.',
-    icon: <Bell color={colors.primary} size={20} />,
-    label: 'Notifications',
-    value: true,
-  },
-  {
-    body: 'Require extra confirmation before money-moving actions.',
-    icon: <LockKeyhole color={colors.warning} size={20} />,
-    label: 'Money action confirmation',
-    value: true,
-  },
-  {
-    body: 'Show devices connected to this account.',
-    icon: <Smartphone color={colors.info} size={20} />,
-    label: 'Known devices',
-    value: false,
-  },
-];
-
 export default function SettingsScreen() {
   const router = useRouter();
+  const { data, error, loading } = useMe();
+  const settings = getSettings(data.capabilities);
 
   return (
     <ProfileFlowFrame
@@ -38,6 +20,22 @@ export default function SettingsScreen() {
       title="Account controls."
       subtitle="Manage preferences that affect notifications, security, and account safety."
     >
+      {data.source === 'mock' && !error ? (
+        <InlineAlert
+          tone="info"
+          title={loading ? 'Syncing settings' : 'Preview settings'}
+          message={loading ? 'Account controls are loading.' : 'Live settings appear after sign-in and sync.'}
+        />
+      ) : null}
+
+      {error ? (
+        <InlineAlert
+          tone="danger"
+          title="Settings sync failed"
+          message={error}
+        />
+      ) : null}
+
       <View style={styles.panel}>
         {settings.map((setting) => (
           <View key={setting.label} style={styles.row}>
@@ -69,6 +67,33 @@ export default function SettingsScreen() {
       />
     </ProfileFlowFrame>
   );
+}
+
+function getSettings(capabilities: {
+  canCreateDare: boolean;
+  canDeposit?: boolean;
+  canWithdraw: boolean;
+}) {
+  return [
+    {
+      body: 'Manage push and in-app notification preferences.',
+      icon: <Bell color={colors.primary} size={20} />,
+      label: 'Notifications',
+      value: true,
+    },
+    {
+      body: 'Require extra confirmation before money-moving actions.',
+      icon: <LockKeyhole color={colors.warning} size={20} />,
+      label: 'Money action confirmation',
+      value: capabilities.canDeposit || capabilities.canWithdraw || capabilities.canCreateDare,
+    },
+    {
+      body: 'Show devices connected to this account.',
+      icon: <Smartphone color={colors.info} size={20} />,
+      label: 'Known devices',
+      value: false,
+    },
+  ];
 }
 
 const styles = StyleSheet.create({

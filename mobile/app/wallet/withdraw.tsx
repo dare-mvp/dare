@@ -36,7 +36,7 @@ export default function WithdrawScreen() {
     <WalletFlowFrame
       eyebrow="Withdraw"
       onBack={() => router.back()}
-      title="Request withdrawal."
+      title="Withdraw."
       subtitle="Withdrawals remain pending until provider payout confirmation is received."
     >
       {data.source === 'mock' && !error ? (

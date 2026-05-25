@@ -8,8 +8,8 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { SegmentedControl } from '../../src/components/ui/SegmentedControl';
 import { TextField } from '../../src/components/ui/TextField';
 import { DisputeFlowFrame } from '../../src/features/disputes/components/DisputeFlowFrame';
+import { useDareDetail } from '../../src/features/feed/useDareDetail';
 import { DisputeReason } from '../../src/lib/actions/endpoints';
-import { activeCourtSession } from '../../src/mocks/court';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 const disputeReasons = [
@@ -21,6 +21,7 @@ const disputeReasons = [
 export default function FileDisputeScreen() {
   const router = useRouter();
   const { dareId } = useLocalSearchParams<{ dareId?: string }>();
+  const { dare, error: dareError, loading: dareLoading, source } = useDareDetail(dareId);
   const [reason, setReason] = useState<DisputeReason>('score_issue');
   const [summary, setSummary] = useState('');
   const summaryError = summary.length > 0 && summary.trim().length < 10
@@ -35,11 +36,27 @@ export default function FileDisputeScreen() {
       title="Explain the issue clearly."
       subtitle="A dispute must describe what happened and include evidence before review."
     >
+      {source === 'mock' && !dareError ? (
+        <InlineAlert
+          tone="info"
+          title={dareLoading ? 'Loading DARE' : 'Preview dispute'}
+          message={dareLoading ? 'Fetching DARE details.' : 'Live dispute details appear after sign-in and sync.'}
+        />
+      ) : null}
+
+      {dareError ? (
+        <InlineAlert
+          tone="danger"
+          title="DARE details unavailable"
+          message={dareError}
+        />
+      ) : null}
+
       <View style={styles.caseCard}>
         <ShieldAlert color={colors.danger} size={26} />
         <View style={styles.caseCopy}>
-          <Text style={styles.caseTitle}>{activeCourtSession.title}</Text>
-          <Text style={styles.caseMeta}>Score {activeCourtSession.playerA.score} - {activeCourtSession.playerB.score}</Text>
+          <Text style={styles.caseTitle}>{dare?.title ?? 'DARE unavailable'}</Text>
+          <Text style={styles.caseMeta}>{formatScore(dare?.scoreA, dare?.scoreB)}</Text>
         </View>
       </View>
 
@@ -135,3 +152,11 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
 });
+
+function formatScore(scoreA?: number, scoreB?: number) {
+  if (typeof scoreA === 'number' && typeof scoreB === 'number') {
+    return `Score ${scoreA} - ${scoreB}`;
+  }
+
+  return 'Score pending';
+}

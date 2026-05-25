@@ -18,6 +18,7 @@ export type CourtQuestion = {
 export type CourtSession = {
   challengeType: string;
   connectionState: 'connected' | 'reconnecting' | 'offline';
+  dareId?: string;
   heartbeatAgeSeconds: number;
   phase: 'ready' | 'countdown' | 'active' | 'settlement_pending';
   playerA: CourtPlayer;

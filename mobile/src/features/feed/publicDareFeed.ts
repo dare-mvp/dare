@@ -12,6 +12,8 @@ export type PublicDareFeedRow = {
   issuer_trust_score: number;
   issuer_username: string;
   resolution_type: string;
+  score_a?: number | null;
+  score_b?: number | null;
   stake_amount: number;
   status: string;
   title: string;
@@ -23,7 +25,7 @@ export function mapPublicDareFeedRows(rows: PublicDareFeedRow[]): DareFeedItem[]
   return rows.map(mapPublicDareFeedRow);
 }
 
-function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
+export function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
   const status = mapStatus(row.status, row.court_phase);
   const issuer = mapPlayer(row.issuer_username, row.issuer_tier, row.issuer_trust_score, row.id);
   const challenger = row.challenger_username
@@ -38,6 +40,8 @@ function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
     playerA: issuer,
     playerB: challenger,
     resolution: formatResolution(row.resolution_type),
+    scoreA: row.score_a ?? undefined,
+    scoreB: row.score_b ?? undefined,
     stakeKobo: row.stake_amount,
     status,
     title: row.title,

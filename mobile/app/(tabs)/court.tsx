@@ -3,21 +3,25 @@ import { CirclePlay, Gavel, Hourglass, Send, ShieldCheck } from 'lucide-react-na
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
+import { EmptyState } from '../../src/components/ui/EmptyState';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { Screen } from '../../src/components/ui/Screen';
 import { TopBar } from '../../src/components/ui/TopBar';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtStatusPanel } from '../../src/features/court/components/CourtStatusPanel';
 import { QuizPanel } from '../../src/features/court/components/QuizPanel';
+import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
+import { useCourtQuestion } from '../../src/features/court/useCourtQuestion';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
-import { activeCourtSession } from '../../src/mocks/court';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function CourtScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
-  const session = activeCourtSession;
+  const court = useActiveCourtSession();
+  const session = court.session;
+  const courtQuestion = useCourtQuestion(session?.dareId);
   const canEnterCourt = data.capabilities.canAcceptDare;
 
   return (
@@ -45,9 +49,25 @@ export default function CourtScreen() {
           />
         ) : null}
 
-        <CourtArena session={session} />
+        {court.error ? (
+          <InlineAlert
+            tone="danger"
+            title="Court state unavailable"
+            message={court.error}
+          />
+        ) : null}
 
-        <View style={styles.readyPanel}>
+        {court.source === 'server' && !session ? (
+          <EmptyState
+            body={court.loading ? 'Checking for your active or pending DARE.' : 'Accept or create a DARE to enter court mode.'}
+            icon={<Gavel color={colors.textMuted} size={24} />}
+            title={court.loading ? 'Loading court' : 'No active court'}
+          />
+        ) : null}
+
+        {session ? <CourtArena session={session} /> : null}
+
+        {session ? <View style={styles.readyPanel}>
           <View>
             <Text style={styles.readyTitle}>Both players ready</Text>
             <Text style={styles.readyText}>
@@ -62,11 +82,22 @@ export default function CourtScreen() {
             onPress={() => router.push('/court/ready')}
             variant="secondary"
           />
-        </View>
+        </View> : null}
 
-        <QuizPanel question={session.question} />
+        {session ? (
+          <>
+            {court.source === 'server' ? (
+              <InlineAlert
+                tone={courtQuestion.error ? 'danger' : 'info'}
+                title={courtQuestion.error ? 'Question unavailable' : `Round ${courtQuestion.roundIndex + 1} of ${courtQuestion.totalRounds}`}
+                message={courtQuestion.error ?? 'Court question prompt and options are loaded from the server without exposing the answer key.'}
+              />
+            ) : null}
+            <QuizPanel question={courtQuestion.question} />
+          </>
+        ) : null}
 
-        <CourtStatusPanel session={session} />
+        {session ? <CourtStatusPanel session={session} /> : null}
 
         <InlineAlert
           tone="warning"

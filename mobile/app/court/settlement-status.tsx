@@ -6,6 +6,7 @@ import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
+import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { activeCourtSession } from '../../src/mocks/court';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
@@ -19,7 +20,8 @@ const settlementSteps = [
 export default function CourtSettlementStatusScreen() {
   const router = useRouter();
   const { dareId } = useLocalSearchParams<{ dareId?: string }>();
-  const session = { ...activeCourtSession, phase: 'settlement_pending' as const };
+  const court = useActiveCourtSession(dareId);
+  const session = { ...(court.session ?? activeCourtSession), phase: 'settlement_pending' as const };
 
   return (
     <CourtFlowFrame
@@ -45,6 +47,14 @@ export default function CourtSettlementStatusScreen() {
           </View>
         ))}
       </View>
+
+      {court.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Settlement state unavailable"
+          message={court.error}
+        />
+      ) : null}
 
       <InlineAlert
         tone="info"

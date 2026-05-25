@@ -6,6 +6,7 @@ import { ActionButton } from '../../src/components/ui/ActionButton';
 import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
+import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { activeCourtSession } from '../../src/mocks/court';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
@@ -17,7 +18,8 @@ export default function CourtResultScreen() {
     scoreB?: string;
     status?: string;
   }>();
-  const session = activeCourtSession;
+  const court = useActiveCourtSession(dareId);
+  const session = court.session ?? activeCourtSession;
   const nextScoreA = scoreA ? Number.parseInt(scoreA, 10) : session.playerA.score;
   const nextScoreB = scoreB ? Number.parseInt(scoreB, 10) : session.playerB.score;
   const winner = nextScoreA >= nextScoreB ? session.playerA.name : session.playerB.name;

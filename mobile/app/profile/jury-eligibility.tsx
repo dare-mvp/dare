@@ -5,19 +5,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { useJurySummary } from '../../src/features/jury/useJurySummary';
+import { useMe } from '../../src/features/me/useMe';
 import { ProfileFlowFrame } from '../../src/features/profile/components/ProfileFlowFrame';
-import { profileSummary } from '../../src/mocks/profile';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
-
-const checks = [
-  { label: 'KYC status', value: 'Pending Tier 1', passed: false },
-  { label: 'Trust score', value: `${profileSummary.trustScore} pts`, passed: true },
-  { label: 'Vote history', value: '18 completed', passed: true },
-  { label: 'Collusion guard', value: 'Required per case', passed: true },
-];
 
 export default function JuryEligibilityScreen() {
   const router = useRouter();
+  const { data, error, loading } = useMe();
+  const jury = useJurySummary();
+  const checks = getEligibilityChecks(data.profile, jury.completedVotes);
+  const eligible = data.capabilities.canJury && checks.every((check) => check.passed);
 
   return (
     <ProfileFlowFrame
@@ -26,10 +24,26 @@ export default function JuryEligibilityScreen() {
       title="Jury status."
       subtitle="Jury assignments depend on trust, KYC status, categories, and collusion checks."
     >
+      {data.source === 'mock' && !error ? (
+        <InlineAlert
+          tone="info"
+          title={loading || jury.loading ? 'Syncing eligibility' : 'Preview eligibility'}
+          message={loading || jury.loading ? 'Checking live jury eligibility.' : 'Live eligibility checks appear after sign-in and sync.'}
+        />
+      ) : null}
+
+      {error || jury.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Eligibility sync failed"
+          message={error ?? jury.error ?? 'Unable to load eligibility.'}
+        />
+      ) : null}
+
       <View style={styles.hero}>
         <Vote color={colors.purple} size={30} />
         <View style={styles.heroCopy}>
-          <StatusBadge label="ELIGIBLE PREVIEW" tone="neutral" />
+          <StatusBadge label={eligible ? 'ELIGIBLE' : 'LOCKED'} tone={eligible ? 'success' : 'warning'} />
           <Text style={styles.title}>Assignment readiness</Text>
           <Text style={styles.body}>Eligibility is confirmed again before every jury assignment.</Text>
         </View>
@@ -56,6 +70,37 @@ export default function JuryEligibilityScreen() {
       <ActionButton accessibilityLabel="Open jury" label="Open jury" onPress={() => router.push('/jury')} />
     </ProfileFlowFrame>
   );
+}
+
+type EligibilityProfile = {
+  kycStatus: 'not_started' | 'pending' | 'verified';
+  kycTier: string;
+  trustScore: number;
+};
+
+function getEligibilityChecks(profile: EligibilityProfile, completedVotes: number) {
+  return [
+    {
+      label: 'KYC status',
+      passed: profile.kycStatus === 'verified',
+      value: profile.kycTier,
+    },
+    {
+      label: 'Trust score',
+      passed: profile.trustScore >= 100,
+      value: `${profile.trustScore} pts`,
+    },
+    {
+      label: 'Vote history',
+      passed: completedVotes > 0,
+      value: `${completedVotes} completed`,
+    },
+    {
+      label: 'Collusion guard',
+      passed: true,
+      value: 'Server-enforced per case',
+    },
+  ];
 }
 
 const styles = StyleSheet.create({
