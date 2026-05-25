@@ -81,9 +81,3 @@ export const typography = {
     lineHeight: 26,
   },
 } as const;
-
-export const motion = {
-  fast: 120,
-  standard: 180,
-  slow: 300,
-} as const;

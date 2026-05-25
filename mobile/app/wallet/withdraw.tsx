@@ -11,7 +11,7 @@ import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
 import { useMe } from '../../src/features/me/useMe';
 import { requestWithdrawal } from '../../src/lib/actions/endpoints';
 import { nairaToKobo, validateWithdrawalInput } from '../../src/features/wallet/validation';
-import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
+import { colors, fonts, radius, spacing } from '../../src/theme/tokens';
 import { WalletFlowFrame } from '../../src/features/wallet/components/WalletFlowFrame';
 
 export default function WithdrawScreen() {

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle2, Flag } from 'lucide-react-native';
+import { CheckCircle2, Flag, MessageSquare } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
 
@@ -115,6 +115,13 @@ export default function CourtPlayScreen() {
           onPress={() => {
             void handleSubmitAnswer();
           }}
+        />
+        <ActionButton
+          accessibilityLabel="Open court chat"
+          icon={<MessageSquare color={colors.text} size={18} />}
+          label="Chat"
+          onPress={() => router.push({ pathname: '/court/chat', params: { dareId } })}
+          variant="secondary"
         />
         <ActionButton
           accessibilityLabel="Forfeit DARE"

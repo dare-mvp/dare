@@ -15,11 +15,3 @@ export const supabaseClient: SupabaseClient | null = backendConfig.isConfigured
       },
     })
   : null;
-
-export function requireSupabaseClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client is not configured.');
-  }
-
-  return supabaseClient;
-}
