@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { CircleDollarSign, FileText, ScrollText, ShieldCheck, UserRound } from 'lucide-react-native';
+import { FileText, ScrollText, ShieldCheck, UserRound } from 'lucide-react-native';
 import { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -11,11 +11,11 @@ import { TopBar } from '../../src/components/ui/TopBar';
 import { ConstitutionPreview } from '../../src/features/create/components/ConstitutionPreview';
 import { CreateStepper } from '../../src/features/create/components/CreateStepper';
 import { SelectPill } from '../../src/features/create/components/SelectPill';
+import { TimeEscrowSection } from '../../src/features/create/components/TimeEscrowSection';
 import { draftToRouteParams } from '../../src/features/create/createDarePayload';
 import {
   categoryOptions,
   createSectionIcons,
-  durationOptions,
   resolutionOptions,
 } from '../../src/features/create/createVisuals';
 import { useCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
@@ -33,6 +33,7 @@ export default function CreateScreen() {
     rules: draft.rules ? validation.errors.rules : undefined,
     stakeNaira: draft.stakeNaira ? validation.errors.stakeNaira : undefined,
     title: draft.title ? validation.errors.title : undefined,
+    durationSeconds: validation.errors.durationSeconds,
   };
 
   return (
@@ -124,30 +125,14 @@ export default function CreateScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <SectionTitle eyebrow="Stake" icon={createSectionIcons.stake} title="Set time and escrow" />
-          <View style={styles.pillGrid}>
-            {durationOptions.map((duration) => (
-              <SelectPill
-                icon={duration.icon}
-                key={duration.value}
-                label={duration.label}
-                onSelect={(value) => updateDraft('durationSeconds', value)}
-                selected={draft.durationSeconds === duration.value}
-                value={duration.value}
-              />
-            ))}
-          </View>
-          <TextField
-            error={visibleErrors.stakeNaira}
-            keyboardType="numeric"
-            label="Stake amount"
-            leftIcon={<CircleDollarSign color={colors.warning} size={16} />}
-            onChangeText={(value) => updateDraft('stakeNaira', value.replace(/[^0-9]/g, ''))}
-            placeholder="Minimum NGN 100"
-            value={draft.stakeNaira}
-          />
-        </View>
+        <TimeEscrowSection
+          durationError={visibleErrors.durationSeconds}
+          durationSeconds={draft.durationSeconds}
+          onDurationChange={(value) => updateDraft('durationSeconds', value)}
+          onStakeChange={(value) => updateDraft('stakeNaira', value)}
+          stakeError={visibleErrors.stakeNaira}
+          stakeNaira={draft.stakeNaira}
+        />
 
         <ConstitutionPreview
           draft={draft}

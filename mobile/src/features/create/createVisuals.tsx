@@ -60,6 +60,9 @@ export const durationOptions: Array<IconOption<number>> = [
   { icon: <Clock3 color={colors.textMuted} size={14} />, label: '3 min', value: 180 },
   { icon: <Clock3 color={colors.textMuted} size={14} />, label: '5 min', value: 300 },
   { icon: <Clock3 color={colors.textMuted} size={14} />, label: '10 min', value: 600 },
+  { icon: <Clock3 color={colors.textMuted} size={14} />, label: '15 min', value: 900 },
+  { icon: <Clock3 color={colors.textMuted} size={14} />, label: '30 min', value: 1800 },
+  { icon: <Clock3 color={colors.textMuted} size={14} />, label: '60 min', value: 3600 },
 ];
 
 export const createSectionIcons = {

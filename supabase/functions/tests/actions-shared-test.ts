@@ -745,6 +745,141 @@ Deno.test("POST /wallet/withdrawals queues a request without automatic payout", 
   assertEquals(state.idempotencyRecords.length, 1);
 });
 
+Deno.test("POST /admin/withdrawals/{id}/approve gates provider processing", async () => {
+  const state = createFakeState();
+  state.profile.is_admin = true;
+  const withdrawalId = "523e4567-e89b-12d3-a456-426614174000";
+  state.withdrawalRequests.push({
+    id: withdrawalId,
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 100000,
+    currency: "NGN",
+    provider: null,
+    provider_transfer_reference: null,
+    status: "pending",
+    ledger_entry_id: "423e4567-e89b-12d3-a456-426614174000",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+  const requestBody = {
+    requestId,
+    idempotencyKey: "admin-wd-approve:abc123",
+    payload: { reason: "Manual risk review passed." },
+  };
+
+  const first = await testHandler(
+    jsonRequest(
+      requestBody,
+      `http://localhost/functions/v1/actions/admin/withdrawals/${withdrawalId}/approve`,
+    ),
+  );
+  const replay = await testHandler(
+    jsonRequest(
+      requestBody,
+      `http://localhost/functions/v1/actions/admin/withdrawals/${withdrawalId}/approve`,
+    ),
+  );
+
+  assertEquals(first.status, 200);
+  assertEquals(replay.status, 200);
+  const body = await first.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.status, "approved");
+  assertEquals(state.withdrawalRequests[0].status, "approved");
+  assertEquals(state.withdrawalRequests[0].provider, "paystack");
+  assertEquals(
+    state.withdrawalRequests[0].provider_transfer_reference,
+    "wd_523e4567e89b12d3a456426614174000",
+  );
+  assertEquals(state.auditLogs.length, 1);
+  assertEquals(state.notifications.length, 1);
+  assertEquals(state.idempotencyRecords.length, 1);
+});
+
+Deno.test("POST /admin/withdrawals/{id}/reject releases pending withdrawal hold", async () => {
+  const state = createFakeState();
+  state.profile.is_admin = true;
+  const withdrawalId = "523e4567-e89b-12d3-a456-426614174000";
+  state.withdrawalRequests.push({
+    id: withdrawalId,
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 100000,
+    currency: "NGN",
+    provider: null,
+    provider_transfer_reference: null,
+    status: "pending",
+    ledger_entry_id: "423e4567-e89b-12d3-a456-426614174000",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "admin-wd-reject:abc123",
+        payload: { reason: "Bank destination failed review." },
+      },
+      `http://localhost/functions/v1/actions/admin/withdrawals/${withdrawalId}/reject`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.status, "rejected");
+  assertEquals(state.withdrawalRequests[0].status, "rejected");
+  assertEquals(
+    state.withdrawalRequests[0].failure_reason,
+    "Bank destination failed review.",
+  );
+  assertEquals(state.auditLogs[0].action, "wallet.withdrawal_rejected");
+  assertEquals(state.notifications[0].title, "Withdrawal rejected");
+});
+
+Deno.test("POST /admin/users/{id}/freeze freezes account and writes audit log", async () => {
+  const state = createFakeState();
+  state.profile.is_admin = true;
+  const targetUserId = "923e4567-e89b-42d3-a456-426614174000";
+  state.jurorProfiles.push({
+    id: targetUserId,
+    username: "risk_user",
+    account_status: "active",
+    jury_opt_in: true,
+    jury_categories: ["knowledge"],
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "admin-freeze:abc123",
+        payload: { reason: "Suspicious payment activity." },
+      },
+      `http://localhost/functions/v1/actions/admin/users/${targetUserId}/freeze`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.accountStatus, "frozen");
+  assertEquals(state.jurorProfiles[0].account_status, "frozen");
+  assertEquals(state.jurorProfiles[0].jury_opt_in, false);
+  assertEquals(state.auditLogs[0].action, "user.frozen");
+  assertEquals(state.notifications[0].title, "Account frozen");
+});
+
 Deno.test("withdrawal processor creates Paystack recipient and initiates transfer", async () => {
   const state = createFakeState();
   state.withdrawalRequests.push({
@@ -759,7 +894,7 @@ Deno.test("withdrawal processor creates Paystack recipient and initiates transfe
     provider: null,
     provider_recipient_code: null,
     provider_transfer_reference: null,
-    status: "pending",
+    status: "approved",
     retry_count: 0,
     ledger_entry_id: "523e4567-e89b-12d3-a456-426614174000",
   });
@@ -819,6 +954,49 @@ Deno.test("withdrawal processor creates Paystack recipient and initiates transfe
     transferCalls[0].reference,
     state.withdrawalRequests[0].provider_transfer_reference,
   );
+});
+
+Deno.test("withdrawal processor skips withdrawals before admin approval", async () => {
+  const state = createFakeState();
+  state.withdrawalRequests.push({
+    id: "423e4567-e89b-12d3-a456-426614174000",
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 100000,
+    currency: "NGN",
+    bank_code: "058",
+    account_number: "0123456789",
+    account_name: "Ada Lovelace",
+    provider: null,
+    provider_recipient_code: null,
+    provider_transfer_reference: null,
+    status: "pending",
+    retry_count: 0,
+    ledger_entry_id: "523e4567-e89b-12d3-a456-426614174000",
+  });
+  const testHandler = createWithdrawalProcessorHandler({
+    createServiceClient: () => fakeClient(state),
+    getPaystackSecret: () => "sk_test_unit_secret",
+    getProcessorSecret: () => "processor_secret",
+  });
+
+  const response = await testHandler(
+    new Request("http://localhost/functions/v1/withdrawal-processor", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        authorization: "Bearer processor_secret",
+      },
+      body: JSON.stringify({ limit: 1 }),
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.claimed, 0);
+  assertEquals(state.withdrawalRequests[0].status, "pending");
+  assertEquals(state.paymentTransactions.length, 0);
 });
 
 Deno.test("POST /wallet/withdrawals rejects insufficient funds", async () => {
@@ -1286,6 +1464,89 @@ Deno.test("POST /court/{dareId}/heartbeat is rate limited", async () => {
   const body = await response.json();
   assertEquals(body.ok, false);
   assertEquals(body.error.code, "RATE_LIMITED");
+});
+
+Deno.test("POST /court/{dareId}/messages stores participant message once", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    status: "active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+  const requestBody = {
+    requestId,
+    idempotencyKey: "court-message:abc123456",
+    payload: {
+      message: "Ready for round two.",
+    },
+  };
+
+  const first = await testHandler(
+    jsonRequest(
+      requestBody,
+      `http://localhost/functions/v1/actions/court/${dareId}/messages`,
+    ),
+  );
+  const replay = await testHandler(
+    jsonRequest(
+      requestBody,
+      `http://localhost/functions/v1/actions/court/${dareId}/messages`,
+    ),
+  );
+
+  assertEquals(first.status, 200);
+  assertEquals(replay.status, 200);
+  const body = await first.json();
+  const replayBody = await replay.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.dareId, dareId);
+  assertEquals(body.data.message, "Ready for round two.");
+  assertEquals(body.data.usernameSnapshot, "ada");
+  assertEquals(replayBody.data.messageId, body.data.messageId);
+  assertEquals(state.courtChatMessages.length, 1);
+  assertEquals(state.auditLogs.length, 1);
+  assertEquals(state.auditLogs[0].action, "court.message_sent");
+  assertEquals(state.idempotencyRecords.length, 1);
+});
+
+Deno.test("POST /court/{dareId}/messages rejects non-participants", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: "823e4567-e89b-12d3-a456-426614174000",
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    status: "active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "court-message-denied:abc123456",
+        payload: {
+          message: "I should not be here.",
+        },
+      },
+      `http://localhost/functions/v1/actions/court/${dareId}/messages`,
+    ),
+  );
+
+  assertEquals(response.status, 403);
+  const body = await response.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.error.code, "FORBIDDEN");
+  assertEquals(state.courtChatMessages.length, 0);
 });
 
 Deno.test("POST /dares/{id}/answers scores from server question data", async () => {
@@ -2398,6 +2659,7 @@ function createFakeState() {
     dareConstitutions: [] as Record<string, unknown>[],
     escrowHolds: [] as Record<string, unknown>[],
     courtSessions: [] as Record<string, unknown>[],
+    courtChatMessages: [] as Record<string, unknown>[],
     evidenceObjects: [] as Record<string, unknown>[],
     juryCases: [] as Record<string, unknown>[],
     juryAssignments: [] as Record<string, unknown>[],
@@ -2448,6 +2710,22 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
         return fakeClaimPaystackWithdrawalsRpc(state, args) as Promise<
           QueryResponse<T>
         >;
+      }
+
+      if (functionName === "approve_withdrawal_admin_action") {
+        return fakeApproveWithdrawalRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "reject_withdrawal_admin_action") {
+        return fakeRejectWithdrawalRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "freeze_user_admin_action") {
+        return fakeFreezeUserRpc(state, args) as Promise<QueryResponse<T>>;
       }
 
       if (functionName === "get_user_deposit_totals_kobo") {
@@ -3020,6 +3298,10 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
       this.state.notifications.push({ ...values });
     }
 
+    if (this.table === "court_chat_messages") {
+      this.state.courtChatMessages.push({ ...values });
+    }
+
     return Promise.resolve({ data: null, error: null });
   }
 
@@ -3035,12 +3317,30 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
 
   maybeSingle(): Promise<QueryResponse<T | null>> {
     if (this.table === "profiles") {
+      const data = [this.state.profile, ...this.state.jurorProfiles].find(
+        (record) => matchesFilters(record, this.#filters),
+      ) ?? this.state.profile;
       if (this.#updateValues) {
-        Object.assign(this.state.profile, this.#updateValues);
+        Object.assign(data, this.#updateValues);
       }
 
       return Promise.resolve({
-        data: this.state.profile as T,
+        data: data as T,
+        error: null,
+      });
+    }
+
+    if (this.table === "dares") {
+      const data = this.state.dares.find((record) =>
+        matchesFilters(record, this.#filters)
+      );
+
+      if (data && this.#updateValues) {
+        Object.assign(data, this.#updateValues);
+      }
+
+      return Promise.resolve({
+        data: data as T | undefined ?? null,
         error: null,
       });
     }
@@ -4394,7 +4694,7 @@ function fakeClaimPaystackWithdrawalsRpc(
   const limit = Number(args.p_limit ?? 10);
   const rows = state.withdrawalRequests
     .filter((request) =>
-      request.status === "pending" &&
+      request.status === "approved" &&
       (request.provider === null || request.provider === "paystack") &&
       Number(request.retry_count ?? 0) < 3
     )
@@ -4424,6 +4724,175 @@ function fakeClaimPaystackWithdrawalsRpc(
     });
 
   return Promise.resolve({ data: rows, error: null });
+}
+
+function fakeApproveWithdrawalRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  if (!state.profile.is_admin) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "admin_required" },
+    });
+  }
+
+  const withdrawal = state.withdrawalRequests.find((row) =>
+    row.id === args.p_withdrawal_request_id
+  );
+  if (!withdrawal) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "withdrawal_not_found" },
+    });
+  }
+
+  if (
+    ["approved", "processing", "completed"].includes(String(withdrawal.status))
+  ) {
+    return Promise.resolve({
+      data: [approvedWithdrawalRow(withdrawal)],
+      error: null,
+    });
+  }
+
+  if (withdrawal.status !== "pending") {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_withdrawal_state" },
+    });
+  }
+
+  withdrawal.status = "approved";
+  withdrawal.provider = "paystack";
+  withdrawal.provider_transfer_reference ??= `wd_${
+    String(withdrawal.id).replaceAll("-", "")
+  }`;
+  withdrawal.failure_reason = null;
+
+  return Promise.resolve({
+    data: [approvedWithdrawalRow(withdrawal)],
+    error: null,
+  });
+}
+
+function fakeRejectWithdrawalRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  if (!state.profile.is_admin) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "admin_required" },
+    });
+  }
+
+  const withdrawal = state.withdrawalRequests.find((row) =>
+    row.id === args.p_withdrawal_request_id
+  );
+  if (!withdrawal) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "withdrawal_not_found" },
+    });
+  }
+
+  if (withdrawal.status === "rejected") {
+    return Promise.resolve({
+      data: [rejectedWithdrawalRow(withdrawal)],
+      error: null,
+    });
+  }
+
+  if (withdrawal.status !== "pending" && withdrawal.status !== "approved") {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_withdrawal_state" },
+    });
+  }
+
+  withdrawal.status = "rejected";
+  withdrawal.failure_reason = args.p_admin_note;
+  withdrawal.processed_at = "2026-05-21T01:00:00.000Z";
+
+  return Promise.resolve({
+    data: [rejectedWithdrawalRow(withdrawal)],
+    error: null,
+  });
+}
+
+function fakeFreezeUserRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  if (!state.profile.is_admin) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "admin_required" },
+    });
+  }
+
+  if (args.p_admin_user_id === args.p_target_user_id) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_admin_action" },
+    });
+  }
+
+  const target = state.jurorProfiles.find((row) =>
+    row.id === args.p_target_user_id
+  );
+  if (!target) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "profile_not_found" },
+    });
+  }
+
+  target.account_status = "frozen";
+  target.jury_opt_in = false;
+  target.jury_categories = [];
+  target.updated_at = "2026-05-21T01:00:00.000Z";
+
+  return Promise.resolve({
+    data: [{
+      user_id: target.id,
+      account_status: target.account_status,
+      wallet_accounts_frozen: 1,
+      jury_opt_in: target.jury_opt_in,
+      updated_at: target.updated_at,
+    }],
+    error: null,
+  });
+}
+
+function approvedWithdrawalRow(
+  withdrawal: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    withdrawal_request_id: withdrawal.id,
+    user_id: withdrawal.user_id,
+    amount: withdrawal.amount,
+    currency: withdrawal.currency,
+    status: withdrawal.status,
+    provider: withdrawal.provider ?? null,
+    provider_transfer_reference: withdrawal.provider_transfer_reference ?? null,
+    processed_at: withdrawal.processed_at ?? null,
+  };
+}
+
+function rejectedWithdrawalRow(
+  withdrawal: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    withdrawal_request_id: withdrawal.id,
+    user_id: withdrawal.user_id,
+    amount: withdrawal.amount,
+    currency: withdrawal.currency,
+    status: withdrawal.status,
+    failure_reason: withdrawal.failure_reason ?? null,
+    processed_at: withdrawal.processed_at ?? null,
+  };
 }
 
 function fakeSubmitKycRpc(

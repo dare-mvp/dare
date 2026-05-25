@@ -225,6 +225,20 @@ export type CurrentCourtQuestionResponse = {
   totalRounds: number;
 };
 
+export type SendCourtMessagePayload = {
+  message: string;
+};
+
+export type SendCourtMessageResponse = {
+  createdAt: string;
+  dareId: string;
+  message: string;
+  messageId: string;
+  moderationStatus: 'visible';
+  userId: string;
+  usernameSnapshot: string | null;
+};
+
 export type ForfeitDareResponse = {
   completedAt: string;
   courtPhase: 'forfeited' | 'completed';
@@ -473,6 +487,14 @@ export function submitDareAnswer(dareId: string, payload: SubmitAnswerPayload) {
 
 export function getCurrentCourtQuestion(dareId: string) {
   return callAction<CurrentCourtQuestionResponse>(`/court/${dareId}/question`);
+}
+
+export function sendCourtMessage(dareId: string, payload: SendCourtMessagePayload) {
+  return postAction<SendCourtMessageResponse, SendCourtMessagePayload>(
+    `/court/${dareId}/messages`,
+    payload,
+    'court-message',
+  );
 }
 
 export function forfeitDare(dareId: string) {

@@ -43,6 +43,8 @@ The mobile app now has:
 - notification mark-read and mark-all-read via `actions`
 - deposit initialization via `POST /wallet/deposits/init` with Paystack checkout opening
 - withdrawal request via `POST /wallet/withdrawals` using tokenized bank-account references
+- admin withdrawal approval/rejection via `POST /admin/withdrawals/{id}/approve|reject`; the payout processor now claims only approved withdrawals
+- admin account freeze via `POST /admin/users/{id}/freeze`, including wallet freeze, jury opt-out, audit log, and user notification
 - DARE creation via `POST /dares`, including route-carried review/receipt state
 - DARE acceptance via `POST /dares/{id}/accept` for live UUID-backed feed items
 - authenticated court tab/status/result/settlement reads from participant-readable `dares` and `court_sessions`
@@ -50,6 +52,7 @@ The mobile app now has:
 - safe court current-question read via `GET /court/{dareId}/question`, backed by `get_current_court_question_action`, returning prompt/options without `correct_option`
 - court ready-up via `POST /dares/{id}/ready`
 - court heartbeat via `POST /court/{id}/heartbeat`
+- court chat send helper via idempotent `POST /court/{dareId}/messages`
 - answer submit via `POST /dares/{id}/answers`
 - player forfeit via `POST /dares/{id}/forfeit`
 - evidence upload request/confirm via `POST /dares/{id}/evidence` and `/evidence/confirm`
@@ -65,20 +68,26 @@ Some secondary screens still render static product/help content until each featu
 
 `mobile/.env.example` exists and is the expected template for local Expo backend configuration.
 
+## Test Coverage Notes
+
+- Edge-function tests cover Paystack deposit webhook replay safety, withdrawal transfer webhook replay safety, action idempotency, route validation, and admin route envelopes.
+- RPC integration tests cover settlement fee math, settlement idempotency, DARE accept race protection, self-exclusion escrow restoration, withdrawal projection, withdrawal approval gating, jury guards, rate limiting, cron verification, and wallet provisioning.
+- The RPC integration suite requires a running Supabase database at `SUPABASE_DB_URL` or local `127.0.0.1:54322`.
+
 ## Remaining Launch Gates
 
 - Jury evidence packets still need richer signed evidence previews; the current mobile read shows live case reason and evidence counts only.
 - Support remains static content. A ticket/contact provider contract is not defined yet.
 - Evidence upload still needs upload progress, retry/resume, and client-side metadata stripping before production use.
-- Court chat is specified, but the mobile screen and `POST /court/{dareId}/messages` action route are not implemented.
-- Admin tooling is still outside the mobile app: freeze users, freeze DAREs, approve/reject withdrawals, and operational jury resolution need admin routes and UI before live-money launch.
+- Court chat still needs a mobile screen; the idempotent `POST /court/{dareId}/messages` action route is implemented.
+- Admin DARE freeze remains unbuilt, and admin routes still need an operator UI before live-money launch.
 - KYC provider webhook remains deferred until the provider is selected.
-- Payment provider legal approval, KYC/AML policy, support playbooks, dispute playbooks, and deeper ledger/webhook/settlement tests remain pre-launch gates.
+- Payment provider legal approval, KYC/AML policy, support playbooks, dispute playbooks, and CI execution of the DB-backed integration suite remain pre-launch gates.
 
 ## Next Wiring Order
 
 1. Add richer jury evidence preview/signed-download support for jurors.
-2. Add court chat action route and mobile court chat screen.
+2. Add the mobile court chat screen on top of the existing `POST /court/{dareId}/messages` action route.
 3. Add production file hardening: image/video metadata stripping, upload progress, and retry/resume behavior.
-4. Add admin routes/UI for freeze and withdrawal approval workflows.
-5. Add focused tests for webhook replay safety, accept races, settlement idempotency, deposit idempotency, and self-exclusion cancellation.
+4. Add admin DARE freeze and operator UI for freeze, withdrawal approval, KYC, and jury operations.
+5. Run the DB-backed RPC integration suite in CI after local/remote migration sync.

@@ -75,7 +75,7 @@ function parseCategory(value: string | undefined): DareCategory {
 
 function parseDuration(value: string | undefined) {
   const duration = Number.parseInt(value ?? '', 10);
-  return Number.isFinite(duration) ? duration : 180;
+  return Number.isFinite(duration) && duration >= 60 && duration <= 3600 ? duration : 180;
 }
 
 function mapCategory(category: DareCategory): CreateDarePayload['category'] {

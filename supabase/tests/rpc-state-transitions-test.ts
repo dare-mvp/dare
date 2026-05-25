@@ -309,6 +309,31 @@ Deno.test("settle_dare_action deducts platform fee and credits platform wallet",
     assertEquals(dare.status, "settled");
     assertEquals(dare.platform_fee, 5000);
     assertEquals(dare.winner_payout, 95000);
+
+    const [second] = await sql<{
+      payout_amount: number;
+      ledger_entries_created: number;
+    }[]>`
+      select payout_amount, ledger_entries_created
+      from settle_dare_action(${ids.issuer}, ${dareId})
+    `;
+    assertEquals(second.payout_amount, 95000);
+    assertEquals(second.ledger_entries_created, 0);
+
+    const [entryCount] = await sql<{ count: string }[]>`
+      select count(*)::text
+      from ledger_entries
+      where dare_id = ${dareId}
+        and type in ('payout', 'platform_fee')
+    `;
+    assertEquals(entryCount.count, "2");
+
+    const [winner] = await sql<{ wins: number }[]>`
+      select wins
+      from profiles
+      where id = ${ids.issuer}
+    `;
+    assertEquals(winner.wins, 1);
   } finally {
     await cleanup(sql, [ids.issuer, ids.challenger]);
     await sql.end();
@@ -518,7 +543,7 @@ Deno.test("completed withdrawal requests no longer reserve pending balance", asy
   }
 });
 
-Deno.test("claim_paystack_withdrawals atomically marks pending withdrawals processing", async () => {
+Deno.test("claim_paystack_withdrawals only claims admin-approved withdrawals", async () => {
   const sql = createSql();
   const ids = idSet("94000000");
 
@@ -585,6 +610,18 @@ Deno.test("claim_paystack_withdrawals atomically marks pending withdrawals proce
       )
     `;
 
+    const unapproved = await sql`
+      select *
+      from claim_paystack_withdrawals(1)
+    `;
+    assertEquals(unapproved.length, 0);
+
+    await sql`
+      update withdrawal_requests
+      set status = 'approved'
+      where id = ${withdrawalId}
+    `;
+
     const [claimed] = await sql<{
       withdrawal_request_id: string;
       provider_transfer_reference: string;
@@ -613,6 +650,139 @@ Deno.test("claim_paystack_withdrawals atomically marks pending withdrawals proce
       from claim_paystack_withdrawals(1)
     `;
     assertEquals(second.length, 0);
+  } finally {
+    await cleanup(sql, [ids.issuer]);
+    await sql.end();
+  }
+});
+
+Deno.test("accept_dare_action allows only one challenger under concurrent accepts", async () => {
+  const sql = createSql();
+  const sqlA = createSql();
+  const sqlB = createSql();
+  const ids = idSet("95000000");
+  const challengerB = uuid("95000000-0000-4000-8000-000000000004");
+  const dareId = uuid("95000000-0000-4000-8000-000000000010");
+  const userIds = [ids.issuer, ids.challenger, challengerB];
+
+  try {
+    await cleanup(sql, userIds);
+    await createProfile(sql, ids.issuer, "issuer_accept_race");
+    await createProfile(sql, ids.challenger, "challenger_a_race");
+    await createProfile(sql, challengerB, "challenger_b_race");
+    await creditWallet(sql, ids.challenger, 100000, "race_credit_a");
+    await creditWallet(sql, challengerB, 100000, "race_credit_b");
+    await createOpenDare(sql, dareId, ids.issuer, 50000);
+
+    const attempts = await Promise.allSettled([
+      sqlA`
+        select *
+        from accept_dare_action(${ids.challenger}, ${dareId}, 'accept-race-a')
+      `,
+      sqlB`
+        select *
+        from accept_dare_action(${challengerB}, ${dareId}, 'accept-race-b')
+      `,
+    ]);
+
+    const fulfilled = attempts.filter((result) =>
+      result.status === "fulfilled"
+    );
+    const rejected = attempts.filter((result) => result.status === "rejected");
+    assertEquals(fulfilled.length, 1);
+    assertEquals(rejected.length, 1);
+    assert(
+      String((rejected[0] as PromiseRejectedResult).reason).includes(
+        "dare_not_acceptable",
+      ),
+    );
+
+    const [dare] = await sql<{ status: string; challenger_id: string }[]>`
+      select status, challenger_id::text
+      from dares
+      where id = ${dareId}
+    `;
+    assertEquals(dare.status, "ready_check");
+    assert([ids.challenger, challengerB].includes(dare.challenger_id));
+
+    const [courtCount] = await sql<{ count: string }[]>`
+      select count(*)::text
+      from court_sessions
+      where dare_id = ${dareId}
+    `;
+    assertEquals(courtCount.count, "1");
+
+    const [challengerHolds] = await sql<{ count: string }[]>`
+      select count(*)::text
+      from escrow_holds
+      where dare_id = ${dareId}
+        and user_id in (${ids.challenger}, ${challengerB})
+        and status = 'held'
+    `;
+    assertEquals(challengerHolds.count, "1");
+  } finally {
+    await cleanup(sql, userIds);
+    await sqlA.end();
+    await sqlB.end();
+    await sql.end();
+  }
+});
+
+Deno.test("self_exclude_action cancels open DAREs and restores escrowed wallet balance", async () => {
+  const sql = createSql();
+  const ids = idSet("96000000");
+  const dareId = uuid("96000000-0000-4000-8000-000000000010");
+
+  try {
+    await cleanup(sql, [ids.issuer]);
+    await createProfile(sql, ids.issuer, "issuer_self_exclude_wallet");
+    await creditWallet(sql, ids.issuer, 50000, "self_exclude_credit");
+    await createOpenDareWithIssuerEscrow(sql, dareId, ids.issuer, 20000);
+
+    const [before] = await sql<{ available_balance: number }[]>`
+      select available_balance
+      from wallet_summary
+      where user_id = ${ids.issuer}
+    `;
+    assertEquals(Number(before.available_balance), 30000);
+
+    const [result] = await sql<{
+      account_status: string;
+      cancelled_dares: number;
+      forfeited_dares: number;
+      refunded_amount: number;
+    }[]>`
+      select account_status, cancelled_dares, forfeited_dares, refunded_amount
+      from self_exclude_action(${ids.issuer}, 30, 'Integration self-exclusion test', 'self-exclude-wallet')
+    `;
+    assertEquals(result.account_status, "limited");
+    assertEquals(result.cancelled_dares, 1);
+    assertEquals(result.forfeited_dares, 0);
+    assertEquals(result.refunded_amount, 20000);
+
+    const [after] = await sql<{ available_balance: number }[]>`
+      select available_balance
+      from wallet_summary
+      where user_id = ${ids.issuer}
+    `;
+    assertEquals(Number(after.available_balance), 50000);
+
+    const [hold] = await sql<{ status: string }[]>`
+      select status
+      from escrow_holds
+      where dare_id = ${dareId}
+        and user_id = ${ids.issuer}
+    `;
+    assertEquals(hold.status, "refunded");
+
+    const [refund] = await sql<{ count: string }[]>`
+      select count(*)::text
+      from ledger_entries
+      where dare_id = ${dareId}
+        and type = 'escrow_release'
+        and status = 'posted'
+    `;
+    assertEquals(refund.count, "1");
   } finally {
     await cleanup(sql, [ids.issuer]);
     await sql.end();
@@ -869,6 +1039,164 @@ async function createCompletedDareWithEscrow(
     values
       (${dareId}, ${issuerId}, ${issuerWallet.id}, 50000, 'NGN', 'held', 'dare_active'),
       (${dareId}, ${challengerId}, ${challengerWallet.id}, 50000, 'NGN', 'held', 'dare_active')
+  `;
+}
+
+async function createOpenDare(
+  sql: Sql,
+  dareId: string,
+  issuerId: string,
+  stakeAmount: number,
+): Promise<void> {
+  await sql`
+    insert into dares (
+      id,
+      issuer_id,
+      title,
+      category,
+      resolution_type,
+      status,
+      stake_amount,
+      currency,
+      duration_seconds
+    )
+    values (
+      ${dareId},
+      ${issuerId},
+      'Open Integration DARE',
+      'knowledge',
+      'algorithmic',
+      'open',
+      ${stakeAmount},
+      'NGN',
+      60
+    )
+  `;
+  const [constitution] = await sql<{ id: string }[]>`
+    insert into dare_constitutions (
+      dare_id,
+      test,
+      rules,
+      proof_method,
+      edge_cases,
+      accepted_by_issuer_at
+    )
+    values (
+      ${dareId},
+      'Open Integration DARE',
+      'Highest score wins. Ties are voided.',
+      'algorithmic',
+      'Server rules apply.',
+      now()
+    )
+    returning id::text
+  `;
+  await sql`
+    update dares
+    set constitution_id = ${constitution.id}
+    where id = ${dareId}
+  `;
+}
+
+async function createOpenDareWithIssuerEscrow(
+  sql: Sql,
+  dareId: string,
+  issuerId: string,
+  stakeAmount: number,
+): Promise<void> {
+  await createOpenDare(sql, dareId, issuerId, stakeAmount);
+  const [wallet] = await sql<{ id: string }[]>`
+    select id::text
+    from wallet_accounts
+    where user_id = ${issuerId}
+      and currency = 'NGN'
+  `;
+  const [ledger] = await sql<{ id: string }[]>`
+    insert into ledger_entries (
+      wallet_account_id,
+      user_id,
+      dare_id,
+      type,
+      direction,
+      amount,
+      currency,
+      status,
+      idempotency_key,
+      metadata
+    )
+    values (
+      ${wallet.id},
+      ${issuerId},
+      ${dareId},
+      'escrow_hold',
+      'debit',
+      ${stakeAmount},
+      'NGN',
+      'posted',
+      ${`open-escrow:${dareId}`},
+      '{"role":"issuer"}'::jsonb
+    )
+    returning id::text
+  `;
+  await sql`
+    insert into escrow_holds (
+      dare_id,
+      user_id,
+      wallet_account_id,
+      amount,
+      currency,
+      status,
+      hold_reason,
+      held_ledger_entry_id
+    )
+    values (
+      ${dareId},
+      ${issuerId},
+      ${wallet.id},
+      ${stakeAmount},
+      'NGN',
+      'held',
+      'dare_active',
+      ${ledger.id}
+    )
+  `;
+}
+
+async function creditWallet(
+  sql: Sql,
+  userId: string,
+  amount: number,
+  idempotencyKey: string,
+): Promise<void> {
+  const [wallet] = await sql<{ id: string }[]>`
+    select id::text
+    from wallet_accounts
+    where user_id = ${userId}
+      and currency = 'NGN'
+  `;
+  await sql`
+    insert into ledger_entries (
+      wallet_account_id,
+      user_id,
+      type,
+      direction,
+      amount,
+      currency,
+      status,
+      idempotency_key,
+      metadata
+    )
+    values (
+      ${wallet.id},
+      ${userId},
+      'deposit_confirmed',
+      'credit',
+      ${amount},
+      'NGN',
+      'posted',
+      ${idempotencyKey},
+      '{"source":"integration_test"}'::jsonb
+    )
   `;
 }
 

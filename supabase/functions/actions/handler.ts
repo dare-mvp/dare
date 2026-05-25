@@ -7,11 +7,17 @@ import {
   createUserClient,
   type SupabaseActionClient,
 } from "./_shared/supabase.ts";
+import {
+  approveWithdrawal,
+  freezeUser,
+  rejectWithdrawal,
+} from "./routes/admin.ts";
 import { submitAnswer } from "./routes/answers.ts";
 import {
   getCurrentCourtQuestion,
   markDareReady,
   recordCourtHeartbeat,
+  sendCourtMessage,
 } from "./routes/court.ts";
 import { acceptDare, cancelDare, createDare } from "./routes/dares.ts";
 import { forfeitDare } from "./routes/dare_lifecycle.ts";
@@ -298,6 +304,21 @@ async function route(context: RouteContext): Promise<Response> {
   if (
     context.request.method === "POST" &&
     actionPath.length === 3 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "messages"
+  ) {
+    const result = await sendCourtMessage(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 3 &&
     actionPath[0] === "dares" &&
     actionPath[2] === "cancel"
   ) {
@@ -440,6 +461,54 @@ async function route(context: RouteContext): Promise<Response> {
     const result = await confirmEvidenceUpload(
       context.request,
       actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
+    actionPath[1] === "withdrawals" &&
+    actionPath[3] === "approve"
+  ) {
+    const result = await approveWithdrawal(
+      context.request,
+      actionPath[2],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
+    actionPath[1] === "withdrawals" &&
+    actionPath[3] === "reject"
+  ) {
+    const result = await rejectWithdrawal(
+      context.request,
+      actionPath[2],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
+    actionPath[1] === "users" &&
+    actionPath[3] === "freeze"
+  ) {
+    const result = await freezeUser(
+      context.request,
+      actionPath[2],
       context.getClient(),
       context.getServiceClient(),
     );

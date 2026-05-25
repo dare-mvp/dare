@@ -51,6 +51,10 @@ function validateDraft(draft: CreateDareDraft): DraftValidation {
     errors.stakeNaira = 'Minimum stake is NGN 100.';
   }
 
+  if (!Number.isInteger(draft.durationSeconds) || draft.durationSeconds < 60 || draft.durationSeconds > 3600) {
+    errors.durationSeconds = 'Choose 1 to 60 minutes.';
+  }
+
   if (draft.opponent && !/^@?[a-zA-Z0-9_]{3,20}$/.test(draft.opponent.trim())) {
     errors.opponent = 'Use a valid username.';
   }
