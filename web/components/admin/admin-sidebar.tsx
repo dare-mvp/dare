@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel } from 'lucide-react';
+import { DareLogo } from '@/components/brand/dare-logo';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -19,7 +20,7 @@ export function AdminSidebar() {
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-white/8 bg-brand-surface">
       <div className="flex h-14 items-center border-b border-white/8 px-6">
-        <span className="font-syne text-lg font-extrabold text-foreground">DARE</span>
+        <DareLogo size="sm" />
         <span className="ml-2 font-mono text-xs text-brand-primary">admin</span>
       </div>
 

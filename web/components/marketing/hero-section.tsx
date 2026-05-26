@@ -14,7 +14,7 @@ export function HeroSection() {
           BETA — Android APK now available
         </div>
 
-        <h1 className="font-syne text-5xl font-extrabold leading-tight tracking-tight text-foreground sm:text-7xl">
+        <h1 className="font-syne text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-7xl">
           Challenge.{' '}
           <span className="text-brand-primary">Wager.</span>{' '}
           Win.
