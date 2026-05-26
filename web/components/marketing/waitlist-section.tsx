@@ -60,7 +60,7 @@ export function WaitlistSection() {
   }
 
   return (
-    <section id="waitlist" className="bg-brand-surface px-6 py-24">
+    <section id="waitlist" className="scroll-mt-14 bg-brand-surface px-6 py-24">
       <div className="mx-auto max-w-xl space-y-8">
         <div className="text-center">
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
@@ -103,7 +103,7 @@ export function WaitlistSection() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="waitlist-role">I am a…</Label>
+              <Label htmlFor="waitlist-role">I am a...</Label>
               <select
                 id="waitlist-role"
                 name="role"
@@ -123,7 +123,7 @@ export function WaitlistSection() {
           <div className="space-y-1.5">
             <Label htmlFor="waitlist-phone">
               Phone number{' '}
-              <span className="text-muted-foreground">(optional — for SMS launch alerts)</span>
+              <span className="text-muted-foreground">(optional - for SMS launch alerts)</span>
             </Label>
             <Input
               id="waitlist-phone"
@@ -140,6 +140,9 @@ export function WaitlistSection() {
           {state.error === 'invalid_email' && (
             <p className="text-sm text-destructive">Enter a valid email address.</p>
           )}
+          {state.error === 'invalid_phone' && (
+            <p className="text-sm text-destructive">Enter a valid phone number or leave it blank.</p>
+          )}
           {state.error === 'unknown' && (
             <p className="text-sm text-destructive">Something went wrong. Try again.</p>
           )}
@@ -149,7 +152,7 @@ export function WaitlistSection() {
             disabled={pending}
             className="w-full bg-brand-primary text-white hover:opacity-90"
           >
-            {pending ? 'Joining…' : 'Join waitlist'}
+            {pending ? 'Joining...' : 'Join waitlist'}
           </Button>
 
           <p className="text-center text-xs text-muted-foreground">

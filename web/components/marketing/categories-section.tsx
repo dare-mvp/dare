@@ -59,7 +59,7 @@ const CATEGORIES = [
 
 export function CategoriesSection() {
   return (
-    <section id="categories" className="bg-brand-bg px-6 py-24">
+    <section id="categories" className="scroll-mt-14 bg-brand-bg px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <div className="mb-14 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-brand-primary/30 bg-brand-primary/10 px-3 py-1.5 font-mono text-xs text-brand-primary">

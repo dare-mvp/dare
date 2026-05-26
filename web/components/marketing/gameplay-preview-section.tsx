@@ -179,7 +179,7 @@ export function GameplayPreviewSection() {
                 data-active={i === activeIndex}
                 aria-label={`Show ${label} stage`}
                 onClick={() => selectTab(i)}
-                className={`flex-1 rounded-lg py-1.5 font-mono text-[11px] transition-all ${
+                className={`flex-1 min-h-[44px] rounded-lg px-1 py-2 font-mono text-[11px] transition-all ${
                   i === activeIndex
                     ? 'bg-brand-primary text-white shadow-sm'
                     : 'bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10'
@@ -210,7 +210,7 @@ export function GameplayPreviewSection() {
               onClick={() => setPaused(false)}
               className="mt-3 w-full text-center font-mono text-[11px] text-muted-foreground hover:text-brand-primary transition-colors"
             >
-              ▶ Resume auto-play
+              Resume auto-play
             </button>
           )}
         </div>
