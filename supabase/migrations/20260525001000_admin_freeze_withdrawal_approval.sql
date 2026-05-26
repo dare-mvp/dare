@@ -72,6 +72,8 @@ left join (
   group by le.wallet_account_id
 ) wd on wd.wallet_account_id = wa.id;
 
+drop function if exists public.claim_paystack_withdrawals(integer);
+
 create or replace function public.claim_paystack_withdrawals(
   p_limit integer default 10
 )

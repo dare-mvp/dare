@@ -95,6 +95,27 @@ export type MarkAllNotificationsReadResponse = {
   updatedCount: number;
 };
 
+export type RegisterPushTokenPayload = {
+  appVersion?: string;
+  deviceId?: string;
+  expoPushToken: string;
+  platform: 'android' | 'ios' | 'unknown' | 'web';
+};
+
+export type RegisterPushTokenResponse = {
+  enabled: boolean;
+  platform: RegisterPushTokenPayload['platform'];
+  pushTokenId: string;
+};
+
+export type RevokePushTokenPayload = {
+  expoPushToken: string;
+};
+
+export type RevokePushTokenResponse = {
+  revoked: boolean;
+};
+
 export type InitializeDepositPayload = {
   amount: number;
   currency: 'NGN';
@@ -428,6 +449,21 @@ export function markAllNotificationsRead() {
     {},
     'notifications-read-all',
   );
+}
+
+export function registerPushToken(payload: RegisterPushTokenPayload) {
+  return postAction<RegisterPushTokenResponse, RegisterPushTokenPayload>(
+    '/devices/push-token',
+    payload,
+    'push-token-register',
+  );
+}
+
+export function revokePushToken(payload: RevokePushTokenPayload) {
+  return callAction<RevokePushTokenResponse>('/devices/push-token', {
+    body: createActionEnvelope(payload),
+    method: 'DELETE',
+  });
 }
 
 export function initializeDeposit(payload: InitializeDepositPayload) {

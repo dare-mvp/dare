@@ -13,6 +13,9 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+dare-mobile-firebase-key.json
+*-service-account.json
+firebase-service-account*.json
 *.p8
 *.p12
 *.key

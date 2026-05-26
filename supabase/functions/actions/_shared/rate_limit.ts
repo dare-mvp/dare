@@ -33,6 +33,9 @@ const RATE_LIMITS: Record<string, RateLimitRule[]> = {
   "POST /court/*/messages": [
     { scope: "court_chat:minute", limit: 20, windowSeconds: 60 },
   ],
+  "POST /devices/push-token": [
+    { scope: "push_token_register:minute", limit: 10, windowSeconds: 60 },
+  ],
   "POST /wallet/deposits/init": [
     { scope: "deposit_init:hour", limit: 5, windowSeconds: 3_600 },
     { scope: "deposit_init:day", limit: 10, windowSeconds: 86_400 },
