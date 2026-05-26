@@ -15,13 +15,17 @@ export async function joinWaitlist(
     .trim()
     .toLowerCase();
   const role = String(formData.get('role') ?? '').trim() || null;
+  const country = String(formData.get('country') ?? '').trim() || null;
+  const phone = String(formData.get('phone') ?? '').trim() || null;
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: 'invalid_email' };
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from('marketing_waitlist').insert({ email, role });
+  const { error } = await admin
+    .from('marketing_waitlist')
+    .insert({ email, role, country, phone });
 
   if (error?.code === '23505') return { error: 'duplicate' };
   if (error) return { error: 'unknown' };
