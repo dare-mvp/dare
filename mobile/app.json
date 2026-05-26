@@ -7,13 +7,19 @@
     "icon": "./assets/icon.png",
     "scheme": "dare",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050509"
+    },
     "ios": {
       "bundleIdentifier": "com.dareapp.mobile",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#101416",
+        "backgroundColor": "#050509",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -35,7 +41,8 @@
       [
         "expo-notifications",
         {
-          "color": "#F97316",
+          "color": "#FF5500",
+          "icon": "./assets/notification-icon.png",
           "defaultChannel": "dare-alerts"
         }
       ]
