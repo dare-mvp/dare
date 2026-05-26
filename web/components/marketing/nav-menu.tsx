@@ -39,10 +39,10 @@ export function NavMenu() {
         ))}
       </nav>
 
-      {/* Mobile hamburger */}
+      {/* Mobile hamburger — ml-auto pushes it to the far right of the header */}
       <button
         type="button"
-        className="md:hidden rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+        className="md:hidden ml-auto rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Close menu' : 'Open menu'}
         aria-expanded={open}

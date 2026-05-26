@@ -33,7 +33,7 @@ const TRUST_BADGES = [
 
 export function TrustSafetySection() {
   return (
-    <section id="trust-safety" className="bg-brand-surface px-6 py-24">
+    <section id="trust-safety" className="scroll-mt-14 bg-brand-surface px-6 py-24">
       <div className="mx-auto max-w-5xl">
         <div className="mb-14 text-center">
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">

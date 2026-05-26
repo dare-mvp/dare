@@ -4,6 +4,7 @@ import { GameplayPreviewSection } from '@/components/marketing/gameplay-preview-
 import { HowItWorksSection } from '@/components/marketing/how-it-works-section';
 import { CategoriesSection } from '@/components/marketing/categories-section';
 import { TrustSafetySection } from '@/components/marketing/trust-safety-section';
+import { DownloadSection } from '@/components/marketing/download-section';
 import { WaitlistSection } from '@/components/marketing/waitlist-section';
 import { FaqSection } from '@/components/marketing/faq-section';
 import { BlogPreviewSection } from '@/components/marketing/blog-preview-section';
@@ -18,6 +19,7 @@ export default function LandingPage() {
       <HowItWorksSection />
       <CategoriesSection />
       <TrustSafetySection />
+      <DownloadSection />
       <WaitlistSection />
       <FaqSection preview />
       <BlogPreviewSection />

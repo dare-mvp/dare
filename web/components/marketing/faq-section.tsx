@@ -21,7 +21,7 @@ export function FaqSection({ preview = false }: { preview?: boolean }) {
   const items = preview ? filtered.slice(0, 5) : filtered;
 
   return (
-    <section id="faq" className="bg-brand-bg px-6 py-24">
+    <section id="faq" className="scroll-mt-14 bg-brand-bg px-6 py-24">
       <div className="mx-auto max-w-3xl">
         <div className="mb-10 text-center">
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">

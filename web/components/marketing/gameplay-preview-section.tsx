@@ -144,10 +144,10 @@ export function GameplayPreviewSection() {
   const screen = GAMEPLAY_SCREENS[activeIndex];
 
   return (
-    <section id="gameplay-preview" className="overflow-hidden bg-brand-bg px-6 py-20">
-      <div className="mx-auto grid max-w-6xl items-start gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:gap-14">
+    <section id="gameplay-preview" className="scroll-mt-20 overflow-hidden bg-brand-bg px-6 py-16">
+      <div className="mx-auto grid max-w-6xl items-start gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:gap-x-10 lg:gap-y-7">
         {/* Left: copy */}
-        <div className="space-y-8 lg:col-start-1 lg:row-start-1">
+        <div className="space-y-5 lg:col-start-1 lg:row-start-1">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-lg border border-brand-primary/30 bg-brand-primary/10 px-3 py-1.5 font-mono text-xs text-brand-primary">
               <Flame className="h-3.5 w-3.5" />
@@ -166,7 +166,7 @@ export function GameplayPreviewSection() {
         </div>
 
         {/* Right: interactive phone preview */}
-        <div className="relative mx-auto w-full max-w-[360px] lg:col-start-2 lg:row-start-1">
+        <div className="relative mx-auto w-full max-w-[360px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mx-0">
           <div aria-hidden className="absolute -left-10 top-16 h-32 w-32 rounded-full border border-brand-primary/20" />
           <div aria-hidden className="absolute -right-8 bottom-14 h-24 w-24 rounded-full border border-[#2DD4BF]/20" />
 
@@ -179,7 +179,7 @@ export function GameplayPreviewSection() {
                 data-active={i === activeIndex}
                 aria-label={`Show ${label} stage`}
                 onClick={() => selectTab(i)}
-                className={`flex-1 rounded-lg py-1.5 font-mono text-[11px] transition-all ${
+                className={`flex-1 min-h-[44px] rounded-lg px-1 py-2 font-mono text-[11px] transition-all ${
                   i === activeIndex
                     ? 'bg-brand-primary text-white shadow-sm'
                     : 'bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10'
@@ -210,7 +210,7 @@ export function GameplayPreviewSection() {
               onClick={() => setPaused(false)}
               className="mt-3 w-full text-center font-mono text-[11px] text-muted-foreground hover:text-brand-primary transition-colors"
             >
-              ▶ Resume auto-play
+              Resume auto-play
             </button>
           )}
         </div>
@@ -236,7 +236,7 @@ export function GameplayPreviewSection() {
         </div>
 
         {/* Scroll strip */}
-        <div className="lg:col-span-2">
+        <div className="mt-2 lg:col-span-2 lg:mt-4">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase text-brand-primary">All four stages</p>

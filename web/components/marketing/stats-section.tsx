@@ -1,14 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { TrendingUp, Users, Zap, Shield } from 'lucide-react';
-
-const STATS = [
-  { label: 'DAREs created', value: 12400, suffix: '+', prefix: '', icon: Zap },
-  { label: 'Active players', value: 8500, suffix: '+', prefix: '', icon: Users },
-  { label: 'In escrow today', value: 25, suffix: 'M+', prefix: 'NGN ', icon: Shield },
-  { label: 'Payout rate', value: 99.2, suffix: '%', prefix: '', icon: TrendingUp },
-];
+import { MARKETING_STATS } from '@/lib/marketing-stats';
 
 function CountUp({
   target,
@@ -68,7 +61,7 @@ export function StatsSection() {
     <section className="border-y border-white/8 bg-brand-surface px-6 py-16">
       <div className="mx-auto max-w-5xl">
         <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-          {STATS.map((stat) => (
+          {MARKETING_STATS.map((stat) => (
             <div key={stat.label} className="space-y-3 text-center">
               <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
                 <stat.icon className="h-6 w-6" />

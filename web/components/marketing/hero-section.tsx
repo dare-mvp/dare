@@ -1,10 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-
-const HERO_STATS = [
-  { value: '12,400+', label: 'DAREs created' },
-  { value: '8,500+', label: 'Active players' },
-  { value: 'NGN 25M+', label: 'In escrow' },
-];
+import { HERO_STATS } from '@/lib/marketing-stats';
 
 export function HeroSection() {
   return (
@@ -15,10 +10,7 @@ export function HeroSection() {
       </div>
 
       {/* Grid pattern overlay */}
-      <div
-        aria-hidden
-        className="hero-grid-bg pointer-events-none absolute inset-0 opacity-[0.03]"
-      />
+      <div aria-hidden className="hero-grid-bg pointer-events-none absolute inset-0 opacity-[0.03]" />
 
       {/* Top edge accent */}
       <div
@@ -44,8 +36,8 @@ export function HeroSection() {
         </h1>
 
         <p className="mx-auto max-w-xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-          DARE lets you challenge friends to real-money skill competitions, verified on-chain and
-          settled in minutes. Your proof. Your prize.
+          DARE lets you challenge friends to real-money skill competitions, verified and settled in
+          minutes. Your proof. Your prize.
         </p>
 
         {/* CTAs */}
@@ -64,16 +56,18 @@ export function HeroSection() {
           </a>
         </div>
 
-        {/* Social proof stats */}
-        <div className="flex items-center justify-center gap-6 pt-2">
+        {/* Social proof stats — responsive: 3 cols on sm+, condensed on xs */}
+        <div className="flex items-center justify-center gap-3 pt-2 sm:gap-6">
           {HERO_STATS.map((stat, i) => (
-            <div key={stat.label} className="flex items-center gap-6">
+            <div key={stat.label} className="flex items-center gap-3 sm:gap-6">
               <div className="text-center">
-                <p className="font-syne text-2xl font-extrabold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                <p className="font-syne text-lg font-extrabold text-foreground sm:text-2xl">
+                  {stat.value}
+                </p>
+                <p className="text-[10px] text-muted-foreground sm:text-xs mt-0.5">{stat.label}</p>
               </div>
               {i < HERO_STATS.length - 1 && (
-                <div className="h-8 w-px bg-white/10" aria-hidden />
+                <div className="h-7 w-px bg-white/10" aria-hidden />
               )}
             </div>
           ))}
