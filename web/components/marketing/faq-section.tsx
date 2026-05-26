@@ -6,7 +6,9 @@ import {
 } from '@/components/ui/accordion';
 import { faqItems } from '@/lib/faq-data';
 
-export function FaqSection() {
+export function FaqSection({ preview = false }: { preview?: boolean }) {
+  const items = preview ? faqItems.slice(0, 5) : faqItems;
+
   return (
     <section id="faq" className="bg-brand-bg px-6 py-24">
       <div className="mx-auto max-w-3xl">
@@ -17,7 +19,7 @@ export function FaqSection() {
         </div>
 
         <Accordion className="space-y-2">
-          {faqItems.map((item, index) => (
+          {items.map((item, index) => (
             <AccordionItem
               key={index}
               value={`item-${index}`}

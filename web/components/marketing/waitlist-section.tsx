@@ -21,7 +21,7 @@ export function WaitlistSection() {
 
   if (state.ok) {
     return (
-      <section className="bg-brand-bg px-6 py-24">
+      <section className="bg-brand-surface px-6 py-24">
         <div className="mx-auto max-w-xl text-center">
           <h2 className="font-syne text-3xl font-extrabold text-foreground">You&apos;re on the list.</h2>
           <p className="mt-3 text-muted-foreground">We&apos;ll reach out when DARE opens to your region.</p>
@@ -31,14 +31,14 @@ export function WaitlistSection() {
   }
 
   return (
-    <section id="waitlist" className="bg-brand-bg px-6 py-24">
+    <section id="waitlist" className="bg-brand-surface px-6 py-24">
       <div className="mx-auto max-w-xl space-y-8">
         <div className="text-center">
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
-            Join the waitlist
+            Be first in.
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Not ready to install yet? Stay in the loop for launch updates.
+            Sign up to get early access and launch updates.
           </p>
         </div>
 
@@ -60,6 +60,7 @@ export function WaitlistSection() {
             <select
               id="waitlist-role"
               name="role"
+              title="Select your role"
               disabled={pending}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
@@ -78,7 +79,7 @@ export function WaitlistSection() {
             <p className="text-sm text-destructive">Enter a valid email address.</p>
           )}
           {state.error === 'unknown' && (
-            <p className="text-sm text-destructive">Something went wrong. Please try again.</p>
+            <p className="text-sm text-destructive">Something went wrong. Try again.</p>
           )}
 
           <Button

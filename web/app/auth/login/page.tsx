@@ -28,7 +28,11 @@ export default function LoginPage() {
 
     if (error) {
       setState('error');
-      setErrorMessage(error.message);
+      setErrorMessage(
+        error.message === 'Invalid login credentials'
+          ? 'Incorrect email or password'
+          : error.message,
+      );
       return;
     }
 

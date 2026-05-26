@@ -22,7 +22,7 @@ npx create-next-app@latest web \
 cd web
 ```
 
-The target runtime is Next.js 15. After scaffolding, verify `package.json` uses `next@15.x`. If `create-next-app@latest` installs a newer major version, pin `next` back to the latest Next 15 release before continuing.
+The target runtime is Next.js 16. After scaffolding, verify `package.json` uses `next@16.x`. If `create-next-app@latest` installs a newer major version, pin `next` back to the latest Next 16 release before continuing.
 
 ### Additional packages
 
@@ -258,13 +258,13 @@ export async function updateSession(request: NextRequest) {
 }
 ```
 
-### `middleware.ts` (root)
+### `proxy.ts` (root)
 
 ```ts
 import { type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 

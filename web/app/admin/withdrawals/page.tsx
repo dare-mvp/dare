@@ -1,33 +1,18 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { approveWithdrawal, rejectWithdrawal } from '@/app/admin/actions';
+import Link from 'next/link';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin-auth';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Suspense } from 'react';
+import { WithdrawalActions } from './withdrawal-actions';
 
 export const dynamic = 'force-dynamic';
 
-type Tab = 'pending' | 'approved' | 'rejected' | 'all';
+const VALID_STATUSES = ['pending', 'approved', 'rejected', 'all'] as const;
+type StatusFilter = (typeof VALID_STATUSES)[number];
 
-type Withdrawal = {
-  id: string;
-  amount: number;
-  status: string;
-  destination: { bank_name?: string; account_number?: string } | null;
-  created_at: string;
-  user_id: string;
-  profiles: { username: string }[] | null;
-};
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-400',
@@ -35,182 +20,182 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-red-500/20 text-red-400',
 };
 
-export default function WithdrawalsPage() {
-  const [tab, setTab] = useState<Tab>('pending');
-  const [rows, setRows] = useState<Withdrawal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Withdrawal | null>(null);
-  const [dialogType, setDialogType] = useState<'approve' | 'reject' | null>(null);
-  const [note, setNote] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+type WithdrawalRow = {
+  id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  bank_code: string;
+  account_number: string;
+  account_name: string;
+  requested_at: string;
+  profiles: { username: string }[] | null;
+};
 
-  useEffect(() => {
-    const supabase = createClient();
-    setLoading(true);
-    const query = supabase
-      .from('withdrawal_requests')
-      .select('id, amount, status, destination, created_at, user_id, profiles(username)')
-      .order('created_at', { ascending: false })
-      .limit(50);
+async function WithdrawalsTable({
+  status,
+  page,
+  pageSize,
+}: {
+  status: StatusFilter;
+  page: number;
+  pageSize: number;
+}) {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-    if (tab !== 'all') query.eq('status', tab);
+  let query = admin
+    .from('withdrawal_requests')
+    .select(
+      'id, status, amount, currency, bank_code, account_number, account_name, requested_at, profiles!inner(username)',
+    )
+    .order('requested_at', { ascending: false })
+    .range(from, to);
 
-    query.then(({ data }) => {
-      setRows((data as Withdrawal[]) ?? []);
-      setLoading(false);
-    });
-  }, [tab]);
+  if (status !== 'all') {
+    query = query.eq('status', status);
+  }
 
-  async function handleAction() {
-    if (!selected || !dialogType) return;
-    if (note.trim().length < 5) {
-      setError('Note must be at least 5 characters.');
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      if (dialogType === 'approve') await approveWithdrawal(selected.id, note.trim());
-      else await rejectWithdrawal(selected.id, note.trim());
-      setSelected(null);
-      setDialogType(null);
-      setNote('');
-      setRows((prev) => prev.filter((r) => r.id !== selected.id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed.');
-    } finally {
-      setSubmitting(false);
-    }
+  const { data } = await query;
+  const rows = (data as WithdrawalRow[]) ?? [];
+
+  const prevHref = `/admin/withdrawals?status=${status}&page=${page - 1}&pageSize=${pageSize}`;
+  const nextHref = `/admin/withdrawals?status=${status}&page=${page + 1}&pageSize=${pageSize}`;
+  const hasMore = rows.length >= pageSize;
+
+  const pagination = (
+    <div className="flex items-center gap-3 p-4 text-sm text-muted-foreground">
+      {page <= 1 ? (
+        <Button variant="outline" size="sm" disabled>
+          Previous
+        </Button>
+      ) : (
+        <Link href={prevHref} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          Previous
+        </Link>
+      )}
+      <span>Page {page}</span>
+      {hasMore ? (
+        <Link href={nextHref} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          Next
+        </Link>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          Next
+        </Button>
+      )}
+    </div>
+  );
+
+  if (rows.length === 0) {
+    return (
+      <>
+        <div className="px-6 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No withdrawals in this status.</p>
+        </div>
+        {pagination}
+      </>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList className="bg-brand-surface">
-          {(['pending', 'approved', 'rejected', 'all'] as Tab[]).map((t) => (
-            <TabsTrigger key={t} value={t} className="capitalize">
-              {t}
-            </TabsTrigger>
+    <>
+      <table className="w-full text-sm">
+        <thead className="border-b border-white/8 text-muted-foreground">
+          <tr>
+            <th className="px-4 py-3 text-left font-medium">Username</th>
+            <th className="px-4 py-3 text-left font-medium">Amount (NGN)</th>
+            <th className="px-4 py-3 text-left font-medium">Bank code</th>
+            <th className="px-4 py-3 text-left font-medium">Account number</th>
+            <th className="px-4 py-3 text-left font-medium">Account name</th>
+            <th className="px-4 py-3 text-left font-medium">Status</th>
+            <th className="px-4 py-3 text-left font-medium">Requested</th>
+            <th className="px-4 py-3 text-left font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td className="px-4 py-3 font-medium text-foreground">
+                {row.profiles?.[0]?.username ?? '—'}
+              </td>
+              <td className="px-4 py-3 text-foreground">
+                ₦{(row.amount / 100).toLocaleString('en-NG')}
+              </td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.bank_code}</td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                {row.account_number}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">{row.account_name}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-xs font-medium ${STATUS_BADGE[row.status] ?? 'bg-white/10 text-muted-foreground'}`}
+                >
+                  {row.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                {new Date(row.requested_at).toLocaleDateString('en-NG')}
+              </td>
+              <td className="px-4 py-3">
+                {row.status === 'pending' && <WithdrawalActions id={row.id} />}
+              </td>
+            </tr>
           ))}
-        </TabsList>
-      </Tabs>
+        </tbody>
+      </table>
+      {pagination}
+    </>
+  );
+}
 
-      <div className="rounded-xl border border-white/8 bg-brand-surface overflow-hidden">
-        {loading ? (
-          <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-muted-foreground">No withdrawals found.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b border-white/8 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Username</th>
-                <th className="px-4 py-3 text-left font-medium">Amount (NGN)</th>
-                <th className="px-4 py-3 text-left font-medium">Bank</th>
-                <th className="px-4 py-3 text-left font-medium">Account</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Requested</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-3 font-medium text-foreground">
-                    {row.profiles?.[0]?.username ?? row.user_id.slice(0, 8)}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">
-                    ₦{(row.amount / 100).toLocaleString('en-NG')}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {row.destination?.bank_name ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {row.destination?.account_number ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-xs font-medium ${STATUS_BADGE[row.status] ?? ''}`}
-                    >
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {new Date(row.created_at).toLocaleDateString('en-NG')}
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-green-500/30 text-green-400 hover:bg-green-500/10"
-                          onClick={() => {
-                            setSelected(row);
-                            setDialogType('approve');
-                            setNote('');
-                            setError('');
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                          onClick={() => {
-                            setSelected(row);
-                            setDialogType('reject');
-                            setNote('');
-                            setError('');
-                          }}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 px-4 py-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full rounded-lg bg-white/5" />
+      ))}
+    </div>
+  );
+}
+
+export default async function WithdrawalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; page?: string; pageSize?: string }>;
+}) {
+  const { status: rawStatus, page: rawPage, pageSize: rawPageSize } = await searchParams;
+  const status: StatusFilter = VALID_STATUSES.includes(rawStatus as StatusFilter)
+    ? (rawStatus as StatusFilter)
+    : 'pending';
+  const page = Math.max(1, Number(rawPage ?? 1));
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(rawPageSize ?? DEFAULT_PAGE_SIZE)));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-1 rounded-lg bg-brand-surface p-1 w-fit">
+        {VALID_STATUSES.map((s) => (
+          <Link
+            key={s}
+            href={`/admin/withdrawals?status=${s}&page=1&pageSize=${pageSize}`}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              status === s
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {s}
+          </Link>
+        ))}
       </div>
 
-      <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setDialogType(null); }}>
-        <DialogContent className="border-white/8 bg-brand-surface">
-          <DialogHeader>
-            <DialogTitle className="font-syne text-foreground">
-              {dialogType === 'approve' ? 'Approve' : 'Reject'} withdrawal
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Label htmlFor="admin-note">Admin note (required, min 5 characters)</Label>
-            <textarea
-              id="admin-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Reason for this decision…"
-            />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelected(null); setDialogType(null); }}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAction}
-              disabled={submitting}
-              className={dialogType === 'approve' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
-            >
-              {submitting ? 'Saving…' : dialogType === 'approve' ? 'Confirm approve' : 'Confirm reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="rounded-xl border border-white/8 bg-brand-surface overflow-hidden">
+        <Suspense fallback={<TableSkeleton />}>
+          <WithdrawalsTable status={status} page={page} pageSize={pageSize} />
+        </Suspense>
+      </div>
     </div>
   );
 }

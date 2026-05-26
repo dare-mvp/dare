@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex min-h-screen items-center justify-center bg-brand-bg px-6">
           <div className="text-center space-y-2">
             <h1 className="font-syne text-3xl font-extrabold text-foreground">403 Forbidden</h1>
-            <p className="text-muted-foreground">You do not have admin access.</p>
+            <p className="text-muted-foreground">Access denied. This account does not have admin privileges.</p>
           </div>
         </div>
       );

@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { href: '/admin', label: 'Dashboard', exact: true },
-  { href: '/admin/withdrawals', label: 'Withdrawals' },
-  { href: '/admin/kyc', label: 'KYC Review' },
-  { href: '/admin/users', label: 'Users' },
-  { href: '/admin/jury', label: 'Jury' },
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowDownCircle },
+  { href: '/admin/kyc', label: 'KYC', icon: UserCheck },
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/jury', label: 'Jury', icon: Gavel },
 ];
 
 export function AdminSidebar() {
@@ -33,12 +34,13 @@ export function AdminSidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    'block rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                     isActive
-                      ? 'bg-brand-primary/15 font-semibold text-brand-primary'
+                      ? 'border-l-2 border-brand-primary bg-brand-primary/10 pl-[10px] font-semibold text-brand-primary'
                       : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
                   )}
                 >
+                  <item.icon className="h-4 w-4 shrink-0" />
                   {item.label}
                 </Link>
               </li>

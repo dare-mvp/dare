@@ -1,21 +1,23 @@
+import { Scale, Lock, Shield } from 'lucide-react';
+
 const PILLARS = [
   {
-    icon: '⚖️',
-    title: 'Skill-based Predominance Test',
+    icon: Scale,
+    title: 'Skill Wins Here',
     description:
-      'Every challenge category passes the Predominance Test — skill, not chance, determines the outcome. DARE is a skill platform, not a gambling product.',
+      'The Predominance Test: outcomes decided by player skill, not chance.',
   },
   {
-    icon: '🔒',
-    title: 'Escrow-protected funds',
+    icon: Lock,
+    title: 'Funds in Escrow',
     description:
-      'Wager amounts are locked in escrow before any challenge begins. Neither player can withdraw until settlement. Powered by Paystack.',
+      'Money is locked the moment a DARE is accepted, released only on settlement.',
   },
   {
-    icon: '🪪',
-    title: 'KYC and responsible gaming',
+    icon: Shield,
+    title: 'Responsible Gaming',
     description:
-      'Identity verification is required above threshold stakes. Daily deposit limits, self-exclusion, and cooling-off periods are built in.',
+      'Identity verified, deposit limits enforced, self-exclusion available.',
   },
 ];
 
@@ -38,9 +40,7 @@ export function TrustSafetySection() {
               key={pillar.title}
               className="rounded-xl border border-white/8 bg-brand-bg p-6 space-y-3"
             >
-              <span className="text-3xl" role="img" aria-hidden>
-                {pillar.icon}
-              </span>
+              <pillar.icon className="h-8 w-8 text-brand-primary" />
               <h3 className="font-syne text-lg font-extrabold text-foreground">{pillar.title}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">{pillar.description}</p>
             </div>

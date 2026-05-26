@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { freezeUser } from '@/app/admin/actions';
+import { freezeUserAction } from '@/app/admin/actions';
 
 export function FreezeUserButton({ userId, username }: { userId: string; username: string }) {
   const [open, setOpen] = useState(false);
@@ -26,7 +26,7 @@ export function FreezeUserButton({ userId, username }: { userId: string; usernam
     setSubmitting(true);
     setError('');
     try {
-      await freezeUser(userId, note.trim());
+      await freezeUserAction(userId, note.trim());
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Freeze failed.');

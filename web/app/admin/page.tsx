@@ -1,8 +1,18 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/admin-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
+
+function timeAgo(iso: string): string {
+  const seconds = Math.floor((Date.now() - Date.parse(iso)) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 async function getDashboardStats() {
   const admin = createAdminClient();
@@ -19,14 +29,14 @@ async function getDashboardStats() {
     admin
       .from('jury_cases')
       .select('id', { count: 'exact', head: true })
-      .in('status', ['open', 'jury_voting', 'escalated']),
+      .in('status', ['filed', 'accepted_for_review', 'jury_assignment', 'jury_voting', 'escalated']),
     admin
       .from('profiles')
       .select('id', { count: 'exact', head: true })
       .eq('account_status', 'frozen'),
     admin
       .from('audit_logs')
-      .select('id, action, actor_id, created_at, metadata')
+      .select('id, action, actor_user_id, actor_type, target_type, target_id, created_at, metadata')
       .order('created_at', { ascending: false })
       .limit(20),
   ]);
@@ -47,7 +57,18 @@ const STAT_CARDS = [
   { key: 'frozenAccounts', label: 'Frozen accounts', href: '/admin/users' },
 ] as const;
 
+type ActivityRow = {
+  id: string;
+  action: string;
+  actor_user_id: string | null;
+  actor_type: string;
+  target_type: string;
+  target_id: string | null;
+  created_at: string;
+};
+
 export default async function AdminDashboardPage() {
+  await requireAdmin();
   const stats = await getDashboardStats();
 
   return (
@@ -75,28 +96,38 @@ export default async function AdminDashboardPage() {
         <div className="border-b border-white/8 px-6 py-4">
           <h2 className="font-syne text-lg font-extrabold text-foreground">Recent activity</h2>
         </div>
-        <div className="divide-y divide-white/5">
-          {stats.recentActivity.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-muted-foreground">No recent activity.</p>
-          ) : (
-            stats.recentActivity.map((row: { id: string; action: string; actor_id: string | null; created_at: string }) => (
-              <div key={row.id} className="flex items-center justify-between px-6 py-3">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{row.action}</p>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {row.actor_id ? row.actor_id.slice(0, 8) : 'system'}
-                  </p>
-                </div>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {new Date(row.created_at).toLocaleString('en-NG', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+        {stats.recentActivity.length === 0 ? (
+          <p className="px-6 py-8 text-sm text-muted-foreground">No recent activity.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-white/8 text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium">Timestamp</th>
+                <th className="px-4 py-3 text-left font-medium">Action</th>
+                <th className="px-4 py-3 text-left font-medium">Actor</th>
+                <th className="px-4 py-3 text-left font-medium">Target</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {(stats.recentActivity as ActivityRow[]).map((row) => (
+                <tr key={row.id}>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                    {timeAgo(row.created_at)}
+                  </td>
+                  <td className="px-4 py-3 text-foreground">{row.action}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {row.actor_user_id ? `${row.actor_user_id.slice(0, 8)}` : 'system'}
+                    <span className="ml-1 opacity-60">({row.actor_type})</span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {row.target_type}
+                    {row.target_id ? `:${row.target_id.slice(0, 8)}` : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

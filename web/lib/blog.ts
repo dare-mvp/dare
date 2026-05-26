@@ -1,21 +1,42 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import matter from 'gray-matter';
 
 const BLOG_DIR = path.join(process.cwd(), 'content', 'blog');
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_PATTERN = /^[a-z0-9-]+$/;
 
-export type BlogPost = {
-  slug: string;
+export type BlogFrontmatter = {
   title: string;
   date: string;
   excerpt: string;
+  image?: string;
+  author: string;
   category?: string;
-  author?: string;
-  source: string;
 };
 
-export type BlogPostMeta = Omit<BlogPost, 'source'>;
+export type BlogPostPreview = BlogFrontmatter & {
+  slug: string;
+};
+
+function assertFrontmatter(data: Record<string, unknown>, slug: string): BlogFrontmatter {
+  if (
+    typeof data.title !== 'string' ||
+    typeof data.date !== 'string' ||
+    typeof data.excerpt !== 'string' ||
+    typeof data.author !== 'string'
+  ) {
+    throw new Error(`Invalid blog frontmatter for ${slug}`);
+  }
+
+  return {
+    title: data.title,
+    date: data.date,
+    excerpt: data.excerpt,
+    author: data.author,
+    image: typeof data.image === 'string' ? data.image : undefined,
+    category: typeof data.category === 'string' ? data.category : undefined,
+  };
+}
 
 export async function getBlogSlugs(): Promise<string[]> {
   let files: string[];
@@ -25,36 +46,39 @@ export async function getBlogSlugs(): Promise<string[]> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
     throw error;
   }
+
   return files
-    .filter((f) => f.endsWith('.mdx'))
-    .map((f) => f.replace(/\.mdx$/, ''))
-    .filter((s) => SLUG_PATTERN.test(s));
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => file.replace(/\.mdx$/, ''))
+    .filter((slug) => SLUG_PATTERN.test(slug));
 }
 
-export async function getBlogPost(slug: string): Promise<BlogPost> {
-  if (!SLUG_PATTERN.test(slug)) throw new Error('INVALID_SLUG');
-  const filePath = path.join(BLOG_DIR, `${slug}.mdx`);
-  const raw = await fs.readFile(filePath, 'utf8');
-  const { data, content } = matter(raw);
+export async function getBlogPost(slug: string): Promise<{
+  slug: string;
+  frontmatter: BlogFrontmatter;
+  source: string;
+}> {
+  if (!SLUG_PATTERN.test(slug)) throw new Error('Invalid blog slug');
+  const source = await fs.readFile(path.join(BLOG_DIR, `${slug}.mdx`), 'utf8');
+  const parsed = matter(source);
   return {
     slug,
-    title: String(data.title ?? slug),
-    date: String(data.date ?? ''),
-    excerpt: String(data.excerpt ?? ''),
-    category: data.category ? String(data.category) : undefined,
-    author: data.author ? String(data.author) : undefined,
-    source: content,
+    frontmatter: assertFrontmatter(parsed.data, slug),
+    source: parsed.content,
   };
 }
 
-export async function getAllBlogPosts(): Promise<BlogPostMeta[]> {
+export async function getAllBlogPosts(): Promise<BlogPostPreview[]> {
   const slugs = await getBlogSlugs();
   const posts = await Promise.all(
     slugs.map(async (slug) => {
-      const post = await getBlogPost(slug);
-      const { source: _source, ...meta } = post;
-      return meta;
+      const { frontmatter } = await getBlogPost(slug);
+      return { slug, ...frontmatter };
     }),
   );
-  return posts.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return posts.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+}
+
+export async function getLatestBlogPosts(limit = 3): Promise<BlogPostPreview[]> {
+  return (await getAllBlogPosts()).slice(0, limit);
 }

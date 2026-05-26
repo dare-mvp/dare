@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 export function HeroSection() {
   return (
     <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden bg-brand-bg px-6 text-center">
@@ -34,12 +32,12 @@ export function HeroSection() {
           >
             Download APK
           </a>
-          <Link
-            href="#how-it-works"
+          <a
+            href="#"
             className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-8 font-semibold text-foreground transition-colors hover:bg-white/10"
           >
-            How it works
-          </Link>
+            iOS TestFlight
+          </a>
         </div>
       </div>
     </section>
