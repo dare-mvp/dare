@@ -1,0 +1,8 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="320" rx="32" fill="#050509"/>
+  <g transform="translate(88 64) scale(4)">
+    <path fill="#FF5500" d="M6 6h18.6C34.4 6 42 13.9 42 24s-7.6 18-17.4 18H6V6Zm10.2 9.3v17.4h7.9c4.8 0 8-3.5 8-8.7s-3.2-8.7-8-8.7h-7.9Z"/>
+    <path fill="#050509" d="M31.7 8.4 16.1 26h8.1l-5 13.6 15.9-18.3h-8.4l5-12.9Z"/>
+  </g>
+  <text x="334" y="204" fill="#F5F5F5" font-family="Syne, Arial Black, Arial, sans-serif" font-size="152" font-weight="800" letter-spacing="0">DARE</text>
+</svg>
