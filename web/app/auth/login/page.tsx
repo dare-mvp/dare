@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { DareLogo } from '@/components/brand/dare-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,7 +45,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg px-4">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1">
+        <div className="space-y-3">
+          <DareLogo size="lg" />
           <h1 className="font-syne text-2xl font-extrabold text-foreground">Admin Sign In</h1>
           <p className="text-sm text-muted-foreground">DARE internal dashboard</p>
         </div>
@@ -83,7 +85,7 @@ export default function LoginPage() {
             className="w-full bg-brand-primary text-white hover:opacity-90"
             disabled={state === 'loading' || state === 'success'}
           >
-            {state === 'loading' ? 'Signing in…' : state === 'success' ? 'Redirecting…' : 'Sign in'}
+            {state === 'loading' ? 'Signing in...' : state === 'success' ? 'Redirecting...' : 'Sign in'}
           </Button>
         </form>
       </div>

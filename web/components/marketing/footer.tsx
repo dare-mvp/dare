@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DareLogo } from '@/components/brand/dare-logo';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -24,7 +25,7 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-5xl">
         <div className="grid gap-10 sm:grid-cols-4">
           <div className="space-y-2">
-            <span className="font-syne text-xl font-extrabold text-foreground">DARE</span>
+            <DareLogo size="md" />
             <p className="text-sm text-muted-foreground leading-relaxed">
               The hyper-local P2P skill wagering platform for Africa.
             </p>
@@ -89,7 +90,7 @@ export function MarketingFooter() {
             DARE is a skill-based challenges platform. Outcomes are determined by player performance,
             not chance. Available to users 18 and over in supported regions.
           </p>
-          <p className="mt-3">© {new Date().getFullYear()} DARE. All rights reserved.</p>
+          <p className="mt-3">&copy; {new Date().getFullYear()} DARE. All rights reserved.</p>
         </div>
       </div>
     </footer>

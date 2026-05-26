@@ -17,6 +17,10 @@ Logo files:
 - `web/public/brand/dare-mark.svg` - square app mark for icons, favicons, compact nav, social avatars.
 - `web/public/brand/dare-lockup.svg` - full lockup for marketing, app stores, investor decks, and social headers.
 - `web/public/brand/dare-wordmark.svg` - wordmark-only fallback when the mark is already nearby.
+- `web/app/favicon.ico` - browser favicon endpoint for legacy and default browser requests.
+- `web/app/icon.svg` - Next.js app icon route for browser tabs and metadata.
+- `web/public/apple-touch-icon.png` - Apple home-screen/bookmark icon.
+- `web/public/brand/dare-icon-192.png` and `web/public/brand/dare-icon-512.png` - installable app manifest icons.
 - `web/components/brand/dare-logo.tsx` - reusable in-app React logo component.
 
 ### Preferred Use
