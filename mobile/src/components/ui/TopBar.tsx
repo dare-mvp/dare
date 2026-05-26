@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Bell, Plus } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DareLogo } from '../brand/DareLogo';
 import { colors, fonts, radius, spacing, typography } from '../../theme/tokens';
 
 type TopBarProps = {
@@ -18,11 +19,8 @@ export function TopBar({ balanceLabel, displayInitial, subtitle, title }: TopBar
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View style={styles.brand}>
-          <View style={styles.mark}>
-            <Text style={styles.markText}>D</Text>
-          </View>
+          <DareLogo size="sm" />
           <View style={styles.brandCopy}>
-            <Text numberOfLines={1} style={styles.wordmark}>DARE</Text>
             <Text numberOfLines={1} style={styles.subtitle}>{subtitle}</Text>
           </View>
         </View>
@@ -96,30 +94,6 @@ const styles = StyleSheet.create({
   brandCopy: {
     flex: 1,
     minWidth: 0,
-  },
-  mark: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 9,
-    height: 34,
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    width: 34,
-  },
-  markText: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  wordmark: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0,
   },
   subtitle: {
     color: colors.textMuted,

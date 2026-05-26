@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { DareLogo } from '../../../components/brand/DareLogo';
 import { Screen } from '../../../components/ui/Screen';
 import { colors, fonts, spacing, typography } from '../../../theme/tokens';
 
@@ -17,11 +18,8 @@ export function AuthFrame({ children, eyebrow, footer, subtitle, title }: AuthFr
     <Screen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.brand}>
-          <View style={styles.mark}>
-            <Text style={styles.markText}>D</Text>
-          </View>
+          <DareLogo size="md" />
           <View style={styles.brandCopy}>
-            <Text style={styles.wordmark}>DARE</Text>
             <Text style={styles.brandSub}>Challenge Everything</Text>
           </View>
         </View>
@@ -51,29 +49,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing[10],
   },
-  mark: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  markText: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 18,
-    fontWeight: '900',
-  },
   brandCopy: {
     flex: 1,
     minWidth: 0,
-  },
-  wordmark: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 24,
-    fontWeight: '900',
   },
   brandSub: {
     color: colors.textMuted,
