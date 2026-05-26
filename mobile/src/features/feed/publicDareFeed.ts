@@ -1,0 +1,90 @@
+import { formatRelativeTime } from '../../lib/format/time';
+import { DareFeedItem, PlayerSummary } from './components/DareCard';
+
+export type PublicDareFeedRow = {
+  category: string;
+  challenger_trust_score: number | null;
+  challenger_username: string | null;
+  court_phase: string | null;
+  created_at: string;
+  id: string;
+  issuer_tier: string;
+  issuer_trust_score: number;
+  issuer_username: string;
+  resolution_type: string;
+  score_a?: number | null;
+  score_b?: number | null;
+  stake_amount: number;
+  status: string;
+  title: string;
+};
+
+const accentCycle: PlayerSummary['accent'][] = ['ember', 'info', 'ice', 'win'];
+
+export function mapPublicDareFeedRows(rows: PublicDareFeedRow[]): DareFeedItem[] {
+  return rows.map(mapPublicDareFeedRow);
+}
+
+export function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
+  const status = mapStatus(row.status, row.court_phase);
+  const issuer = mapPlayer(row.issuer_username, row.issuer_tier, row.issuer_trust_score, row.id);
+  const challenger = row.challenger_username
+    ? mapPlayer(row.challenger_username, 'Challenger', row.challenger_trust_score ?? 0, `${row.id}-b`)
+    : undefined;
+
+  return {
+    actionLabel: getActionLabel(status),
+    category: formatLabel(row.category),
+    createdAgo: formatRelativeTime(row.created_at),
+    id: row.id,
+    playerA: issuer,
+    playerB: challenger,
+    resolution: formatResolution(row.resolution_type),
+    scoreA: row.score_a ?? undefined,
+    scoreB: row.score_b ?? undefined,
+    stakeKobo: row.stake_amount,
+    status,
+    title: row.title,
+  };
+}
+
+function mapPlayer(username: string, tier: string, trustScore: number, seed: string): PlayerSummary {
+  return {
+    accent: accentCycle[hash(seed) % accentCycle.length] ?? 'ember',
+    name: username,
+    tier,
+    trustScore,
+  };
+}
+
+function mapStatus(status: string, courtPhase: string | null): DareFeedItem['status'] {
+  if (courtPhase === 'ready_check' || courtPhase === 'countdown') return 'live';
+  if (status === 'open') return 'open';
+  if (status === 'active') return 'active';
+  if (status === 'completed' || status === 'settled') return 'completed';
+  if (status === 'jury_open' || status === 'disputed') return 'disputed';
+  return 'completed';
+}
+
+function getActionLabel(status: DareFeedItem['status']) {
+  if (status === 'open') return 'Accept this DARE';
+  if (status === 'live') return 'Players heading to court';
+  if (status === 'active') return 'Challenge underway';
+  if (status === 'disputed') return 'Jury reviewing';
+  return 'View result';
+}
+
+function formatResolution(value: string) {
+  if (value === 'algorithmic') return 'Algorithmic';
+  if (value === 'jury') return 'Jury';
+  if (value === 'evidence') return 'Evidence';
+  return formatLabel(value);
+}
+
+function formatLabel(value: string) {
+  return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function hash(value: string) {
+  return Array.from(value).reduce((total, char) => total + char.charCodeAt(0), 0);
+}

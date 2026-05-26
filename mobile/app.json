@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "DARE",
+    "slug": "dare",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "dare",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.dareapp.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#101416",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.dareapp.mobile",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ca7ed87b-0965-4a77-9781-f6a4b9fbdab8"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#F97316",
+          "defaultChannel": "dare-alerts"
+        }
+      ]
+    ],
+    "owner": "dare-mobile-organization"
+  }
+}

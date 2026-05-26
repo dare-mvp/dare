@@ -7,8 +7,18 @@ import {
   createUserClient,
   type SupabaseActionClient,
 } from "./_shared/supabase.ts";
+import {
+  approveWithdrawal,
+  freezeUser,
+  rejectWithdrawal,
+} from "./routes/admin.ts";
 import { submitAnswer } from "./routes/answers.ts";
-import { markDareReady, recordCourtHeartbeat } from "./routes/court.ts";
+import {
+  getCurrentCourtQuestion,
+  markDareReady,
+  recordCourtHeartbeat,
+  sendCourtMessage,
+} from "./routes/court.ts";
 import { acceptDare, cancelDare, createDare } from "./routes/dares.ts";
 import { forfeitDare } from "./routes/dare_lifecycle.ts";
 import {
@@ -32,6 +42,11 @@ import {
   markNotificationRead,
 } from "./routes/notifications.ts";
 import { updateMyJuryProfile } from "./routes/profile_jury.ts";
+import {
+  flushPendingPushNotifications,
+  registerPushToken,
+  revokePushToken,
+} from "./routes/push_notifications.ts";
 import {
   selfExclude,
   updateResponsibleGamingSettings,
@@ -72,7 +87,7 @@ export function createHandler(
 
     try {
       const url = new URL(request.url);
-      return await route({
+      const context = {
         request,
         requestId,
         pathname: url.pathname,
@@ -83,7 +98,10 @@ export function createHandler(
           return factory();
         },
         paystackInitializer: dependencies.paystackInitializer,
-      });
+      };
+      const response = await route(context);
+      await maybeFlushPushNotifications(request.method, response, context);
+      return response;
     } catch (error) {
       return errorResponse(error, requestId);
     }
@@ -152,6 +170,30 @@ async function route(context: RouteContext): Promise<Response> {
     matchesPath(actionPath, ["notifications", "read-all"])
   ) {
     const result = await markAllNotificationsRead(
+      context.request,
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    matchesPath(actionPath, ["devices", "push-token"])
+  ) {
+    const result = await registerPushToken(
+      context.request,
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "DELETE" &&
+    matchesPath(actionPath, ["devices", "push-token"])
+  ) {
+    const result = await revokePushToken(
       context.request,
       context.getClient(),
       context.getServiceClient(),
@@ -267,6 +309,37 @@ async function route(context: RouteContext): Promise<Response> {
     actionPath[2] === "heartbeat"
   ) {
     const result = await recordCourtHeartbeat(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "question"
+  ) {
+    return successResponse(
+      await getCurrentCourtQuestion(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+      ),
+      context.requestId,
+    );
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "messages"
+  ) {
+    const result = await sendCourtMessage(
       context.request,
       actionPath[1],
       context.getClient(),
@@ -430,6 +503,54 @@ async function route(context: RouteContext): Promise<Response> {
     context.request.method === "POST" &&
     actionPath.length === 4 &&
     actionPath[0] === "admin" &&
+    actionPath[1] === "withdrawals" &&
+    actionPath[3] === "approve"
+  ) {
+    const result = await approveWithdrawal(
+      context.request,
+      actionPath[2],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
+    actionPath[1] === "withdrawals" &&
+    actionPath[3] === "reject"
+  ) {
+    const result = await rejectWithdrawal(
+      context.request,
+      actionPath[2],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
+    actionPath[1] === "users" &&
+    actionPath[3] === "freeze"
+  ) {
+    const result = await freezeUser(
+      context.request,
+      actionPath[2],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "admin" &&
     actionPath[1] === "jury-cases" &&
     actionPath[3] === "resolve"
   ) {
@@ -473,7 +594,7 @@ async function route(context: RouteContext): Promise<Response> {
     return successResponse(result.data, result.requestId);
   }
 
-  if (!["GET", "POST", "PATCH"].includes(context.request.method)) {
+  if (!["DELETE", "GET", "POST", "PATCH"].includes(context.request.method)) {
     throw new ActionError("METHOD_NOT_ALLOWED");
   }
 
@@ -488,4 +609,28 @@ function getActionPath(segments: string[]): string[] {
 function matchesPath(segments: string[], expected: string[]): boolean {
   return segments.length === expected.length &&
     expected.every((segment, index) => segments[index] === segment);
+}
+
+async function maybeFlushPushNotifications(
+  method: string,
+  response: Response,
+  context: RouteContext,
+): Promise<void> {
+  if (!["DELETE", "PATCH", "POST"].includes(method) || !response.ok) return;
+  if (!canAccessRuntimeEnv()) return;
+
+  try {
+    await flushPendingPushNotifications(context.getServiceClient());
+  } catch (error) {
+    console.warn("push notification flush failed", error);
+  }
+}
+
+function canAccessRuntimeEnv(): boolean {
+  try {
+    Deno.env.get("SUPABASE_URL");
+    return true;
+  } catch {
+    return false;
+  }
 }

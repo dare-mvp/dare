@@ -23,20 +23,39 @@ export async function maybeNotifyTarget(
 
 export async function insertAcceptNotification(
   serviceClient: SupabaseActionClient,
-  challengerId: string,
+  accepterId: string,
   dare: AcceptDareResponse,
 ): Promise<void> {
-  const { error } = await serviceClient.from("notifications").insert({
-    user_id: challengerId,
+  const { data: dareRow, error: dareError } = await serviceClient
+    .from<{ challenger_id: string | null; issuer_id: string; title: string }>(
+      "dares",
+    )
+    .select("issuer_id,challenger_id,title")
+    .eq("id", dare.dareId)
+    .maybeSingle();
+  if (dareError) throw mapDareQueryError(dareError);
+  if (!dareRow) return;
+
+  const participantIds = [
+    dareRow.issuer_id,
+    dareRow.challenger_id,
+  ].filter((id): id is string => Boolean(id));
+  const rows = participantIds.map((userId) => ({
+    user_id: userId,
     type: "court_starting",
-    title: "Court is ready",
-    body: "The DARE is ready for both players.",
+    title: userId === accepterId ? "Court is ready" : "Opponent accepted",
+    body: userId === accepterId
+      ? "The DARE is ready for both players."
+      : `${dareRow.title} is ready. Open the court and ready up.`,
     action: {
       type: "dare",
       dareId: dare.dareId,
       courtSessionId: dare.courtSessionId,
     },
-  });
+  }));
+
+  const { error } = await (serviceClient.from("notifications") as any)
+    .insert(rows);
   if (error) throw mapDareQueryError(error);
 }
 

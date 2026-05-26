@@ -1,0 +1,11 @@
+# Local credentials
+dare-mobile-firebase-key.json
+*-service-account.json
+firebase-service-account*.json
+dare_mobile_eas_access_token.txt
+
+# Local environment files
+.env.local
+.env*.local
+
+

@@ -62,6 +62,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "jury_assignment_not_found",
       "evidence_not_found",
       "notification_not_found",
+      "withdrawal_not_found",
     ]
       .includes(error.message ?? "")
   ) {
@@ -82,6 +83,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "question_window_closed",
       "question_not_assigned",
       "question_not_delivered",
+      "no_question_available",
       "court_still_active",
       "dispute_window_open",
       "dispute_window_closed",
@@ -107,6 +109,9 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "cooling_off_active",
       "escrow_not_found",
       "platform_wallet_not_found",
+      "invalid_admin_action",
+      "invalid_account_state",
+      "invalid_withdrawal_state",
     ].includes(
       error.message ?? "",
     )

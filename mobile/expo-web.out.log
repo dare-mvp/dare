@@ -1,0 +1,14 @@
+Starting project at C:\Users\ssadb\DARE_APP\dare\mobile
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8082
+Logs for your project will appear below.
+Web node_modules\expo-router\entry.js ▓▓▓▓░░░░░░░░░░░░ 29.0% (187/374)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓░░░░░░░░░░ 38.7% ( 376/2273)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓░░░░░░░░░░ 38.7% (1100/2324)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 65.2% (1877/2324)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 93.4% (2378/2503)
+Web Bundled 18964ms node_modules\expo-router\entry.js (2578 modules)
+ LOG  [web] Logs will appear in the browser console
+
+C:\Users\ssadb\DARE_APP\dare\mobile>
