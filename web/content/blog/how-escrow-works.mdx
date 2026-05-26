@@ -1,0 +1,48 @@
+---
+title: "How Escrow Works on DARE"
+date: "2025-11-10"
+excerpt: "Your money is safe from the moment you accept a DARE. Here's exactly how DARE's escrow system protects both players until the winner is confirmed."
+author: "DARE Team"
+category: "How it works"
+---
+
+One of the most common questions we get is: *what happens to my money after I accept a challenge?*
+
+The answer is escrow — and it's the foundation everything else on DARE is built on.
+
+## What is escrow?
+
+Escrow is a holding state where funds are locked away from both players the moment a DARE is confirmed. Neither player can access the money. It can only be released when a verified outcome is reached.
+
+Think of it as a neutral safe that only opens when the game is decided.
+
+## The escrow lifecycle on DARE
+
+### 1. Challenge created
+The challenger sets the stake amount and sends the invite. No money moves yet.
+
+### 2. Opponent accepts
+The moment your opponent taps "Accept", both players' stakes are deducted from their wallets simultaneously and held in escrow. This is irreversible. Neither player can back out without triggering a forfeit.
+
+### 3. Challenge in progress
+While the DARE is live, the escrow is frozen. No admin, no platform, no third party can touch the funds. It's yours and your opponent's — locked until the game ends.
+
+### 4. Evidence submitted
+Both players submit their proof clips or timestamps. DARE attaches geo-location data and hashes the evidence to prevent tampering.
+
+### 5. Settlement
+If evidence is clear-cut, the system auto-settles. If there's a dispute, the blind jury reviews the evidence (without seeing player identities) and renders a verdict. The winning side receives the escrow minus the platform fee. The ledger entry is permanent.
+
+## What protects the escrow?
+
+- **Database-level atomicity** — both stakes lock together or neither does. Partial locks aren't possible.
+- **Immutable ledger** — every wallet transaction is append-only. Nothing can be deleted or altered after the fact.
+- **No admin override** — DARE staff cannot unilaterally release or redirect escrow funds. Only a verified verdict can do that.
+
+## Forfeit rules
+
+If a player fails to submit evidence before the deadline, or abandons the challenge, the escrow releases to their opponent. Forfeits also reduce the forfeiting player's trust score, making it harder to find opponents for future DAREs.
+
+## The result
+
+When you accept a DARE, you know the money is safe. Your opponent knows it too. That's the foundation of trust that makes real-money skill challenges possible.

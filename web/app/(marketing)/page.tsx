@@ -1,6 +1,8 @@
 import { HeroSection } from '@/components/marketing/hero-section';
+import { StatsSection } from '@/components/marketing/stats-section';
 import { GameplayPreviewSection } from '@/components/marketing/gameplay-preview-section';
 import { HowItWorksSection } from '@/components/marketing/how-it-works-section';
+import { CategoriesSection } from '@/components/marketing/categories-section';
 import { TrustSafetySection } from '@/components/marketing/trust-safety-section';
 import { WaitlistSection } from '@/components/marketing/waitlist-section';
 import { FaqSection } from '@/components/marketing/faq-section';
@@ -11,8 +13,10 @@ export default function LandingPage() {
   return (
     <>
       <HeroSection />
+      <StatsSection />
       <GameplayPreviewSection />
       <HowItWorksSection />
+      <CategoriesSection />
       <TrustSafetySection />
       <WaitlistSection />
       <FaqSection preview />
