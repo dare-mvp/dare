@@ -81,11 +81,56 @@ export function KycDrawer({ id, username, currentTier, tierRequested, submittedA
             </div>
 
             {documents && (
-              <div className="space-y-1">
+              <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">Submitted documents</p>
-                <pre className="rounded-lg bg-brand-bg p-3 text-xs text-foreground overflow-auto max-h-48">
-                  {JSON.stringify(documents, null, 2)}
-                </pre>
+                <div className="space-y-3">
+                  {Object.entries(documents).map(([key, value]) => {
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                    const isUrl =
+                      typeof value === 'string' &&
+                      (value.startsWith('http://') || value.startsWith('https://'));
+                    const isImageUrl =
+                      isUrl &&
+                      /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value as string);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        {isImageUrl ? (
+                          <a
+                            href={value as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={value as string}
+                              alt={label}
+                              className="max-h-48 w-full rounded-lg border border-white/8 object-contain bg-brand-bg"
+                            />
+                          </a>
+                        ) : isUrl ? (
+                          <a
+                            href={value as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="break-all text-sm text-brand-primary hover:underline"
+                          >
+                            {value as string}
+                          </a>
+                        ) : (
+                          <p className="font-mono text-sm text-foreground break-all">
+                            {value === null || value === undefined
+                              ? '—'
+                              : typeof value === 'object'
+                                ? JSON.stringify(value)
+                                : String(value)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

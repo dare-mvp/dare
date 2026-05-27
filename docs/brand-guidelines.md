@@ -112,6 +112,15 @@ Avoid:
 - Crypto-first language unless the user is in a wallet or settlement context.
 - Vague AI-style claims such as "revolutionary", "seamless", or "next-gen".
 
+## Official Social Channels
+
+Use these exact handles and URLs in marketing surfaces, decks, app-store copy, and launch materials:
+
+| Channel | Handle | URL |
+| --- | --- | --- |
+| Instagram | `@dareappofficial` | `https://www.instagram.com/dareappofficial` |
+| YouTube | `@iDareUChallenge` | `https://www.youtube.com/@iDareUChallenge` |
+
 ## Product UI Rules
 
 Primary actions should use brand orange. Secondary actions should use dark surfaces with subtle borders. Destructive actions must use the blocked color and explicit confirmation.
