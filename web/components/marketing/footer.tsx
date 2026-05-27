@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Camera, Play } from 'lucide-react';
 import { DareLogo } from '@/components/brand/dare-logo';
 
 const NAV_LINKS = [
@@ -15,8 +16,18 @@ const LEGAL_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { href: '#', label: 'Twitter / X' },
-  { href: '#', label: 'Instagram' },
+  {
+    href: 'https://www.instagram.com/dareappofficial',
+    label: 'Instagram',
+    handle: '@dareappofficial',
+    Icon: Camera,
+  },
+  {
+    href: 'https://www.youtube.com/@iDareUChallenge',
+    label: 'YouTube',
+    handle: '@iDareUChallenge',
+    Icon: Play,
+  },
 ];
 
 export function MarketingFooter() {
@@ -74,11 +85,13 @@ export function MarketingFooter() {
                 <a
                   key={link.label}
                   href={link.href}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={`Follow DARE on ${link.label}`}
+                  className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {link.label}
+                  <link.Icon aria-hidden="true" className="size-4" />
+                  <span>{link.handle}</span>
                 </a>
               ))}
             </nav>
