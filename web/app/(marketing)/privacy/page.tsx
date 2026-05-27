@@ -243,15 +243,29 @@ export default function PrivacyPage() {
             <Section title="6. Cookies and Tracking">
               <p>
                 The DARE web Platform uses essential cookies for session management and security.
-                We do not use advertising cookies. We use Google Analytics to understand aggregate
-                website usage, such as pages viewed, traffic sources, device type, and general
-                engagement. Google Analytics may set measurement cookies in your browser when
-                enabled.
+                We do not use advertising cookies, and all ad-related tracking signals (ad storage,
+                ad user data, ad personalisation) are permanently blocked.
               </p>
               <p className="mt-4">
-                You can disable cookies in your browser settings, but doing so may prevent you from
-                logging in or using certain features. You can also use Google&apos;s browser opt-out
-                tools or privacy controls to limit Google Analytics measurement.
+                We use <strong className="text-foreground">Google Analytics (via Google Tag Manager)</strong>{' '}
+                to understand aggregate website usage — pages viewed, traffic sources, device type,
+                and general engagement. Analytics measurement defaults to{' '}
+                <strong className="text-foreground">denied</strong> until you explicitly accept via
+                the consent banner shown on your first visit. You can change your preference at any
+                time by clearing your browser&apos;s local storage for this site.
+              </p>
+              <p className="mt-4">
+                You can also opt out globally using{' '}
+                <a
+                  href="https://tools.google.com/dlpage/gaoptout"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-primary hover:underline"
+                >
+                  Google&apos;s Analytics opt-out browser add-on
+                </a>
+                . Disabling essential cookies may prevent you from logging in or using certain
+                platform features.
               </p>
             </Section>
 
