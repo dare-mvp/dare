@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { Syne, DM_Sans, JetBrains_Mono } from 'next/font/google';
-import { GoogleAnalytics } from '@/components/analytics/google-analytics';
+import {
+  GoogleTagManager,
+  GoogleTagManagerNoScript,
+} from '@/components/analytics/google-tag-manager';
 import './globals.css';
 
 const syne = Syne({ subsets: ['latin'], weight: ['800'], variable: '--font-syne-var' });
@@ -54,8 +57,9 @@ export default function RootLayout({
       className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <GoogleTagManagerNoScript />
         {children}
-        <GoogleAnalytics />
+        <GoogleTagManager />
       </body>
     </html>
   );

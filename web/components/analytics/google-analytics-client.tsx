@@ -65,26 +65,26 @@ function useAnalyticsConsent() {
   return { consent, loaded };
 }
 
-export function AnalyticsPageView({ measurementId }: { measurementId: string }) {
+export function AnalyticsPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { consent } = useAnalyticsConsent();
 
   useEffect(() => {
-    if (consent !== 'granted' || !window.gtag) {
+    if (consent !== 'granted' || !window.dataLayer) {
       return;
     }
 
     const queryString = searchParams.toString();
     const pagePath = queryString ? `${pathname}?${queryString}` : pathname;
 
-    window.gtag('event', 'page_view', {
+    window.dataLayer.push({
+      event: 'page_view',
       page_path: pagePath,
       page_location: window.location.href,
       page_title: document.title,
-      send_to: measurementId,
     });
-  }, [consent, measurementId, pathname, searchParams]);
+  }, [consent, pathname, searchParams]);
 
   return null;
 }
