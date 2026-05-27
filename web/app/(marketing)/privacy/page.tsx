@@ -153,7 +153,7 @@ export default function PrivacyPage() {
                 </li>
                 <li>
                   <strong className="text-foreground">Analytics providers</strong> — for aggregated,
-                  anonymised usage analytics only.
+                  anonymised usage analytics, including Google Analytics where enabled.
                 </li>
                 <li>
                   <strong className="text-foreground">Regulatory authorities</strong> — where
@@ -243,12 +243,15 @@ export default function PrivacyPage() {
             <Section title="6. Cookies and Tracking">
               <p>
                 The DARE web Platform uses essential cookies for session management and security.
-                We do not use advertising or cross-site tracking cookies. We use first-party
-                analytics only (no Google Analytics or similar third-party trackers).
+                We do not use advertising cookies. We use Google Analytics to understand aggregate
+                website usage, such as pages viewed, traffic sources, device type, and general
+                engagement. Google Analytics may set measurement cookies in your browser when
+                enabled.
               </p>
               <p className="mt-4">
                 You can disable cookies in your browser settings, but doing so may prevent you from
-                logging in or using certain features.
+                logging in or using certain features. You can also use Google&apos;s browser opt-out
+                tools or privacy controls to limit Google Analytics measurement.
               </p>
             </Section>
 
