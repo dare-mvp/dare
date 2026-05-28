@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 const EFFECTIVE_DATE = '1 June 2026';
 const COMPANY = 'DARE Technologies Ltd';
-const CONTACT_EMAIL = 'privacy@darechallenge.app';
-const DPO_EMAIL = 'dpo@darechallenge.app';
+const CONTACT_EMAIL = 'info@daregamesapp.com';
+const DPO_EMAIL = 'info@daregamesapp.com';
 
 export default function PrivacyPage() {
   return (

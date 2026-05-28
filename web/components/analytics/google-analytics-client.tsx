@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 
 export const CONSENT_STORAGE_KEY = 'dare.analyticsConsent';
@@ -10,6 +10,7 @@ export const CONSENT_STORAGE_KEY = 'dare.analyticsConsent';
 const CONSENT_CHANGED_EVENT = 'dare:analytics-consent-changed';
 
 type ConsentValue = 'granted' | 'denied';
+type ConsentSnapshot = ConsentValue | 'loading' | null;
 
 declare global {
   interface Window {
@@ -42,27 +43,35 @@ function writeStoredConsent(value: ConsentValue) {
   window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: value }));
 }
 
+function subscribeToConsentChanges(callback: () => void) {
+  window.addEventListener(CONSENT_CHANGED_EVENT, callback);
+  window.addEventListener('storage', callback);
+
+  return () => {
+    window.removeEventListener(CONSENT_CHANGED_EVENT, callback);
+    window.removeEventListener('storage', callback);
+  };
+}
+
+function getConsentSnapshot(): ConsentSnapshot {
+  return readStoredConsent();
+}
+
+function getServerConsentSnapshot(): ConsentSnapshot {
+  return 'loading';
+}
+
 function useAnalyticsConsent() {
-  const [consent, setConsent] = useState<ConsentValue | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const consent = useSyncExternalStore(
+    subscribeToConsentChanges,
+    getConsentSnapshot,
+    getServerConsentSnapshot,
+  );
 
-  useEffect(() => {
-    setConsent(readStoredConsent());
-    setLoaded(true);
-
-    function handleConsentChange(event: Event) {
-      const value = (event as CustomEvent<ConsentValue>).detail;
-      setConsent(value);
-    }
-
-    window.addEventListener(CONSENT_CHANGED_EVENT, handleConsentChange);
-
-    return () => {
-      window.removeEventListener(CONSENT_CHANGED_EVENT, handleConsentChange);
-    };
-  }, []);
-
-  return { consent, loaded };
+  return {
+    consent: consent === 'loading' ? null : consent,
+    loaded: consent !== 'loading',
+  };
 }
 
 export function AnalyticsPageView() {
