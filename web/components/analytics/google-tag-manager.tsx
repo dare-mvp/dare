@@ -28,7 +28,7 @@ export function GoogleTagManager({
 
   return (
     <>
-      <Script id="google-consent-default" strategy="beforeInteractive">
+      <Script id="google-consent-default" strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){window.dataLayer.push(arguments);}

@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { X, Menu } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/#how-it-works', label: 'How it works' },
-  { href: '/#gameplay-preview', label: 'Gameplay' },
-  { href: '/#categories', label: 'Categories' },
-  { href: '/#faq', label: 'FAQ' },
-  { href: '/trust-safety', label: 'Trust & Safety' },
-  { href: '/blog', label: 'Blog' },
+  { href: '/#how-it-works', label: 'How it works', highlight: false },
+  { href: '/#gameplay-preview', label: 'Gameplay', highlight: false },
+  { href: '/#categories', label: 'Categories', highlight: false },
+  { href: '/#faq', label: 'FAQ', highlight: false },
+  { href: '/trust-safety', label: 'Trust & Safety', highlight: false },
+  { href: '/blog', label: 'Blog', highlight: false },
+  { href: '/challenge', label: 'I Dare You 🔥', highlight: true },
 ];
 
 export function NavMenu() {
@@ -32,7 +33,11 @@ export function NavMenu() {
           <Link
             key={item.href}
             href={item.href}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className={
+              item.highlight
+                ? 'text-sm font-semibold text-brand-primary hover:opacity-80 transition-opacity'
+                : 'text-sm text-muted-foreground hover:text-foreground transition-colors'
+            }
           >
             {item.label}
           </Link>
@@ -59,7 +64,11 @@ export function NavMenu() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="py-2.5 px-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className={
+                  item.highlight
+                    ? 'py-2.5 px-3 rounded-lg text-sm font-semibold text-brand-primary hover:bg-brand-primary/10 transition-colors'
+                    : 'py-2.5 px-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors'
+                }
               >
                 {item.label}
               </Link>
