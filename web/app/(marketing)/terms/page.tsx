@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const EFFECTIVE_DATE = '1 June 2026';
 const COMPANY = 'DARE Technologies Ltd';
-const CONTACT_EMAIL = 'legal@darechallenge.app';
+const CONTACT_EMAIL = 'info@daregamesapp.com';
 
 export default function TermsPage() {
   return (
@@ -201,8 +201,8 @@ export default function TermsPage() {
               </ul>
               <p className="mt-4">
                 If you are concerned about your gaming behaviour, contact{' '}
-                <a href={`mailto:support@darechallenge.app`} className="text-brand-primary hover:underline">
-                  support@darechallenge.app
+                <a href={`mailto:support@daregamesapp.com`} className="text-brand-primary hover:underline">
+                  support@daregamesapp.com
                 </a>{' '}
                 or visit a recognised problem gambling support organisation in your country.
               </p>
