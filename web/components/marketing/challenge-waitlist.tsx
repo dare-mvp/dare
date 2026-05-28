@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import { joinChallengeWaitlist, type ChallengeJoinState } from '@/app/(marketing)/actions';
 import { CheckCircle2, Copy, Check, Lock, Clock } from 'lucide-react';
 import { CHALLENGE_CAP, CHALLENGE_END_LABEL, CHALLENGE_START_LABEL } from '@/lib/challenge-config';
@@ -13,6 +13,7 @@ interface ChallengeWaitlistProps {
   isFull: boolean;
   isExpired: boolean;
   isPending: boolean;
+  onSuccess?: (referralCode: string) => void;
 }
 
 export function ChallengeWaitlist({
@@ -21,9 +22,16 @@ export function ChallengeWaitlist({
   isFull,
   isExpired,
   isPending,
+  onSuccess,
 }: ChallengeWaitlistProps) {
   const [state, formAction, pending] = useActionState(joinChallengeWaitlist, initialState);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (state.ok && state.referralCode) {
+      onSuccess?.(state.referralCode);
+    }
+  }, [state.ok, state.referralCode, onSuccess]);
 
   const referralLink = state.referralUrl ?? null;
   const referralPrefix = referralLink && state.referralCode
@@ -41,18 +49,18 @@ export function ChallengeWaitlist({
     }
   }
 
-  // ── Challenge closed states ───────────────────────────────────────────────
+  // ── Closed states ─────────────────────────────────────────────────────────
 
   if (isPending) {
     return (
-      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-6">
+      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-5 sm:p-6">
         <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
           <Clock className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
           <p className="font-semibold text-foreground text-sm">Challenge not open yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            The I Dare You Challenge opens on{' '}
+            Opens on{' '}
             <span className="text-foreground font-medium">{CHALLENGE_START_LABEL}</span>.
             Check back then.
           </p>
@@ -63,40 +71,13 @@ export function ChallengeWaitlist({
 
   if (isFull || state.error === 'challenge_full') {
     return (
-      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-6">
+      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-5 sm:p-6">
         <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
           <Lock className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
           <p className="font-semibold text-foreground text-sm">All {CHALLENGE_CAP} spots are filled</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            This challenge has reached capacity. Follow{' '}
-            <a
-              href="https://www.instagram.com/dareappofficial"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-primary hover:underline"
-            >
-              @dareappofficial
-            </a>{' '}
-            to hear about the next one.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isExpired || state.error === 'challenge_closed') {
-    return (
-      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-6">
-        <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
-          <Lock className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground text-sm">Challenge closed</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            This challenge ended on{' '}
-            <span className="text-foreground font-medium">{CHALLENGE_END_LABEL}</span>.
             Follow{' '}
             <a
               href="https://www.instagram.com/dareappofficial"
@@ -106,27 +87,63 @@ export function ChallengeWaitlist({
             >
               @dareappofficial
             </a>{' '}
-            to hear about the next one.
+            to hear about the next challenge.
           </p>
         </div>
       </div>
     );
   }
 
-  // ── Success: show referral link ───────────────────────────────────────────
+  if (isExpired || state.error === 'challenge_closed') {
+    return (
+      <div className="flex gap-4 rounded-2xl border border-white/8 bg-brand-surface p-5 sm:p-6">
+        <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
+          <Lock className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground text-sm">Challenge closed</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ended {CHALLENGE_END_LABEL}. Follow{' '}
+            <a
+              href="https://www.instagram.com/dareappofficial"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-primary hover:underline"
+            >
+              @dareappofficial
+            </a>{' '}
+            for the next one.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Success: referral link ─────────────────────────────────────────────────
 
   if (state.ok && referralLink) {
     return (
-      <div className="space-y-5 rounded-2xl border border-[#19C37D]/30 bg-[#19C37D]/5 p-6">
+      <div className="space-y-5 rounded-2xl border border-[#19C37D]/30 bg-[#19C37D]/5 p-5 sm:p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#19C37D]/15">
             <CheckCircle2 className="h-5 w-5 text-[#19C37D]" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">You&apos;re on the list.</p>
-            <p className="text-xs text-muted-foreground">
-              Your referral link is ready. Use it for Tasks 03 and 04.
-            </p>
+            {state.isDuplicate ? (
+              <>
+                <p className="text-sm font-semibold text-foreground">Already registered.</p>
+                <p className="text-xs text-muted-foreground">
+                  This email is already on the list — here is your referral link.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-foreground">You&apos;re on the list.</p>
+                <p className="text-xs text-muted-foreground">
+                  Your referral link is ready. Use it for Tasks 03 and 04.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -139,10 +156,11 @@ export function ChallengeWaitlist({
               <span className="text-muted-foreground">{referralPrefix}</span>
               <span className="font-bold text-brand-primary">{state.referralCode}</span>
             </div>
+            {/* Touch-friendly 44×44 copy button */}
             <button
               type="button"
               onClick={handleCopy}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-colors hover:bg-white/10 active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-colors hover:bg-white/10 active:scale-95"
               aria-label="Copy referral link"
             >
               {copied ? (
@@ -153,7 +171,7 @@ export function ChallengeWaitlist({
             </button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Every friend who signs up via your link counts as a referral for Task 04.
+            Tap to copy. Every friend who signs up via your link counts as a referral.
           </p>
         </div>
       </div>
@@ -163,10 +181,10 @@ export function ChallengeWaitlist({
   // ── Form ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4 rounded-2xl border border-white/8 bg-brand-surface p-6">
-      {/* Spots remaining bar */}
+    <div className="space-y-4 rounded-2xl border border-white/8 bg-brand-surface p-5 sm:p-6">
+      {/* Spots bar */}
       <div className="space-y-1.5">
-        <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
+        <div className="flex flex-wrap justify-between gap-1 font-mono text-[10px] text-muted-foreground">
           <span>{spotsRemaining} of {CHALLENGE_CAP} spots remaining</span>
           <span>Closes {CHALLENGE_END_LABEL}</span>
         </div>
@@ -190,19 +208,22 @@ export function ChallengeWaitlist({
       <form action={formAction} className="space-y-3">
         {referredBy ? <input type="hidden" name="referred_by" value={referredBy} /> : null}
 
-        <div className="flex gap-2">
+        {/* Stack vertically on mobile, side-by-side on sm+ */}
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             name="email"
             type="email"
+            inputMode="email"
+            autoComplete="email"
             placeholder="your@email.com"
             required
-            disabled={pending}
-            className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            disabled={pending || !!state.ok}
+            className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-3 text-base sm:py-2.5 sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={pending}
-            className="inline-flex h-10 shrink-0 items-center rounded-lg bg-brand-primary px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            disabled={pending || !!state.ok}
+            className="flex h-12 sm:h-10 w-full sm:w-auto items-center justify-center rounded-lg bg-brand-primary px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {pending ? 'Joining…' : 'Join & get link'}
           </button>
