@@ -16,6 +16,7 @@ export type WaitlistState = {
 
 export type ChallengeJoinState = {
   ok?: boolean;
+  isDuplicate?: boolean; // true when email already existed — show "already registered" UI
   referralCode?: string;
   referralUrl?: string;
   error?:
@@ -171,9 +172,10 @@ async function isChallengeRateLimited(email: string, admin: ReturnType<typeof cr
   return ipLimited || emailLimited;
 }
 
-async function successState(referralCode: string): Promise<ChallengeJoinState> {
+async function successState(referralCode: string, isDuplicate = false): Promise<ChallengeJoinState> {
   return {
     ok: true,
+    isDuplicate,
     referralCode,
     referralUrl: await buildReferralUrl(referralCode),
   };
@@ -232,7 +234,7 @@ export async function joinChallengeWaitlist(
       .maybeSingle();
 
     if (selectError) return { error: 'unknown' };
-    if (existing?.referral_code) return successState(existing.referral_code);
+    if (existing?.referral_code) return successState(existing.referral_code, true);
     if (!existing) continue;
 
     const { data: updated, error: updateError } = await admin
@@ -243,10 +245,33 @@ export async function joinChallengeWaitlist(
       .select('referral_code')
       .single();
 
-    if (!updateError && updated.referral_code) return successState(updated.referral_code);
+    if (!updateError && updated.referral_code) return successState(updated.referral_code, true);
     if (updateError?.code === '23505') continue;
     return { error: 'unknown' };
   }
 
   return { error: 'unknown' };
+}
+
+// Upsert approach: referral_code holders update their row; anonymous create a new row.
+// Called directly (not via useActionState) — fire-and-forget from the client.
+export async function recordTierSelection(
+  tier: 'standard' | 'champion',
+  referralCode?: string,
+): Promise<void> {
+  if (tier !== 'standard' && tier !== 'champion') return;
+
+  const admin = createAdminClient();
+  const clientIp = await getClientIp();
+  const ipHash = hashRateLimitIdentifier(clientIp);
+  const now = new Date().toISOString();
+
+  if (referralCode && REFERRAL_CODE_RE.test(referralCode)) {
+    await admin.from('challenge_tier_selections').upsert(
+      { referral_code: referralCode, tier, ip_hash: ipHash, updated_at: now },
+      { onConflict: 'referral_code' },
+    );
+  } else {
+    await admin.from('challenge_tier_selections').insert({ tier, ip_hash: ipHash });
+  }
 }
