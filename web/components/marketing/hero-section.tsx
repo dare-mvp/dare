@@ -43,13 +43,13 @@ export function HeroSection() {
         {/* CTAs */}
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <a
-            href="#apk-download"
+            href="#waitlist"
             className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand-primary px-8 font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
           >
             Download APK
           </a>
           <a
-            href="#testflight"
+            href="#waitlist"
             className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 font-semibold text-foreground transition-colors hover:bg-white/10"
           >
             iOS TestFlight
