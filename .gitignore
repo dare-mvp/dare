@@ -8,4 +8,11 @@ dare_mobile_eas_access_token.txt
 .env.local
 .env*.local
 
+# Media files
+*.mp4
+*.mp3
+*.mov
+*.avi
+*.webm
+
 
