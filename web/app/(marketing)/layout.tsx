@@ -44,13 +44,13 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <a
-              href="#waitlist"
+              href="/#waitlist"
               className="inline-flex h-9 items-center rounded-lg bg-brand-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Download APK
             </a>
             <a
-              href="#waitlist"
+              href="/#waitlist"
               className="inline-flex h-9 items-center rounded-lg border border-white/15 bg-white/5 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-white/10"
             >
               iOS TestFlight

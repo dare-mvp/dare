@@ -253,6 +253,29 @@ Camera:
 - Use clean cuts, not heavy transitions.
 - Keep the phone UI readable. Avoid motion blur over balances, timer, or CTA labels.
 
+## Generated Assets — I Dare You Challenge (2026-05-29)
+
+### Static Graphics
+
+| Format | Dimensions | Direct Link |
+| --- | --- | --- |
+| Square — Instagram feed | 1024×1024 · 1:1 | [Download PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260529_124207_34b5eff6-3b98-49cc-8a1c-9d11a15aeb6d.png) |
+| Vertical — Stories / Reels | 1536×2752 · 9:16 · 2K | [Download PNG](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260529_124211_67ae2c6b-3daf-4a62-a840-ba5964d57006.png) |
+
+### Motion Videos
+
+| Format | Duration | Model | Direct Link |
+| --- | --- | --- | --- |
+| Square — Instagram feed | 6s · 1080×1080 · 1:1 | Kling 3.0 Pro | [Download MP4](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260529_124404_364854d6-8ce9-43cc-b678-0372d542addc.mp4) |
+| Vertical — Stories / Reels | 8s · 1080×1920 · 9:16 | Kling 3.0 Pro | [Download MP4](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260529_125504_c4e3dea8-fdb1-443b-9a8a-a0ee02560bd8.mp4) |
+
+### Higgsfield Workspace
+
+All generations are saved in your Higgsfield account under **Generations → History**.
+Log in at [higgsfield.ai](https://higgsfield.ai) to download, re-generate, or remix any asset.
+
+---
+
 ## Compliance Notes For Creative Review
 
 Before publishing, verify:
