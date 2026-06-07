@@ -59,7 +59,7 @@ export function ChallengeFlow({
       </section>
 
       {/* ── Challenge Tiers ──────────────────────────────────── */}
-      <section className="bg-brand-bg px-4 sm:px-6 py-12 sm:py-20">
+      <section id="tiers" className="scroll-mt-14 bg-brand-bg px-4 sm:px-6 py-12 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-10 sm:mb-12 text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-brand-surface px-4 py-1.5 font-mono text-xs text-muted-foreground">
