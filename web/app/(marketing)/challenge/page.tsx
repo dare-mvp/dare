@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { MessageCircle } from 'lucide-react';
 import { MarketingFooter } from '@/components/marketing/footer';
 import { ChallengeFlow } from '@/components/marketing/challenge-flow';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -149,89 +148,6 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
         isExpired={isExpired}
         isPending={isPending}
       />
-
-      {/* ── How to Claim ─────────────────────────────────────── */}
-      <section id="claim" className="scroll-mt-14 bg-brand-surface px-4 sm:px-6 py-12 sm:py-20">
-        <div className="mx-auto max-w-2xl space-y-10">
-          <div className="text-center">
-            <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
-              How to claim
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              Three steps once you have completed all your tasks.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex gap-4 rounded-xl border border-white/8 bg-brand-bg p-5">
-              <span className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-brand-primary/40 bg-brand-primary/10 font-mono text-xs text-brand-primary">
-                1
-              </span>
-              <div>
-                <p className="font-semibold text-foreground text-sm">Open Instagram</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Go to{' '}
-                  <a
-                    href="https://www.instagram.com/dareappofficial"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-brand-primary hover:underline"
-                  >
-                    @dareappofficial
-                  </a>{' '}
-                  and open a Direct Message.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 rounded-xl border border-white/8 bg-brand-bg p-5">
-              <span className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-brand-primary/40 bg-brand-primary/10 font-mono text-xs text-brand-primary">
-                2
-              </span>
-              <div className="w-full">
-                <p className="font-semibold text-foreground text-sm">Send this exact message</p>
-                <div className="mt-2 rounded-lg border border-brand-primary/20 bg-brand-primary/5 px-4 py-3">
-                  <p className="font-mono text-sm text-brand-primary">
-                    Challenge accepted and completed
-                  </p>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Attach your screenshots, referral link, and video link (Champion tier) in the
-                  same DM thread.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 rounded-xl border border-white/8 bg-brand-bg p-5">
-              <span className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-[#19C37D]/40 bg-[#19C37D]/10 font-mono text-xs text-[#19C37D]">
-                3
-              </span>
-              <div>
-                <p className="font-semibold text-foreground text-sm">Get paid</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  We verify your submission and credit your DARE App wallet within{' '}
-                  <span className="text-foreground font-medium">72 hours</span>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center pt-2">
-            <a
-              href="https://ig.me/m/dareappofficial"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-14 items-center gap-3 rounded-xl bg-brand-primary px-10 text-lg font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <MessageCircle className="h-5 w-5" aria-hidden />
-              DM @dareappofficial
-            </a>
-            <p className="mt-3 font-mono text-xs text-muted-foreground">
-              instagram.com/dareappofficial
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* ── Small Print ──────────────────────────────────────── */}
       <section className="bg-brand-bg px-4 sm:px-6 py-10 sm:py-14">

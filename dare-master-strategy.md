@@ -503,6 +503,26 @@ As 2026 progresses, "green" logistics and challenges are transitioning from a ma
 
 This section translates research findings into concrete, buildable feature requirements. Each feature is mapped to its research driver.
 
+### 11.0 Foundational Design Principle: Directional UX
+
+**Context:** Validated through the June 2026 I Dare You Challenge campaign. Users who received referral links failed to complete next steps because the steps required reading and self-navigation rather than tapping and being guided. Viral content drove acquisition; the product flow lost the conversion.
+
+**Principle:** DARE's Nigerian and Kenyan users are mobile-first and habitually act before reading. Every screen must answer *"what do I tap next?"* with a single, prominent button visible without scrolling. Explanatory text supports the button — it never precedes it.
+
+**Non-negotiable implementation rules:**
+
+- One primary CTA per screen moment. No two equally weighted actions on the same screen.
+- Buttons appear before explanatory text in visual hierarchy.
+- Share messages, referral links, and DM text are pre-filled and launched via OS share sheet or deep link. No copy-paste.
+- Every action that requires leaving the app uses a deep link that lands in the exact right place (Instagram profile, pre-filled DM, WhatsApp with message loaded).
+- The system transitions the user after every action — auto-scroll, redirect, or next-step reveal. The user never navigates manually to find what's next.
+- Every success, error, and completion state has a visible next action. Silence is a UX failure.
+- Error messages prescribe a recovery action: *"That email is already registered. [Retrieve your referral link →]"*
+
+**Strategic importance:** Acquisition is expensive. If the post-acquisition flow requires reading comprehension, DARE loses the users that paid advertising bought. Directional design is a retention and monetisation strategy, not just a UX choice.
+
+Full specification: [`docs/13-directional-ux-principles.md`](docs/13-directional-ux-principles.md)
+
 ### 11.1 Core Challenge Flow
 
 **Feature: 5-Step Constitution Builder**

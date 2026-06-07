@@ -63,7 +63,7 @@ interface ChallengeWaitlistProps {
   isFull: boolean;
   isExpired: boolean;
   isPending: boolean;
-  onSuccess?: (referralCode: string) => void;
+  onSuccess?: (referralCode: string, referralUrl: string) => void;
 }
 
 export function ChallengeWaitlist({
@@ -78,10 +78,10 @@ export function ChallengeWaitlist({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (state.ok && state.referralCode) {
-      onSuccess?.(state.referralCode);
+    if (state.ok && state.referralCode && state.referralUrl) {
+      onSuccess?.(state.referralCode, state.referralUrl);
     }
-  }, [state.ok, state.referralCode, onSuccess]);
+  }, [state.ok, state.referralCode, state.referralUrl, onSuccess]);
 
   useEffect(() => {
     if (!state.ok) return;
