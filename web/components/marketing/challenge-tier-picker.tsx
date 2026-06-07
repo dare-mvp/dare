@@ -102,6 +102,48 @@ function CopyMessageButton() {
   );
 }
 
+function CopyLinkButton({ url, referralCode }: { url: string; referralCode?: string }) {
+  const [copied, setCopied] = useState(false);
+  const prefix = referralCode ? url.slice(0, url.lastIndexOf(referralCode)) : null;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap rounded-lg border border-white/10 bg-brand-bg px-3 py-2.5 font-mono text-xs">
+        {prefix && referralCode ? (
+          <>
+            <span className="text-muted-foreground">{prefix}</span>
+            <span className="font-bold text-brand-primary">{referralCode}</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">{url}</span>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-colors hover:bg-white/10 active:scale-95"
+        aria-label="Copy referral link"
+      >
+        {copied ? (
+          <Check className="h-4 w-4 text-[#19C37D]" />
+        ) : (
+          <Copy className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+    </div>
+  );
+}
+
 function TaskCard({
   number,
   Icon,
@@ -224,11 +266,8 @@ function TaskList({
         title={tier === 'champion' ? 'Refer 3 friends' : 'Refer 2 friends'}
         description={`Get ${tier === 'champion' ? '3' : '2'} friends to sign up on the DARE waitlist using your referral link. Auto-tracked — no screenshot needed.`}
       >
-        {referralCode && (
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-brand-bg px-3 py-1">
-            <span className="font-mono text-[10px] text-muted-foreground">your code:</span>
-            <span className="font-mono text-xs font-bold text-brand-primary">{referralCode}</span>
-          </div>
+        {referralUrl && (
+          <CopyLinkButton url={referralUrl} referralCode={referralCode} />
         )}
       </TaskCard>
 
