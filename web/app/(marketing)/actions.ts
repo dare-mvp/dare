@@ -6,6 +6,7 @@ import {
   CHALLENGE_START,
   CHALLENGE_END,
 } from '@/lib/challenge-config';
+import { sendChallengeWelcomeEmail } from '@/lib/email';
 import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 
@@ -224,7 +225,11 @@ export async function joinChallengeWaitlist(
       .from('marketing_waitlist')
       .insert({ email, source: 'challenge', referred_by: referredBy, referral_code: code });
 
-    if (!insertError) return successState(code);
+    if (!insertError) {
+      const state = await successState(code);
+      sendChallengeWelcomeEmail(email, state.referralUrl!);
+      return state;
+    }
     if (insertError.code !== '23505') return { error: 'unknown' };
 
     const { data: existing, error: selectError } = await admin
