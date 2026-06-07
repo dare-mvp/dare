@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '../auth/AuthProvider';
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { isUuid } from '../../lib/ids';
 import { activeCourtSession } from '../../mocks/court';
@@ -113,7 +114,7 @@ export function useActiveCourtSession(dareId?: string): ActiveCourtSessionState 
 }
 
 async function fetchCourtDare(userId: string, dareId?: string) {
-  if (!supabaseClient) return { dare: null, error: 'Backend is not configured.', ok: false as const };
+  if (!supabaseClient) return { dare: null, error: getLoadUserMessage('court session'), ok: false as const };
 
   let query = supabaseClient
     .from('dares')
@@ -130,12 +131,12 @@ async function fetchCourtDare(userId: string, dareId?: string) {
   }
 
   const { data, error } = await query.maybeSingle();
-  if (error) return { dare: null, error: error.message, ok: false as const };
+  if (error) return { dare: null, error: getLoadUserMessage('court session'), ok: false as const };
   return { dare: data as DareRow | null, error: null, ok: true as const };
 }
 
 async function fetchCourtSession(dareId: string) {
-  if (!supabaseClient) return { court: null, error: 'Backend is not configured.', ok: false as const };
+  if (!supabaseClient) return { court: null, error: getLoadUserMessage('court session'), ok: false as const };
 
   const { data, error } = await supabaseClient
     .from('court_sessions')
@@ -154,7 +155,7 @@ async function fetchCourtSession(dareId: string) {
     .eq('dare_id', dareId)
     .maybeSingle();
 
-  if (error) return { court: null, error: error.message, ok: false as const };
+  if (error) return { court: null, error: getLoadUserMessage('court session'), ok: false as const };
   return { court: data as CourtSessionRow | null, error: null, ok: true as const };
 }
 

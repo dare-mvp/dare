@@ -92,7 +92,7 @@ export default function FeedScreen() {
               <InlineAlert
                 tone="info"
                 title="Preview feed"
-                message="Live public DAREs appear after backend sync."
+                message="Live public DAREs appear after sign-in and sync."
               />
             ) : null}
 

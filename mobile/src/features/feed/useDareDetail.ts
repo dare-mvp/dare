@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { getFeaturedDareById } from '../../mocks/home';
 import { DareFeedItem } from './components/DareCard';
@@ -77,7 +78,7 @@ export function useDareDetail(id?: string): DareDetailState {
     if (!supabaseClient) {
       setDare(null);
       setSource('mock');
-      setError('Backend is not configured, so this live DARE cannot be loaded.');
+      setError(getLoadUserMessage('DARE details'));
       setLoading(false);
       return;
     }
@@ -92,7 +93,7 @@ export function useDareDetail(id?: string): DareDetailState {
     if (queryError) {
       setDare(null);
       setSource('server');
-      setError(queryError.message);
+      setError(getLoadUserMessage('DARE details'));
       setLoading(false);
       return;
     }
@@ -149,7 +150,7 @@ function isUuid(value?: string) {
 
 async function fetchParticipantDare(id: string) {
   if (!supabaseClient) {
-    return { dare: null, error: 'Backend is not configured.', ok: false as const };
+    return { dare: null, error: getLoadUserMessage('DARE details'), ok: false as const };
   }
 
   const { data: dare, error: dareError } = await supabaseClient
@@ -158,7 +159,7 @@ async function fetchParticipantDare(id: string) {
     .eq('id', id)
     .maybeSingle();
 
-  if (dareError) return { dare: null, error: dareError.message, ok: false as const };
+  if (dareError) return { dare: null, error: getLoadUserMessage('DARE details'), ok: false as const };
   if (!dare) return { dare: null, error: null, ok: true as const };
 
   const { data: court } = await supabaseClient

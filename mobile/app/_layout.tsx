@@ -85,6 +85,7 @@ function AppNavigator() {
       <Stack.Screen name="dare/[id]/accept" />
       <Stack.Screen name="dare/[id]/accept-receipt" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="auth/callback" />
       <Stack.Screen name="create/review" />
       <Stack.Screen name="create/receipt" />
       <Stack.Screen name="court/ready" />

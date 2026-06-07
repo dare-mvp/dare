@@ -153,6 +153,10 @@ Deno.test("update_responsible_gaming_settings_action blocks repeated limit incre
         daily_deposit_limit_kobo
       )
       values (${ids.issuer}, 100000)
+      on conflict (user_id) do update
+        set daily_deposit_limit_kobo = excluded.daily_deposit_limit_kobo,
+            pending_daily_deposit_limit_kobo = null,
+            pending_limits_effective_at = null
     `;
 
     const [first] = await sql<{
@@ -214,7 +218,7 @@ Deno.test("signup profile provisioning creates wallet and required runtime objec
   const ids = idSet("80000000");
 
   try {
-    await cleanup(sql, [ids.issuer]);
+    await cleanup(sql, [ids.issuer, ids.challenger]);
     await createProfile(sql, ids.issuer, "issuer_gap_wallet");
 
     const [wallet] = await sql<{ count: string }[]>`
@@ -253,8 +257,64 @@ Deno.test("signup profile provisioning creates wallet and required runtime objec
     `;
     assertEquals(bucket.public, false);
     assertEquals(bucket.file_size_limit, "10485760");
+
+    await sql`
+      insert into auth.users (
+        id,
+        instance_id,
+        aud,
+        role,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at
+      )
+      values (
+        ${ids.challenger},
+        '00000000-0000-0000-0000-000000000000',
+        'authenticated',
+        'authenticated',
+        'auth.trigger@example.com',
+        crypt(gen_random_uuid()::text, gen_salt('bf')),
+        now(),
+        '{}',
+        '{"display_name":"Auth Trigger"}',
+        now(),
+        now()
+      )
+    `;
+
+    const [authProvisioning] = await sql<{
+      display_name: string;
+      has_responsible_gaming: boolean;
+      has_wallet: boolean;
+      username: string;
+    }[]>`
+      select
+        p.username::text,
+        p.display_name,
+        exists (
+          select 1 from wallet_accounts wa
+          where wa.user_id = p.id
+            and wa.currency = 'NGN'
+            and wa.status = 'active'
+        ) as has_wallet,
+        exists (
+          select 1 from responsible_gaming_settings rg
+          where rg.user_id = p.id
+        ) as has_responsible_gaming
+      from profiles p
+      where p.id = ${ids.challenger}
+    `;
+    assertEquals(authProvisioning.username, "auth_trigger");
+    assertEquals(authProvisioning.display_name, "Auth Trigger");
+    assertEquals(authProvisioning.has_wallet, true);
+    assertEquals(authProvisioning.has_responsible_gaming, true);
   } finally {
-    await cleanup(sql, [ids.issuer]);
+    await cleanup(sql, [ids.issuer, ids.challenger]);
     await sql.end();
   }
 });

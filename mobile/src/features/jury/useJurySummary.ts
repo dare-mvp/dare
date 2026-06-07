@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { jurySummary } from '../../mocks/jury';
 import { useAuth } from '../auth/AuthProvider';
@@ -59,7 +60,7 @@ export function useJurySummary(): JurySummaryState {
 
       if (!mounted) return;
 
-      const error = activeResult.error?.message ?? completedResult.error?.message ?? null;
+      const error = activeResult.error || completedResult.error ? getLoadUserMessage('jury activity') : null;
       if (error) {
         setState({
           ...jurySummary,

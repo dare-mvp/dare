@@ -131,7 +131,7 @@ export default function CourtScreen() {
         <View style={styles.flowPanel}>
           <Text style={styles.settlementTitle}>Court flow screens</Text>
           <Text style={styles.settlementText}>
-            Preview each court state before live backend data is connected.
+            Preview each court state before live match data is connected.
           </Text>
           <View style={styles.actionRow}>
             <ActionButton

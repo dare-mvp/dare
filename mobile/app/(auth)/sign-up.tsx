@@ -19,10 +19,18 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [password, setPassword] = useState('');
+  const canSubmit = Boolean(displayName.trim() && email.trim() && password && confirmPassword) && !loading;
 
   async function handleContinue() {
     setError(null);
+    setNotice(null);
+
+    if (!displayName.trim() || !email.trim() || !password || !confirmPassword) {
+      setError('Complete all fields before continuing.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -35,11 +43,17 @@ export default function SignUpScreen() {
     }
 
     setLoading(true);
-    const result = await signUpWithPassword({ displayName, email, password });
-    setLoading(false);
+    const result = await signUpWithPassword({ displayName, email, password }).finally(() => {
+      setLoading(false);
+    });
 
     if (!result.ok) {
       setError(result.message);
+      return;
+    }
+
+    if (result.needsEmailConfirmation) {
+      setNotice(result.message ?? 'Check your email to confirm this account, then sign in to finish setup.');
       return;
     }
 
@@ -87,12 +101,13 @@ export default function SignUpScreen() {
           value={confirmPassword}
         />
       </View>
+      {notice ? <InlineAlert tone="info" title="Confirm your email" message={notice} /> : null}
       {error ? <InlineAlert tone="danger" title="Sign-up failed" message={error} /> : null}
       <ActionButton
         accessibilityLabel="Continue to profile setup"
-        disabled={isBackendConfigured && (!displayName || !email || !password || !confirmPassword || loading)}
+        disabled={isBackendConfigured && !canSubmit}
         icon={<ArrowRight color={colors.text} size={18} />}
-        label="Continue"
+        label={loading ? 'Creating account' : 'Continue'}
         onPress={handleContinue}
       />
     </AuthFrame>

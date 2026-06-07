@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DareLogo } from '../../../components/brand/DareLogo';
 import { Screen } from '../../../components/ui/Screen';
@@ -16,32 +16,47 @@ type AuthFrameProps = {
 export function AuthFrame({ children, eyebrow, footer, subtitle, title }: AuthFrameProps) {
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.brand}>
-          <DareLogo size="md" />
-          <View style={styles.brandCopy}>
-            <Text style={styles.brandSub}>Challenge Everything</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoider}
+      >
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.content}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.brand}>
+            <DareLogo size="md" />
+            <View style={styles.brandCopy}>
+              <Text style={styles.brandSub}>Challenge Everything</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>{eyebrow}</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
 
-        <View style={styles.body}>{children}</View>
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
-      </ScrollView>
+          <View style={styles.body}>{children}</View>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoider: {
+    flex: 1,
+  },
   content: {
+    flexGrow: 1,
     gap: spacing[24],
     padding: spacing[20],
-    paddingBottom: spacing[32],
+    paddingBottom: spacing[32] * 2,
     paddingTop: spacing[32],
   },
   brand: {

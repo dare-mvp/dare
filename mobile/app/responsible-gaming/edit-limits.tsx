@@ -85,7 +85,7 @@ export default function EditLimitsScreen() {
         <InlineAlert
           tone="info"
           title="Live account required"
-          message="Sign in with backend configuration to submit responsible gaming limit changes."
+          message="Sign in to submit responsible gaming limit changes."
         />
       ) : null}
 

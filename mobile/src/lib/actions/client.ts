@@ -1,4 +1,5 @@
 import { assertBackendConfigured } from '../config/env';
+import { getActionUserMessage } from '../errors/userMessages';
 import { supabaseClient } from '../supabase/client';
 import { ActionError, ActionRequestOptions, ActionResult } from './types';
 
@@ -33,23 +34,6 @@ async function parseJsonSafely(response: Response) {
   }
 }
 
-function getErrorMessage(payload: unknown, fallback: string) {
-  if (payload && typeof payload === 'object' && 'error' in payload) {
-    const error = (payload as { error?: unknown }).error;
-    if (error && typeof error === 'object' && 'message' in error) {
-      const message = (error as { message?: unknown }).message;
-      if (typeof message === 'string') return message;
-    }
-  }
-
-  if (payload && typeof payload === 'object' && 'message' in payload) {
-    const message = (payload as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-  }
-
-  return fallback;
-}
-
 function unwrapSuccessEnvelope<T>(payload: unknown): T {
   if (
     payload &&
@@ -68,12 +52,13 @@ export async function callAction<T>(path: string, options: ActionRequestOptions 
   let config: ReturnType<typeof assertBackendConfigured>;
   try {
     config = assertBackendConfigured();
-  } catch (error) {
+  } catch {
+    const code = 'BAD_REQUEST';
     return {
       data: null,
       error: {
-        code: 'BAD_REQUEST',
-        message: error instanceof Error ? error.message : 'Backend is not configured.',
+        code,
+        message: getActionUserMessage(code),
         retryable: false,
       },
       ok: false,
@@ -99,11 +84,12 @@ export async function callAction<T>(path: string, options: ActionRequestOptions 
     const payload = await parseJsonSafely(response);
 
     if (!response.ok) {
+      const code = mapStatusToCode(response.status);
       return {
         data: null,
         error: {
-          code: mapStatusToCode(response.status),
-          message: getErrorMessage(payload, 'The request could not be completed.'),
+          code,
+          message: getActionUserMessage(code),
           retryable: response.status === 429 || response.status >= 500,
           status: response.status,
         },
@@ -116,12 +102,13 @@ export async function callAction<T>(path: string, options: ActionRequestOptions 
       error: null,
       ok: true,
     };
-  } catch (error) {
+  } catch {
+    const code = 'NETWORK_ERROR';
     return {
       data: null,
       error: {
-        code: 'NETWORK_ERROR',
-        message: error instanceof Error ? error.message : 'Network request failed.',
+        code,
+        message: getActionUserMessage(code),
         retryable: true,
       },
       ok: false,

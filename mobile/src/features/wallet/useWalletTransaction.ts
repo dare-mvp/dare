@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { walletSummary } from '../../mocks/wallet';
 import { useAuth } from '../auth/AuthProvider';
@@ -66,7 +67,7 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
 
       if (error) {
         setState({
-          error: error.message,
+          error: getLoadUserMessage('transaction details'),
           loading: false,
           source: 'server',
           transaction: null,
