@@ -125,6 +125,20 @@ Core test coverage must include:
 - Trust score updates
 - Permission checks
 
+### 11. Directional UX Design
+
+DARE's primary markets (Nigeria, Kenya) are mobile-first populations who **act before reading**. The UI must never rely on users reading text to know what to do. Every screen must have one clear, prominent action that moves the user forward.
+
+Architecture requirements:
+
+- Every success state must define a next action — auto-scroll, redirect, or button reveal.
+- Every error state must include a recovery action, not just a message.
+- Deep links must be resolved server-side and embedded in buttons, not shown as copyable text.
+- Share/action flows must pre-fill content — the user should never need to compose, copy, or remember anything.
+- Server actions must return next-step context alongside success/error states.
+
+See [`docs/13-directional-ux-principles.md`](13-directional-ux-principles.md) for the full principle specification.
+
 ## Recommended Stack Direction
 
 The final stack decision is still open, but the prototype points toward:

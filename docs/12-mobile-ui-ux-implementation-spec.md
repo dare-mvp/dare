@@ -16,6 +16,22 @@ DARE is a high-trust challenge economy. The mobile UI must make three things obv
 
 The app must never imply that a deposit, withdrawal, escrow lock, winner, payout, verdict, or trust change is complete until the backend confirms it.
 
+## Directional Design Principle
+
+DARE's target users in Nigeria and Kenya are mobile-first and **act before reading**. Every screen must answer the question *"what do I tap next?"* with a visible, prominent button — before any explanatory text.
+
+Core rules for every screen and flow:
+
+1. One primary action per screen moment. No competing CTAs at equal weight.
+2. Button appears before explanation text in visual hierarchy.
+3. Pre-fill everything: share messages, DM text, deep links. Never ask users to compose or copy-paste.
+4. Deep links replace manual navigation — tapping "Follow on Instagram" opens the profile directly, not the Instagram home screen.
+5. The system initiates transitions after actions (auto-scroll, redirect, next-step reveal). Users never figure out where to go.
+6. Every success, error, and completion state has a visible next action. Silence is a UX bug.
+7. Error messages tell the user what to do, not just what went wrong.
+
+Full specification: [`docs/13-directional-ux-principles.md`](13-directional-ux-principles.md)
+
 ## MVP Scope From The Research
 
 ### Build Now

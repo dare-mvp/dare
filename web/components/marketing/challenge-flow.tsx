@@ -23,6 +23,7 @@ export function ChallengeFlow({
   // Lifted state: referral code from the waitlist join is passed down to the
   // tier picker so the tier selection can be linked to this participant.
   const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
+  const [referralUrl, setReferralUrl] = useState<string | undefined>(undefined);
 
   return (
     <>
@@ -53,7 +54,7 @@ export function ChallengeFlow({
             isFull={isFull}
             isExpired={isExpired}
             isPending={isPending}
-            onSuccess={setReferralCode}
+            onSuccess={(code, url) => { setReferralCode(code); setReferralUrl(url); }}
           />
         </div>
       </section>
@@ -74,7 +75,7 @@ export function ChallengeFlow({
             </p>
           </div>
 
-          <ChallengeTierPicker referralCode={referralCode} />
+          <ChallengeTierPicker referralCode={referralCode} referralUrl={referralUrl} />
         </div>
       </section>
     </>

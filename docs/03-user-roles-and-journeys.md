@@ -1,5 +1,13 @@
 # User Roles And Journeys
 
+## User Behaviour Context
+
+DARE's primary users in Nigeria and Kenya are mobile-first and **act before reading**. They tap first, scroll fast, and make decisions based on what they see first — not what the supporting text says.
+
+This is not a limitation; it is the design target. Every journey below must be implementable by a user who never reads a single instruction. Buttons guide the path. The system initiates transitions. Actions are pre-filled. There are no dead-end states.
+
+See [`docs/13-directional-ux-principles.md`](13-directional-ux-principles.md) for the full design specification.
+
 ## Core Roles
 
 ### Guest
