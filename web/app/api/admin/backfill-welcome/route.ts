@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ sent: 0 });
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.daregamesapp.com';
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.daregamesapp.com').replace(/\/$/, '');
 
   const results = await Promise.allSettled(
     participants.map(({ email, referral_code }) => {
