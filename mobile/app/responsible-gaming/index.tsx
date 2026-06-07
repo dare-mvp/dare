@@ -39,7 +39,7 @@ export default function ResponsibleGamingScreen() {
         <InlineAlert
           tone="info"
           title="Preview limits shown"
-          message="Sign in with backend configuration to load live responsible gaming controls."
+          message="Sign in to load your live responsible gaming controls."
         />
       ) : null}
 

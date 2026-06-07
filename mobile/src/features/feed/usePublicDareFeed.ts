@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { featuredDares } from '../../mocks/home';
 import { DareFeedItem } from './components/DareCard';
@@ -54,7 +55,7 @@ export function usePublicDareFeed(): PublicDareFeedState {
     if (queryError) {
       setItems(featuredDares);
       setSource('mock');
-      setError(queryError.message);
+      setError(getLoadUserMessage('DARE feed'));
       setLoading(false);
       return;
     }
@@ -105,7 +106,7 @@ export function usePublicDareFeed(): PublicDareFeedState {
       if (queryError) {
         setItems(featuredDares);
         setSource('mock');
-        setError(queryError.message);
+        setError(getLoadUserMessage('DARE feed'));
       } else {
         setItems(mapPublicDareFeedRows((data ?? []) as unknown as PublicDareFeedRow[]));
         setSource('server');

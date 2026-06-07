@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
 import { juryAssignment, juryEvidenceSides } from '../../mocks/jury';
@@ -77,7 +78,7 @@ export function useJuryAssignment(caseId?: string): JuryAssignmentState {
       if (!mounted) return;
 
       if (assignmentError) {
-        setState({ assignment: null, error: assignmentError.message, loading: false });
+        setState({ assignment: null, error: getLoadUserMessage('jury assignment'), loading: false });
         return;
       }
 
@@ -97,7 +98,7 @@ export function useJuryAssignment(caseId?: string): JuryAssignmentState {
       if (caseError || !juryCase) {
         setState({
           assignment: null,
-          error: caseError?.message ?? 'Jury case is not available.',
+          error: getLoadUserMessage('jury assignment'),
           loading: false,
         });
         return;

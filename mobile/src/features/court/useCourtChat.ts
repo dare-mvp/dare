@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { sendCourtMessage } from '../../lib/actions/endpoints';
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
 import { useAuth } from '../auth/AuthProvider';
@@ -71,7 +72,7 @@ export function useCourtChat(dareId?: string): CourtChatState {
       .then(({ data, error: queryError }) => {
         if (!mounted) return;
         if (queryError) {
-          setError(queryError.message);
+          setError(getLoadUserMessage('court messages'));
         } else {
           setMessages(mapRows((data ?? []) as ChatRow[], userId));
           setSource('server');

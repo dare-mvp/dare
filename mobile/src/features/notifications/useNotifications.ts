@@ -4,6 +4,7 @@ import {
   markAllNotificationsRead as markAllNotificationsReadAction,
   markNotificationRead as markNotificationReadAction,
 } from '../../lib/actions/endpoints';
+import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { formatRelativeTime } from '../../lib/format/time';
 import { supabaseClient } from '../../lib/supabase/client';
 import { notifications as mockNotifications } from '../../mocks/notifications';
@@ -64,7 +65,7 @@ export function useNotifications(): NotificationsState {
     if (queryError) {
       setItems(mockNotifications);
       setSource('mock');
-      setError(queryError.message);
+      setError(getLoadUserMessage('notifications'));
     } else {
       setItems(mapNotificationRows((data ?? []) as NotificationRow[]));
       setSource('server');
@@ -141,7 +142,7 @@ export function useNotifications(): NotificationsState {
       if (queryError) {
         setItems(mockNotifications);
         setSource('mock');
-        setError(queryError.message);
+        setError(getLoadUserMessage('notifications'));
       } else {
         setItems(mapNotificationRows((data ?? []) as NotificationRow[]));
         setSource('server');

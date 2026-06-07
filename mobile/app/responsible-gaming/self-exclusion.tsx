@@ -70,7 +70,7 @@ export default function SelfExclusionScreen() {
         <InlineAlert
           tone="info"
           title="Live account required"
-          message="Sign in with backend configuration to submit self-exclusion."
+          message="Sign in to submit self-exclusion."
         />
       ) : null}
 

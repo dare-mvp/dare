@@ -43,9 +43,12 @@ export const backendConfig: BackendConfig = {
 };
 
 export class BackendConfigError extends Error {
+  missingKeys: string[];
+
   constructor(missingKeys: string[]) {
-    super(`Backend is not configured. Missing: ${missingKeys.join(', ')}`);
+    super('App setup is incomplete.');
     this.name = 'BackendConfigError';
+    this.missingKeys = missingKeys;
   }
 }
 

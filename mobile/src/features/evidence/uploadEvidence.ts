@@ -2,6 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 
 import { EvidenceUploadResponse } from '../../lib/actions/endpoints';
+import { getUploadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 
 export type EvidenceMimeType = 'image/jpeg' | 'image/png' | 'video/mp4';
@@ -69,7 +70,7 @@ export async function pickEvidenceDocument() {
 export async function uploadSelectedEvidence(upload: EvidenceUploadResponse, file: SelectedEvidenceFile) {
   if (!supabaseClient) {
     return {
-      message: 'Supabase client is not configured.',
+      message: getUploadUserMessage(),
       ok: false as const,
     };
   }
@@ -84,7 +85,7 @@ export async function uploadSelectedEvidence(upload: EvidenceUploadResponse, fil
 
   if (error) {
     return {
-      message: error.message,
+      message: getUploadUserMessage(),
       ok: false as const,
     };
   }
