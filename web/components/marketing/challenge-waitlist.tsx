@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect } from 'react';
 import { joinChallengeWaitlist, type ChallengeJoinState } from '@/app/(marketing)/actions';
-import { CheckCircle2, Copy, Check, Lock, Clock } from 'lucide-react';
+import { CheckCircle2, Copy, Check, Lock, Clock, ArrowDown } from 'lucide-react';
 import { CHALLENGE_CAP, CHALLENGE_END_LABEL, CHALLENGE_START_LABEL } from '@/lib/challenge-config';
 
 const initialState: ChallengeJoinState = {};
@@ -32,6 +32,14 @@ export function ChallengeWaitlist({
       onSuccess?.(state.referralCode);
     }
   }, [state.ok, state.referralCode, onSuccess]);
+
+  useEffect(() => {
+    if (!state.ok) return;
+    const timer = setTimeout(() => {
+      document.getElementById('tiers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [state.ok]);
 
   const referralLink = state.referralUrl ?? null;
   const referralPrefix = referralLink && state.referralCode
@@ -174,6 +182,17 @@ export function ChallengeWaitlist({
             Tap to copy. Every friend who signs up via your link counts as a referral.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            document.getElementById('tiers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+          className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+        >
+          Continue to Step 2 — Pick your tier
+          <ArrowDown className="h-4 w-4 shrink-0" aria-hidden />
+        </button>
       </div>
     );
   }
