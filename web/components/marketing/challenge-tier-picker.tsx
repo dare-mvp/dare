@@ -302,6 +302,15 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
   const [confirmed, setConfirmed] = useState(false);
   const [, startTransition] = useTransition();
   const taskListRef = useRef<HTMLDivElement>(null);
+  const continueRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!selected || !continueRef.current) return;
+    const timer = setTimeout(() => {
+      continueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [selected]);
 
   function handleContinue() {
     if (!selected) return;
@@ -379,7 +388,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
         <button
           type="button"
           onClick={() => setSelected('standard')}
-          aria-pressed={selected === 'standard' ? true : false}
+          aria-pressed={selected === 'standard' ? 'true' : 'false'}
           className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'standard'
               ? 'border-[#19C37D]/60 shadow-lg shadow-[#19C37D]/5'
@@ -473,7 +482,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
         <button
           type="button"
           onClick={() => setSelected('champion')}
-          aria-pressed={selected === 'champion' ? true : false}
+          aria-pressed={selected === 'champion' ? 'true' : 'false'}
           className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'champion'
               ? 'border-brand-primary shadow-lg shadow-brand-primary/10'
@@ -595,6 +604,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
 
       {/* ── Continue CTA ── */}
       <div
+        ref={continueRef}
         className={`transition-all duration-300 ${
           selected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
         }`}
