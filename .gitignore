@@ -10,9 +10,24 @@ dare_mobile_eas_access_token.txt
 
 # Media files
 *.mp4
+*.MP4
 *.mp3
+*.MP3
 *.mov
+*.MOV
 *.avi
 *.webm
+*.gif
+*.GIF
+*.m4a
+*.M4A
+
+# UGC content — videos, images, and generated assets
+docs/ugc/avatar_assets/
+docs/ugc/screenshots/
+docs/ugc/graphics/
+docs/ugc/higgsfield_videos/
+docs/ugc/Capcut_videos/
+docs/ugc/dare_mobile_web_walkthrough/
 
 

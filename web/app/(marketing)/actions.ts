@@ -218,6 +218,18 @@ export async function joinChallengeWaitlist(
     return { error: 'rate_limited' };
   }
 
+  // Nullify referred_by if the code belongs to the same email (self-referral)
+  if (referredBy) {
+    const { data: referrer } = await admin
+      .from('marketing_waitlist')
+      .select('email')
+      .eq('referral_code', referredBy)
+      .maybeSingle();
+    if (referrer?.email === email) {
+      referredBy = null;
+    }
+  }
+
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateReferralCode();
 
