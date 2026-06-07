@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { recordTierSelection } from '@/app/(marketing)/actions';
+import { trackEvent } from '@/lib/analytics';
 import {
   Heart,
   Share2,
@@ -40,11 +41,13 @@ function ShareTaskButton({ referralUrl }: { referralUrl: string }) {
           text: SHARE_TEXT,
           url: referralUrl,
         });
+        trackEvent('challenge_task_share_click', { source: 'task_list', method: 'native' });
         return;
       } catch {
         // fall through to WhatsApp
       }
     }
+    trackEvent('challenge_task_share_click', { source: 'task_list', method: 'whatsapp' });
     window.open(
       `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT} ${referralUrl}`)}`,
       '_blank',
@@ -81,6 +84,7 @@ function CopyMessageButton() {
       await navigator.clipboard.writeText(CLAIM_MESSAGE);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent('challenge_claim_message_copied');
     } catch {
       // ignore
     }
@@ -111,6 +115,7 @@ function CopyLinkButton({ url, referralCode }: { url: string; referralCode?: str
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent('challenge_referral_link_copied', { source: 'task_list' });
     } catch {
       // ignore
     }
@@ -240,6 +245,7 @@ function TaskList({
           target="_blank"
           rel="noopener noreferrer"
           className="mt-3 flex w-full items-center justify-center gap-2 h-11 rounded-xl bg-brand-primary px-5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+          onClick={() => trackEvent('challenge_task_follow_click')}
         >
           Follow on Instagram →
         </a>
@@ -320,6 +326,7 @@ function TaskList({
           target="_blank"
           rel="noopener noreferrer"
           className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+          onClick={() => trackEvent('challenge_task_dm_click', { tier })}
         >
           <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
           DM @dareappofficial to claim
@@ -353,6 +360,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
 
   function handleContinue() {
     if (!selected) return;
+    trackEvent('challenge_tier_confirmed', { tier: selected });
     startTransition(() => {
       recordTierSelection(selected, referralCode).catch(() => {});
     });
@@ -426,8 +434,8 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
         {/* ── Standard ₦2,000 ── */}
         <button
           type="button"
-          onClick={() => setSelected('standard')}
-          aria-pressed={selected === 'standard' ? 'true' : 'false'}
+          onClick={() => { setSelected('standard'); trackEvent('challenge_tier_selected', { tier: 'standard' }); }}
+          aria-label={`Standard Dare — ₦2,000, 4 tasks${selected === 'standard' ? ' (selected)' : ''}`}
           className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'standard'
               ? 'border-[#19C37D]/60 shadow-lg shadow-[#19C37D]/5'
@@ -520,8 +528,8 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
         {/* ── Champion ₦3,000 ── */}
         <button
           type="button"
-          onClick={() => setSelected('champion')}
-          aria-pressed={selected === 'champion' ? 'true' : 'false'}
+          onClick={() => { setSelected('champion'); trackEvent('challenge_tier_selected', { tier: 'champion' }); }}
+          aria-label={`Champion Dare — ₦3,000, 5 tasks${selected === 'champion' ? ' (selected)' : ''}`}
           className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'champion'
               ? 'border-brand-primary shadow-lg shadow-brand-primary/10'
