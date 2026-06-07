@@ -1,12 +1,14 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = 'DARE <noreply@daregamesapp.com>';
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export async function sendChallengeWelcomeEmail(to: string, referralUrl: string): Promise<void> {
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: 'Your I Dare You referral link is ready 🔥',
@@ -51,7 +53,7 @@ export async function sendChallengeWelcomeEmail(to: string, referralUrl: string)
 
 export async function sendChallengeReminderEmail(to: string, referralUrl: string): Promise<void> {
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to,
       subject: '3 days left on the I Dare You Challenge',
