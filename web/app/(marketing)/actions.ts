@@ -187,7 +187,7 @@ export async function joinChallengeWaitlist(
   formData: FormData,
 ): Promise<ChallengeJoinState> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
-  const referredBy = normalizeReferralCode(formData.get('referred_by'));
+  let referredBy = normalizeReferralCode(formData.get('referred_by'));
 
   if (!EMAIL_RE.test(email)) {
     return { error: 'invalid_email' };
@@ -216,6 +216,18 @@ export async function joinChallengeWaitlist(
 
   if (await isChallengeRateLimited(email, admin)) {
     return { error: 'rate_limited' };
+  }
+
+  // Nullify referred_by if the code belongs to the same email (self-referral)
+  if (referredBy) {
+    const { data: referrer } = await admin
+      .from('marketing_waitlist')
+      .select('email')
+      .eq('referral_code', referredBy)
+      .maybeSingle();
+    if (referrer?.email === email) {
+      referredBy = null;
+    }
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
