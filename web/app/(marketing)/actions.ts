@@ -187,7 +187,7 @@ export async function joinChallengeWaitlist(
   formData: FormData,
 ): Promise<ChallengeJoinState> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
-  const referredBy = normalizeReferralCode(formData.get('referred_by'));
+  let referredBy = normalizeReferralCode(formData.get('referred_by'));
 
   if (!EMAIL_RE.test(email)) {
     return { error: 'invalid_email' };
