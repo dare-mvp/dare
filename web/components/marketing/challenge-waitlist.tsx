@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect } from 'react';
 import { joinChallengeWaitlist, type ChallengeJoinState } from '@/app/(marketing)/actions';
 import { CheckCircle2, Copy, Check, Lock, Clock, ArrowDown } from 'lucide-react';
 import { CHALLENGE_CAP, CHALLENGE_END_LABEL, CHALLENGE_START_LABEL } from '@/lib/challenge-config';
+import { trackEvent } from '@/lib/analytics';
 
 const initialState: ChallengeJoinState = {};
 
@@ -24,11 +25,13 @@ function ShareButton({ referralLink }: { referralLink: string }) {
           text: SHARE_TEXT,
           url: referralLink,
         });
+        trackEvent('challenge_task_share_click', { source: 'step1', method: 'native' });
         return;
       } catch {
         // User cancelled or share failed — fall through to WhatsApp
       }
     }
+    trackEvent('challenge_task_share_click', { source: 'step1', method: 'whatsapp' });
     window.open(
       `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT} ${referralLink}`)}`,
       '_blank',
@@ -80,8 +83,12 @@ export function ChallengeWaitlist({
   useEffect(() => {
     if (state.ok && state.referralCode && state.referralUrl) {
       onSuccess?.(state.referralCode, state.referralUrl);
+      trackEvent('challenge_waitlist_join', {
+        is_duplicate: !!state.isDuplicate,
+        has_referrer: !!referredBy,
+      });
     }
-  }, [state.ok, state.referralCode, state.referralUrl, onSuccess]);
+  }, [state.ok, state.referralCode, state.referralUrl, onSuccess, state.isDuplicate, referredBy]);
 
   useEffect(() => {
     if (!state.ok) return;
@@ -102,6 +109,7 @@ export function ChallengeWaitlist({
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent('challenge_referral_link_copied', { source: 'step1' });
     } catch {
       setCopied(false);
     }
