@@ -8,6 +8,8 @@ import { CourtSession } from '../types';
 type ResultClaimOutcome = 'challenger_won' | 'dispute' | 'issuer_won' | 'performer_completed' | 'void';
 
 type ResultClaimPanelProps = {
+  disabled?: boolean;
+  disabledReason?: string;
   onChangeRationale: (value: string) => void;
   onSubmit: (outcome: ResultClaimOutcome) => void;
   rationale: string;
@@ -16,6 +18,8 @@ type ResultClaimPanelProps = {
 };
 
 export function ResultClaimPanel({
+  disabled = false,
+  disabledReason,
   onChangeRationale,
   onSubmit,
   rationale,
@@ -24,12 +28,14 @@ export function ResultClaimPanel({
 }: ResultClaimPanelProps) {
   const isTask = session.dareType === 'task';
   const isEvidence = session.resolutionType === 'evidence';
+  const actionDisabled = disabled || submitting;
 
   return (
     <View style={styles.panel}>
       <Text style={styles.kicker}>{formatResolution(session.resolutionType)}</Text>
       <Text style={styles.title}>{getTitle(session)}</Text>
       <Text style={styles.body}>{getBody(session)}</Text>
+      {disabledReason ? <Text style={styles.waitingText}>{disabledReason}</Text> : null}
 
       {session.resolutionType === 'witnessed' ? (
         <View style={styles.voteRow}>
@@ -40,6 +46,7 @@ export function ResultClaimPanel({
 
       <TextInput
         accessibilityLabel="Result rationale"
+        editable={!disabled}
         multiline
         onChangeText={onChangeRationale}
         placeholder={isEvidence ? 'Summarize what your evidence proves' : 'Summarize the witnessed outcome'}
@@ -52,7 +59,7 @@ export function ResultClaimPanel({
       <View style={styles.actions}>
         <ActionButton
           accessibilityLabel={isTask ? 'Claim performer completed task' : 'Claim player A won'}
-          disabled={submitting}
+          disabled={actionDisabled}
           icon={<Trophy color={colors.text} size={18} />}
           label={isTask ? 'Performer completed' : 'Player A won'}
           onPress={() => onSubmit(isTask ? 'performer_completed' : 'issuer_won')}
@@ -60,7 +67,7 @@ export function ResultClaimPanel({
         {!isTask ? (
           <ActionButton
             accessibilityLabel="Claim player B won"
-            disabled={submitting}
+            disabled={actionDisabled}
             icon={<Check color={colors.text} size={18} />}
             label="Player B won"
             onPress={() => onSubmit('challenger_won')}
@@ -69,7 +76,7 @@ export function ResultClaimPanel({
         ) : null}
         <ActionButton
           accessibilityLabel="Claim no valid result"
-          disabled={submitting}
+          disabled={actionDisabled}
           icon={<CircleAlert color={colors.text} size={18} />}
           label="No valid result"
           onPress={() => onSubmit('void')}
@@ -77,7 +84,7 @@ export function ResultClaimPanel({
         />
         <ActionButton
           accessibilityLabel="Dispute result"
-          disabled={submitting}
+          disabled={actionDisabled}
           icon={<CircleAlert color={colors.text} size={18} />}
           label="Dispute"
           onPress={() => onSubmit('dispute')}
@@ -162,5 +169,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontSize: 11,
     textTransform: 'uppercase',
+  },
+  waitingText: {
+    color: colors.warning,
+    fontFamily: fonts.body,
+    fontSize: typography.caption.fontSize,
+    lineHeight: typography.caption.lineHeight,
   },
 });

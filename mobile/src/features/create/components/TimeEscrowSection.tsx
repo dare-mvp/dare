@@ -33,9 +33,15 @@ export function TimeEscrowSection({
   stakeError,
   stakeNaira,
 }: TimeEscrowSectionProps) {
+  const isTask = dareType === 'task';
+
   return (
     <View style={styles.section}>
-      <SectionTitle eyebrow="Stake" icon={createSectionIcons.stake} title="Set time and escrow" />
+      <SectionTitle
+        eyebrow={isTask ? 'Reward' : 'Stake'}
+        icon={createSectionIcons.stake}
+        title={isTask ? 'Set time and reward' : 'Set time and stake'}
+      />
       <View style={styles.pillGrid}>
         {durationOptions.map((duration) => (
           <SelectPill
@@ -59,17 +65,17 @@ export function TimeEscrowSection({
         value={formatMinutes(durationSeconds)}
       />
       <TextField
-        error={dareType === 'task' ? rewardError : stakeError}
+        error={isTask ? rewardError : stakeError}
         keyboardType="numeric"
-        label={dareType === 'task' ? 'Reward amount' : 'Stake amount'}
+        label={isTask ? 'Darer reward amount' : 'Stake amount'}
         leftIcon={<CircleDollarSign color={colors.warning} size={16} />}
         onChangeText={(value) => {
           const normalized = value.replace(/[^0-9]/g, '');
-          if (dareType === 'task') onRewardChange(normalized);
+          if (isTask) onRewardChange(normalized);
           else onStakeChange(normalized);
         }}
-        placeholder={dareType === 'task' ? 'Minimum reward NGN 100' : 'Minimum stake NGN 100'}
-        value={dareType === 'task' ? rewardNaira : stakeNaira}
+        placeholder={isTask ? 'Minimum reward NGN 100' : 'Minimum stake NGN 100'}
+        value={isTask ? rewardNaira : stakeNaira}
       />
     </View>
   );

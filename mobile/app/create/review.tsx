@@ -96,7 +96,7 @@ export default function CreateReviewScreen() {
           <Text style={styles.statusTitle}>{validation.isValid ? 'Constitution complete' : 'Constitution incomplete'}</Text>
           <Text style={styles.statusText}>
             {validation.isValid
-              ? 'Your rules, stake, duration, and resolution path are ready for confirmation.'
+              ? 'Your rules, funding, duration, and resolution path are ready for confirmation.'
               : 'Return to edit and complete the required terms before creating this DARE.'}
           </Text>
         </View>
@@ -114,9 +114,10 @@ export default function CreateReviewScreen() {
         platformFeeLabel="Estimated settlement fee"
         platformFeeKobo={platformFeeKobo}
         stakeKobo={draft.dareType === 'task' ? rewardKobo : stakeKobo}
+        stakeLabel={draft.dareType === 'task' ? 'Darer reward' : 'Creator stake'}
         title={draft.dareType === 'task' ? 'Reward escrow' : 'Creator escrow'}
         totalKobo={escrowKobo}
-        totalLabel={draft.dareType === 'task' ? 'Reward to lock' : 'Stake to lock'}
+        totalLabel={draft.dareType === 'task' ? 'Reward to lock' : 'Creator stake to lock'}
       />
 
       <InlineAlert

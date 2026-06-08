@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.card,
     borderWidth: 1,
+    flexBasis: 150,
     flex: 1,
     gap: spacing[6],
     minWidth: 0,

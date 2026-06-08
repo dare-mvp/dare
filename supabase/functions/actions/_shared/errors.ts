@@ -2,6 +2,7 @@ export {
   ACTION_ERROR_CODES,
   ActionError,
   ERROR_DEFINITIONS,
+  getPublicActionErrorMessage,
   isActionError,
   toActionError,
 } from "../../_shared/errors.ts";

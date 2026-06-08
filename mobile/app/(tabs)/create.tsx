@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import { FileText, ScrollText, ShieldCheck, UserRound } from 'lucide-react-native';
-import { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
@@ -9,6 +8,12 @@ import { Screen } from '../../src/components/ui/Screen';
 import { TextField } from '../../src/components/ui/TextField';
 import { TopBar } from '../../src/components/ui/TopBar';
 import { ConstitutionPreview } from '../../src/features/create/components/ConstitutionPreview';
+import {
+  CreatePressCard as PressCard,
+  CreateSectionTitle as SectionTitle,
+  createScreenStyles as styles,
+  getCreateGate,
+} from '../../src/features/create/components/CreateScreenParts';
 import { CreateStepper } from '../../src/features/create/components/CreateStepper';
 import { SelectPill } from '../../src/features/create/components/SelectPill';
 import { TimeEscrowSection } from '../../src/features/create/components/TimeEscrowSection';
@@ -23,7 +28,7 @@ import {
 import { useCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
-import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
+import { colors } from '../../src/theme/tokens';
 
 export default function CreateScreen() {
   const router = useRouter();
@@ -56,7 +61,7 @@ export default function CreateScreen() {
           <InlineAlert
             tone="info"
             title={loading ? 'Syncing account' : 'Preview data'}
-            message={loading ? 'Create eligibility is loading.' : 'Live stake limits appear after sign-in and sync.'}
+            message={loading ? 'Create eligibility is loading.' : 'Live stake and reward limits appear after sign-in and sync.'}
           />
         ) : null}
 
@@ -199,14 +204,14 @@ export default function CreateScreen() {
         <InlineAlert
           tone="warning"
           title="Confirmation required"
-          message="Submitting will lock escrow only after confirmation. Until then, this DARE remains a draft."
+          message="Submitting will lock the stake or reward only after confirmation. Until then, this DARE remains a draft."
         />
 
         <ActionButton
-          accessibilityLabel="Review DARE escrow"
+          accessibilityLabel="Review DARE stake or reward"
           disabled={data.capabilities.canCreateDare ? !canReview : loading || Boolean(error)}
           icon={<ShieldCheck color={colors.text} size={18} />}
-          label={data.capabilities.canCreateDare ? 'Review escrow' : createGate.label}
+          label={data.capabilities.canCreateDare ? 'Review terms' : createGate.label}
           onPress={() => {
             if (!data.capabilities.canCreateDare) {
               router.push(createGate.route);
@@ -223,151 +228,3 @@ export default function CreateScreen() {
     </Screen>
   );
 }
-
-function getCreateGate(data: ReturnType<typeof useMe>['data']) {
-  if (data.profile.kycStatus === 'pending') {
-    return {
-      label: 'KYC status',
-      message: 'KYC review must finish before you can create money-backed DAREs.',
-      route: '/kyc-status' as const,
-      title: 'KYC review pending',
-    };
-  }
-
-  if (data.profile.kycStatus === 'not_started') {
-    return {
-      label: 'Verify account',
-      message: 'Complete KYC before creating money-backed DAREs.',
-      route: '/kyc-intro' as const,
-      title: 'Verification required',
-    };
-  }
-
-  return {
-    label: 'Review account',
-    message: 'Your account, wallet, or limits are not currently eligible to create DAREs.',
-    route: '/(tabs)/profile' as const,
-    title: 'Create unavailable',
-  };
-}
-
-function SectionTitle({ eyebrow, icon, title }: { eyebrow: string; icon: ReactNode; title: string }) {
-  return (
-    <View style={styles.sectionTitleWrap}>
-      <View style={styles.eyebrowRow}>
-        {icon}
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
-      </View>
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-}
-
-function PressCard({
-  body,
-  icon,
-  label,
-  onPress,
-  selected,
-}: {
-  body?: string;
-  icon: ReactNode;
-  label: string;
-  onPress: () => void;
-  selected: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.pressCard, selected && styles.pressCardSelected]}
-    >
-      <View style={styles.pressCardIcon}>{icon}</View>
-      <View style={styles.pressCardCopy}>
-        <Text style={styles.pressCardTitle}>{label}</Text>
-        {body ? <Text style={styles.pressCardBody}>{body}</Text> : null}
-      </View>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing[20],
-    padding: spacing[20],
-    paddingBottom: spacing[32],
-  },
-  section: {
-    gap: spacing[12],
-  },
-  sectionTitleWrap: {
-    gap: spacing[4],
-  },
-  eyebrowRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing[6],
-  },
-  eyebrow: {
-    color: colors.primary,
-    fontFamily: fonts.mono,
-    fontSize: typography.caption.fontSize,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: typography.sectionTitle.fontSize,
-    fontWeight: '900',
-    lineHeight: typography.sectionTitle.lineHeight,
-  },
-  pressCard: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing[6],
-    padding: spacing[14],
-  },
-  pressCardSelected: {
-    backgroundColor: colors.primaryDim,
-    borderColor: colors.primary,
-  },
-  pressCardTitle: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  pressCardIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radius.control,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  pressCardCopy: {
-    flex: 1,
-    gap: spacing[4],
-    minWidth: 0,
-  },
-  pressCardBody: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyRegular,
-    fontSize: typography.caption.fontSize,
-    lineHeight: typography.caption.lineHeight,
-  },
-  pillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[8],
-  },
-  rulesInput: {
-    minHeight: 110,
-  },
-});

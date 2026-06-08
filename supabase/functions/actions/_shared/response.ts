@@ -1,5 +1,9 @@
 import { CORS_HEADERS } from "./cors.ts";
-import { type ActionError, toActionError } from "./errors.ts";
+import {
+  type ActionError,
+  getPublicActionErrorMessage,
+  toActionError,
+} from "./errors.ts";
 
 export type SuccessEnvelope<TData> = {
   ok: true;
@@ -58,7 +62,7 @@ export function errorResponse(
       ok: false,
       error: {
         code: actionError.code,
-        message: actionError.message,
+        message: getPublicActionErrorMessage(actionError),
         retryable: actionError.retryable,
       },
       requestId,

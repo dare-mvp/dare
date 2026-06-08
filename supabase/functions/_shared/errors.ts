@@ -137,3 +137,7 @@ export function toActionError(error: unknown): ActionError {
 
   return new ActionError("INTERNAL_ERROR", { cause: error });
 }
+
+export function getPublicActionErrorMessage(error: ActionError): string {
+  return ERROR_DEFINITIONS[error.code].message;
+}

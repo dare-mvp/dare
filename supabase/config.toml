@@ -118,10 +118,15 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
-[storage.buckets.evidence]
+[storage.buckets.dare-evidence]
 public = false
 file_size_limit = "10MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "video/mp4"]
+
+[storage.buckets.kyc-documents]
+public = false
+file_size_limit = "8MiB"
+allowed_mime_types = ["image/png", "image/jpeg"]
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]

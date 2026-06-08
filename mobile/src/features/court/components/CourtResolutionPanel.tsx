@@ -11,6 +11,7 @@ type CourtResolutionPanelProps = {
   answerText: string;
   claimRationale: string;
   courtSource: 'mock' | 'server';
+  disabledReason?: string;
   onChangeAnswer: (value: string) => void;
   onChangeRationale: (value: string) => void;
   onSubmitResultClaim: (outcome: ResultClaimOutcome) => void;
@@ -26,6 +27,7 @@ export function CourtResolutionPanel({
   answerText,
   claimRationale,
   courtSource,
+  disabledReason,
   onChangeAnswer,
   onChangeRationale,
   onSubmitResultClaim,
@@ -40,6 +42,7 @@ export function CourtResolutionPanel({
     return (
       <AnswerKeyPanel
         answerText={answerText}
+        disabled={Boolean(disabledReason)}
         onChangeAnswer={onChangeAnswer}
         question={question}
       />
@@ -49,7 +52,7 @@ export function CourtResolutionPanel({
   if (session.resolutionType === 'witnessed' && session.viewerRole === 'spectator') {
     return (
       <WitnessVotePanel
-        disabled={courtSource !== 'server'}
+        disabled={courtSource !== 'server' || Boolean(disabledReason)}
         onVote={onSubmitWitnessVote}
         session={session}
         submitting={submitting}
@@ -71,6 +74,8 @@ export function CourtResolutionPanel({
 
   return (
     <ResultClaimPanel
+      disabled={Boolean(disabledReason)}
+      disabledReason={disabledReason}
       onChangeRationale={onChangeRationale}
       onSubmit={onSubmitResultClaim}
       rationale={claimRationale}

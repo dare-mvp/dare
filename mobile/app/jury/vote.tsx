@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { ErrorState } from '../../src/components/ui/ErrorState';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { TextField } from '../../src/components/ui/TextField';
-import { JuryEvidencePacket } from '../../src/features/jury/components/JuryEvidencePacket';
+import { JuryEvidencePacket, JuryVoteChoice } from '../../src/features/jury/components/JuryEvidencePacket';
 import { JuryFlowFrame } from '../../src/features/jury/components/JuryFlowFrame';
 import { useJuryAssignment } from '../../src/features/jury/useJuryAssignment';
-import { castJuryVote, CastJuryVotePayload } from '../../src/lib/actions/endpoints';
+import { castJuryVote } from '../../src/lib/actions/endpoints';
 import { isUuid } from '../../src/lib/ids';
 
 export default function JuryVoteScreen() {
@@ -20,6 +20,7 @@ export default function JuryVoteScreen() {
   const rationaleError = rationale.trim().length > 0 && rationale.trim().length < 20
     ? 'Add at least 20 characters.'
     : undefined;
+  const canSubmitVote = Boolean(assignment) && rationale.trim().length >= 20 && !rationaleError && !submitting;
 
   return (
     <JuryFlowFrame
@@ -57,11 +58,9 @@ export default function JuryVoteScreen() {
         <>
           <JuryEvidencePacket
             caseTitle={assignment.title}
-            onVoteA={() => {
-              void handleVote('A');
-            }}
-            onVoteB={() => {
-              void handleVote('B');
+            disabled={!canSubmitVote}
+            onVote={(vote) => {
+              void handleVote(vote);
             }}
             sides={assignment.sides}
           />
@@ -79,17 +78,17 @@ export default function JuryVoteScreen() {
       <InlineAlert
         tone="warning"
         title="Vote cannot be changed"
-        message="Submit only after reading both packets and checking the attached evidence counts."
+        message="Add a rationale, then submit A, B, void, or escalate only after reading both blind packets."
       />
     </JuryFlowFrame>
   );
 
-  async function handleVote(vote: CastJuryVotePayload['vote']) {
+  async function handleVote(vote: JuryVoteChoice) {
     if (submitting) return;
     if (!assignment) return;
 
     if (assignment.source !== 'server' || !isUuid(assignment.caseId)) {
-      router.push(`/jury/receipt?vote=${vote}`);
+      router.push(`/jury/receipt?vote=${vote}&status=settlement_pending&verdict=${vote}`);
       return;
     }
 
@@ -117,10 +116,13 @@ export default function JuryVoteScreen() {
       pathname: '/jury/receipt',
       params: {
         caseId: result.data.juryCaseId,
+        dareStatus: result.data.dareStatus,
         status: result.data.status,
+        verdict: result.data.verdict ?? '',
         vote,
         votesCast: String(result.data.votesCast),
         votesNeeded: String(result.data.votesNeeded),
+        winnerId: result.data.winnerId ?? '',
       },
     });
   }

@@ -53,6 +53,10 @@ export default function JuryAssignmentScreen() {
             <Text style={styles.reward}>{assignment.rewardLabel}</Text>
           </View>
           <Text style={styles.title}>{assignment.title}</Text>
+          <View style={styles.statusRow}>
+            <StatusBadge label={formatLabel(assignment.status).toUpperCase()} tone="info" />
+            <Text style={styles.votesNeeded}>{assignment.votesNeeded} votes needed</Text>
+          </View>
           <View style={styles.metaRow}>
             <Clock3 color={colors.warning} size={18} />
             <Text style={styles.meta}>{assignment.dueLabel}</Text>
@@ -98,6 +102,10 @@ function CheckLine({ text }: { text: string }) {
   );
 }
 
+function formatLabel(value: string) {
+  return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
@@ -132,6 +140,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing[8],
     paddingTop: spacing[12],
+  },
+  statusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[8],
+  },
+  votesNeeded: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    textTransform: 'uppercase',
   },
   meta: {
     color: colors.textMuted,

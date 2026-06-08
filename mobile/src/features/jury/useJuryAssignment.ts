@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { callAction } from '../../lib/actions/client';
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
@@ -17,7 +18,11 @@ export type JuryAssignmentDetail = {
   source: 'mock' | 'server';
   status: string;
   title: string;
+  verdict: JuryVerdict | null;
+  votesNeeded: number;
 };
+
+export type JuryVerdict = 'A' | 'B' | 'void' | 'escalate' | 'uphold' | 'overturn';
 
 type JuryAssignmentState = {
   assignment: JuryAssignmentDetail | null;
@@ -32,13 +37,17 @@ type AssignmentRow = {
   status: string;
 };
 
-type JuryCaseRow = {
-  evidence_a_id: string | null;
-  evidence_b_id: string | null;
-  id: string;
-  reason: string;
+type JuryEvidencePacketResponse = {
+  assignmentId: string;
+  caseId: string;
+  claimedAt: string | null;
+  dareId: string;
+  dueAt: string | null;
+  sides: [JuryEvidenceSide, JuryEvidenceSide];
   status: string;
-  votes_needed: number;
+  title: string;
+  verdict: JuryVerdict | null;
+  votesNeeded: number;
 };
 
 export function useJuryAssignment(caseId?: string): JuryAssignmentState {
@@ -87,15 +96,11 @@ export function useJuryAssignment(caseId?: string): JuryAssignmentState {
         return;
       }
 
-      const { data: juryCase, error: caseError } = await supabaseClient
-        .from('jury_cases')
-        .select('id,status,reason,votes_needed,evidence_a_id,evidence_b_id')
-        .eq('id', (assignment as AssignmentRow).jury_case_id)
-        .maybeSingle();
+      const packet = await getJuryEvidencePacket((assignment as AssignmentRow).jury_case_id);
 
       if (!mounted) return;
 
-      if (caseError || !juryCase) {
+      if (!packet.ok) {
         setState({
           assignment: null,
           error: getLoadUserMessage('jury assignment'),
@@ -105,7 +110,7 @@ export function useJuryAssignment(caseId?: string): JuryAssignmentState {
       }
 
       setState({
-        assignment: mapAssignment(assignment as AssignmentRow, juryCase as JuryCaseRow),
+        assignment: mapAssignment(packet.data),
         error: null,
         loading: false,
       });
@@ -132,35 +137,29 @@ function createPreviewAssignment(): JuryAssignmentDetail {
     source: 'mock',
     status: 'assigned',
     title: juryAssignment.title,
+    verdict: null,
+    votesNeeded: 3,
   };
 }
 
-function mapAssignment(assignment: AssignmentRow, juryCase: JuryCaseRow): JuryAssignmentDetail {
-  const evidenceCountA = juryCase.evidence_a_id ? 1 : 0;
-  const evidenceCountB = juryCase.evidence_b_id ? 1 : 0;
-
+function mapAssignment(packet: JuryEvidencePacketResponse): JuryAssignmentDetail {
   return {
-    assignmentId: assignment.id,
-    caseId: juryCase.id,
+    assignmentId: packet.assignmentId,
+    caseId: packet.caseId,
     category: 'Jury',
-    dueLabel: assignment.due_at ? formatDueLabel(assignment.due_at) : 'No deadline',
+    dueLabel: packet.dueAt ? formatDueLabel(packet.dueAt) : 'No deadline',
     rewardLabel: '+2 trust',
-    sides: [
-      {
-        body: `Packet A evidence for this dispute. Reason: ${juryCase.reason}`,
-        filesCount: evidenceCountA,
-        label: 'A',
-      },
-      {
-        body: `Packet B evidence for this dispute. Reason: ${juryCase.reason}`,
-        filesCount: evidenceCountB,
-        label: 'B',
-      },
-    ],
+    sides: packet.sides,
     source: 'server',
-    status: juryCase.status,
-    title: `Jury case ${juryCase.id.slice(0, 8)}`,
+    status: packet.status,
+    title: packet.title,
+    verdict: packet.verdict,
+    votesNeeded: packet.votesNeeded,
   };
+}
+
+function getJuryEvidencePacket(juryCaseId: string) {
+  return callAction<JuryEvidencePacketResponse>(`/jury-cases/${juryCaseId}/evidence`);
 }
 
 function formatDueLabel(value: string) {

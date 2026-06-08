@@ -23,8 +23,30 @@ export function CourtStatusPanel({ session }: CourtStatusPanelProps) {
         <Text style={styles.label}>Court phase</Text>
         <Text style={styles.value}>{phaseLabel[session.phase]}</Text>
       </View>
+      <View style={styles.row}>
+        <Text style={styles.label}>DARE status</Text>
+        <StatusBadge label={formatStatus(session.status)} tone={getStatusTone(session.status)} />
+      </View>
+      {session.resolutionType === 'evidence' ? (
+        <View style={styles.row}>
+          <Text style={styles.label}>Evidence</Text>
+          <Text style={styles.value}>{session.evidence.uploadedCount} uploaded</Text>
+        </View>
+      ) : null}
+      {session.resolutionType !== 'answer_key' ? (
+        <View style={styles.row}>
+          <Text style={styles.label}>Result claims</Text>
+          <Text style={styles.value}>{session.resultClaims.claimsCount}/2</Text>
+        </View>
+      ) : null}
+      {session.juryCase ? (
+        <View style={styles.row}>
+          <Text style={styles.label}>Jury</Text>
+          <Text style={styles.value}>{formatStatus(session.juryCase.status)}</Text>
+        </View>
+      ) : null}
       <Text style={styles.note}>
-        If heartbeat stops, the match may move into reconnect or forfeit review. Payouts and trust changes stay pending until settlement is confirmed.
+        {getStatusNote(session)}
       </Text>
     </View>
   );
@@ -44,10 +66,40 @@ const connectionTone = {
 
 const phaseLabel = {
   active: 'Active challenge',
+  awaiting_result: 'Awaiting result',
   countdown: 'Countdown',
+  disputed: 'Dispute review',
   ready: 'Ready-up',
+  settled: 'Settled',
   settlement_pending: 'Settlement pending',
 } as const;
+
+function getStatusTone(status: CourtSession['status']) {
+  if (status === 'settled' || status === 'completed') return 'success';
+  if (status === 'dispute_pending' || status === 'jury_open') return 'warning';
+  if (status === 'forfeited') return 'danger';
+  return 'neutral';
+}
+
+function formatStatus(value: string) {
+  return value.replace(/[_-]/g, ' ').toUpperCase();
+}
+
+function getStatusNote(session: CourtSession) {
+  if (session.status === 'dispute_pending') {
+    return 'Settlement is paused while the dispute packet is prepared for review.';
+  }
+  if (session.status === 'jury_open') {
+    return 'Settlement is paused while jurors review the submitted evidence.';
+  }
+  if (session.status === 'settlement_pending' || session.status === 'completed') {
+    return 'The result is recorded. Payouts and trust changes stay pending until settlement is confirmed.';
+  }
+  if (session.status === 'settled') {
+    return 'Settlement is complete. Payout and trust updates have moved out of Court review.';
+  }
+  return 'If heartbeat stops, the match may move into reconnect or forfeit review. Payouts and trust changes stay pending until settlement is confirmed.';
+}
 
 const styles = StyleSheet.create({
   panel: {

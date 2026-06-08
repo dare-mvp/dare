@@ -75,7 +75,7 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
 
       const { data, error } = await client
         .from('ledger_entries')
-        .select('id,type,direction,amount,status,metadata,created_at')
+        .select('id,type,direction,amount,status,metadata,created_at,dare_id,currency')
         .eq('id', id)
         .maybeSingle();
 

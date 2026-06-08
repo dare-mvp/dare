@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { formatDareTypeLabel, formatResolutionLabel } from '../../src/features/create/createLabels';
 import { CreateFlowFrame } from '../../src/features/create/components/CreateFlowFrame';
 import { isUuid } from '../../src/lib/ids';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
@@ -29,8 +30,8 @@ export default function CreateReceiptScreen() {
   const statusLabel = formatStatus(status);
   const receiptLines = [
     { label: 'Category', value: (category ?? 'knowledge').toUpperCase() },
-    { label: 'DARE type', value: isTask ? 'TASK-BASED' : 'SKILL-BASED' },
-    { label: 'Resolution', value: formatResolution(resolutionType) },
+    { label: 'DARE type', value: formatDareTypeLabel(isTask ? 'task' : 'skill') },
+    { label: 'Resolution', value: formatResolutionLabel(resolutionType ?? 'answer_key') },
     { label: isTask ? 'Performer' : 'Opponent', value: opponent ?? (isTask ? 'Open task' : 'Open challenge') },
     { label: 'Reference', value: dareId ?? 'Pending reference' },
   ];
@@ -55,7 +56,7 @@ export default function CreateReceiptScreen() {
           <ReceiptLine key={line.label} label={line.label} value={line.value} />
         ))}
         <View style={styles.moneyLine}>
-          <Text style={styles.label}>{isTask ? 'Reward locked' : 'Stake locked'}</Text>
+          <Text style={styles.label}>{isTask ? 'Reward locked' : 'Creator stake locked'}</Text>
           <MoneyAmount amountKobo={lockedAmountKobo} tone="locked" />
         </View>
       </View>
@@ -89,10 +90,6 @@ function formatStatus(status?: string) {
   if (status === 'targeted_pending') return 'TARGETED PENDING';
   if (status === 'open') return 'OPEN';
   return (status ?? 'CREATED').replace(/[_-]/g, ' ').toUpperCase();
-}
-
-function formatResolution(value?: string) {
-  return (value ?? 'answer_key').replace(/[_-]/g, ' ').toUpperCase();
 }
 
 function getHeroText(status: string | undefined, isTask: boolean) {

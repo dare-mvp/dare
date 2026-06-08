@@ -4,6 +4,7 @@ import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
 import { getFeaturedDareById } from '../../mocks/home';
+import { formatResolutionLabel } from '../create/createLabels';
 import type { DareFeedItem } from './components/DareCard';
 import { mapPublicDareFeedRow, type PublicDareFeedRow } from './publicDareFeed';
 
@@ -151,6 +152,32 @@ export function useDareDetail(id?: string): DareDetailState {
     };
   }, [load]);
 
+  useEffect(() => {
+    if (!supabaseClient || !isUuid(id)) return undefined;
+
+    const channel = supabaseClient
+      .channel(`dare-detail-${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', filter: `id=eq.${id}`, schema: 'public', table: 'dares' },
+        () => {
+          void load();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', filter: `dare_id=eq.${id}`, schema: 'public', table: 'court_sessions' },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabaseClient?.removeChannel(channel);
+    };
+  }, [id, load]);
+
   return { dare, error, loading, refresh: load, source };
 }
 
@@ -218,7 +245,7 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
       tier: 'Player B',
       trustScore: 0,
     } : undefined,
-    resolution: formatLabel(row.resolution_type),
+    resolution: formatResolutionLabel(row.resolution_type),
     scoreA: court?.score_a ?? undefined,
     scoreB: court?.score_b ?? undefined,
     rewardKobo: row.reward_amount ?? 0,
@@ -229,8 +256,5 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
 }
 
 function formatLabel(value: string) {
-  if (value === 'answer_key') return 'Answer Key';
-  if (value === 'witnessed') return 'Witnessed';
-  if (value === 'evidence') return 'Evidence';
   return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

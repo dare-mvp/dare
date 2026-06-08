@@ -25,6 +25,7 @@ export function WalletHero({ summary }: WalletHeroProps) {
 
       <Text style={styles.escrow}>
         {formatNgn(summary.escrowKobo)} in active escrow
+        {summary.heldKobo > 0 ? ` - ${formatNgn(summary.heldKobo)} in dispute hold` : ''}
       </Text>
 
       <View style={styles.actions}>

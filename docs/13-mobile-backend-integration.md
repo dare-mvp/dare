@@ -33,7 +33,7 @@ The mobile app now has:
 - DARE detail, accept, and accept-receipt screens backed by `public_dare_feed` for live UUID DAREs
 - transaction-detail read hook that loads real UUID ledger entries from `ledger_entries` with preview fallback
 - KYC status screen derived from `GET /me` profile/KYC state with preview fallback
-- KYC submit form wired to `POST /kyc/submit` with basic client validation and authenticated-session gating
+- KYC submit form uploads documents to private storage and sends `private_storage_v1` references to `POST /kyc/submit` with client validation and authenticated-session gating
 - jury home summary using RLS-readable `jury_assignments` and `jury_votes` counts when authenticated
 - jury assignment and vote screens read live `jury_assignments` / `jury_cases` and submit through `POST /jury-cases/{id}/votes`
 - settings screen derived from account capability state instead of only static values
@@ -102,7 +102,7 @@ The `answer_key` implementation uses creator-authored prompt instructions and a 
 - Evidence upload still needs upload progress, retry/resume, and client-side metadata stripping before production use.
 - Court chat still needs a mobile screen; the idempotent `POST /court/{dareId}/messages` action route is implemented.
 - Admin DARE freeze remains unbuilt, and admin routes still need an operator UI before live-money launch.
-- KYC provider webhook is outside the current implementation. The internal/manual KYC review contract remains the active integration surface until a provider is selected.
+- KYC vendor automation, magic-byte validation, malware scanning, and orphan-upload cleanup are deferred future hardening items. The current phase uses private document intake/storage plus internal/manual review.
 - Payment provider legal approval, KYC/AML policy, support playbooks, dispute playbooks, and CI execution of the DB-backed integration suite remain pre-launch gates.
 
 ## Next Wiring Order
@@ -110,6 +110,7 @@ The `answer_key` implementation uses creator-authored prompt instructions and a 
 1. Add mobile Court chat and witness/audience signal surfaces.
 2. Add result-claim screens for witnessed and evidence paths.
 3. Add richer jury evidence preview/signed-download support for jurors.
-4. Add production file hardening: image/video metadata stripping, upload progress, and retry/resume behavior.
+4. Add production evidence file hardening: image/video metadata stripping, upload progress, and retry/resume behavior.
 5. Add admin DARE freeze and operator UI for freeze, withdrawal approval, KYC, and jury operations.
-6. Run the DB-backed RPC integration suite in CI after local/remote migration sync.
+6. Future KYC hardening: selected provider API/webhooks, magic-byte validation, malware scanning, and orphan-upload cleanup.
+7. Run the DB-backed RPC integration suite in CI after local/remote migration sync.

@@ -1016,7 +1016,7 @@ Self-exclusion is implemented through `POST /responsible-gaming/self-exclude`. I
 
 Dispute evidence is implemented through `POST /dares/{id}/evidence` and `POST /dares/{id}/evidence/confirm`. The request action creates a pending evidence object and signed private Storage upload URL. The confirm action marks the evidence uploaded and attaches it to the issuer or challenger side of the active jury case.
 
-KYC review is implemented through `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide`. The current flow supports internal/manual review and preserves provider optionality; raw identity documents stay with the chosen KYC provider or private storage, not in Postgres JSON.
+KYC review is implemented through `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide`. The current phase accepts private document intake/storage plus internal/manual review: the mobile app uploads identity images to the private `kyc-documents` bucket, the backend stores a redacted `private_storage_v1` reference, and raw identity numbers, legal names, base64 images, and raw ID images are not stored in Postgres JSON. Third-party KYC automation, provider webhooks, magic-byte validation, malware scanning, and orphan-upload cleanup are deferred future hardening items.
 
 Scheduled backend maintenance is implemented with `pg_cron` for expired idempotency cleanup, active Court expiry, and automatic settlement of completed DAREs after the dispute window closes.
 
@@ -1442,7 +1442,7 @@ A feature is not done until:
 1. Supabase Edge Functions vs dedicated API service.
 2. Expo managed workflow vs bare React Native.
 3. Payment provider for first approved launch.
-4. Initial KYC vendor and identity flow.
+4. Future KYC vendor and automated identity flow; current phase uses private-storage intake plus internal/manual review.
 5. Issuer/Darer escrow locks at DARE creation for both funding models; challenger escrow locks on accept only for Skill-Based DAREs.
 6. Whether MVP settlement waits for a dispute window or settles instantly with reversible hold.
 7. Admin console stack.

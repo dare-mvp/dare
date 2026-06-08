@@ -985,7 +985,7 @@ Never include:
 1. Final mobile stack and navigation library.
 2. Whether the MVP Feed shows live spectator chat or only active DARE state.
 3. Whether the Court tab opens the current active DARE directly or shows a queue first.
-4. Whether KYC document capture is native camera, provider web view, or provider SDK.
+4. KYC capture for the current phase is native/private-storage document upload plus internal/manual review. Provider web view or provider SDK capture is deferred until a KYC vendor is selected.
 5. Exact copy for legal age gate and responsible gaming by launch jurisdiction.
 6. Whether transaction history is paginated by date or grouped by DARE.
 7. Whether notifications are in-app only for beta or include push dispatch.

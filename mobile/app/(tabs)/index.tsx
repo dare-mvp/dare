@@ -1,10 +1,7 @@
 import { useRouter } from 'expo-router';
-import { ReactNode, useMemo, useState } from 'react';
-import {
-  Flame,
-  PlusCircle,
-} from 'lucide-react-native';
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { PlusCircle } from 'lucide-react-native';
+import { FlatList, ScrollView, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { FilterChip } from '../../src/components/ui/FilterChip';
@@ -13,30 +10,23 @@ import { Screen } from '../../src/components/ui/Screen';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { TopBar } from '../../src/components/ui/TopBar';
 import { EmptyState } from '../../src/components/ui/EmptyState';
-import { getCategoryVisual } from '../../src/features/feed/categoryVisuals';
 import { DareCard } from '../../src/features/feed/components/DareCard';
-import { DareFeedItem } from '../../src/features/feed/components/DareCard';
+import { styles } from '../../src/features/feed/FeedScreen.styles';
 import { LivePulsePanel } from '../../src/features/feed/components/LivePulsePanel';
+import {
+  FeedFilter,
+  filters,
+  getEmptyFeedBody,
+  getIssueGate,
+  getSyncLabel,
+  getTopPlayers,
+  matchesFeedFilter,
+} from '../../src/features/feed/feedScreenParts';
 import { getLivePulseStats } from '../../src/features/feed/livePulseStats';
 import { usePublicDareFeed } from '../../src/features/feed/usePublicDareFeed';
-import { formatRelativeTime } from '../../src/lib/format/time';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
-import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
-
-type FeedFilter = 'All' | 'Live Now' | 'Open' | 'Upcoming' | 'History' | string;
-
-const filters: Array<{ icon?: ReactNode; label: FeedFilter }> = [
-  { label: 'All' },
-  { icon: <LiveNowIcon />, label: 'Live Now' },
-  { label: 'Open' },
-  { label: 'Upcoming' },
-  { label: 'History' },
-  ...['Knowledge', 'Physical', 'Verbal', 'Sports', 'Creative', 'Other'].map((label) => {
-    const visual = getCategoryVisual(label);
-    return { icon: <visual.Icon color={visual.color} size={14} />, label };
-  }),
-];
+import { colors } from '../../src/theme/tokens';
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -173,213 +163,3 @@ export default function FeedScreen() {
     </Screen>
   );
 }
-
-function getSyncLabel(accountLoading: boolean, feedLoading: boolean, lastSyncedAt: string | null) {
-  if (accountLoading) return 'Syncing account';
-  if (feedLoading) return 'Syncing feed';
-  if (!lastSyncedAt) return 'Not synced yet';
-  return `Updated ${formatRelativeTime(lastSyncedAt).toLowerCase()}`;
-}
-
-function getEmptyFeedBody(filter: FeedFilter) {
-  if (filter === 'All') return 'There are no public DAREs available right now.';
-  return `There are no ${filter.toString().toLowerCase()} DAREs available right now.`;
-}
-
-function getIssueGate(data: ReturnType<typeof useMe>['data']) {
-  if (data.capabilities.canCreateDare) {
-    return {
-      accessibilityLabel: 'Issue a DARE',
-      body: 'Issue a DARE and set the stakes.',
-      label: 'Issue',
-      route: '/(tabs)/create' as const,
-    };
-  }
-
-  if (data.profile.kycStatus === 'pending') {
-    return {
-      accessibilityLabel: 'Check KYC status',
-      body: 'KYC review must finish before issuing money-backed DAREs.',
-      label: 'KYC status',
-      route: '/kyc-status' as const,
-    };
-  }
-
-  if (data.profile.kycStatus === 'not_started') {
-    return {
-      accessibilityLabel: 'Start KYC verification',
-      body: 'Complete KYC before issuing money-backed DAREs.',
-      label: 'Verify',
-      route: '/kyc-intro' as const,
-    };
-  }
-
-  return {
-    accessibilityLabel: 'Open account controls',
-    body: 'Account controls must be cleared before issuing DAREs.',
-    label: 'Review',
-    route: '/(tabs)/profile' as const,
-  };
-}
-
-function LiveNowIcon() {
-  return <Flame color={colors.danger} size={14} />;
-}
-
-function matchesFeedFilter(item: DareFeedItem, filter: FeedFilter) {
-  if (filter === 'All') return true;
-  if (filter === 'Live Now') return item.status === 'live' || item.status === 'active';
-  if (filter === 'Open') return item.status === 'open';
-  if (filter === 'Upcoming') return item.status === 'open';
-  if (filter === 'History') return item.status === 'completed' || item.status === 'disputed';
-  return item.category.toLowerCase() === filter.toLowerCase();
-}
-
-function getTopPlayers(items: DareFeedItem[]) {
-  const players = new Map<string, number>();
-
-  for (const item of items) {
-    players.set(item.playerA.name, Math.max(players.get(item.playerA.name) ?? 0, item.playerA.trustScore));
-    if (item.playerB) {
-      players.set(item.playerB.name, Math.max(players.get(item.playerB.name) ?? 0, item.playerB.trustScore));
-    }
-  }
-
-  return Array.from(players.entries())
-    .sort((left, right) => right[1] - left[1])
-    .slice(0, 3)
-    .map(([name, score], index) => ({
-      name,
-      rank: index + 1,
-      score: `${score.toLocaleString()} pts`,
-    }));
-}
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing[12],
-    padding: spacing[16],
-    paddingBottom: spacing[32],
-  },
-  header: {
-    gap: spacing[14],
-  },
-  refreshRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  lastUpdated: {
-    color: colors.textMuted,
-    fontFamily: fonts.mono,
-    fontSize: typography.caption.fontSize,
-    fontWeight: '800',
-    letterSpacing: 0,
-  },
-  filters: {
-    gap: spacing[8],
-    paddingRight: spacing[16],
-  },
-  cta: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDim,
-    borderColor: colors.primaryGlow,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing[12],
-    padding: spacing[14],
-  },
-  ctaIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.control,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  ctaIconText: {
-    color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  ctaCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  ctaTitle: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  ctaText: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyRegular,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  leaderboard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  widgetHeader: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[14],
-    paddingVertical: spacing[12],
-  },
-  widgetTitle: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  leaderRow: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    gap: spacing[10],
-    minHeight: 40,
-    paddingHorizontal: spacing[14],
-  },
-  leaderRank: {
-    color: colors.textGhost,
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    textAlign: 'right',
-    width: 18,
-  },
-  topRank: {
-    color: colors.warning,
-  },
-  leaderName: {
-    color: colors.textSoft,
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  leaderScore: {
-    color: colors.primary,
-    fontFamily: fonts.displaySemi,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  leaderEmpty: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyRegular,
-    fontSize: 12,
-    lineHeight: 17,
-    padding: spacing[14],
-    textAlign: 'center',
-  },
-});

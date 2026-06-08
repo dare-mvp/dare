@@ -5,7 +5,7 @@ import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { isUuid } from '../../lib/ids';
 import { activeCourtSession } from '../../mocks/court';
-import { CourtSession } from './types';
+import { CourtDareStatus, CourtEvidenceSummary, CourtJuryCaseSummary, CourtResultClaimSummary, CourtSession } from './types';
 
 type CourtSource = 'mock' | 'server';
 
@@ -27,7 +27,7 @@ type DareRow = {
   resolution_type?: 'answer_key' | 'witnessed' | 'evidence';
   reward_amount?: number;
   stake_amount: number;
-  status: string;
+  status: CourtDareStatus;
   title: string;
   updated_at: string;
 };
@@ -45,6 +45,39 @@ type CourtSessionRow = {
   votes_b: number;
 };
 
+type EvidenceObjectRow = {
+  byte_size: number | null;
+  created_at: string;
+  id: string;
+  status: string;
+  uploaded_at: string | null;
+  user_id: string;
+};
+
+type ResultClaimRow = {
+  claimed_outcome: string;
+  created_at: string;
+  evidence_object_ids: string[] | null;
+  id: string;
+  user_id: string;
+};
+
+type JuryCaseRow = {
+  evidence_a_id: string | null;
+  evidence_b_id: string | null;
+  id: string;
+  opened_at: string;
+  status: string;
+  verdict: string | null;
+  votes_needed: number;
+};
+
+type CourtMetadata = {
+  evidence: CourtEvidenceSummary;
+  juryCase: CourtJuryCaseSummary | null;
+  resultClaims: CourtResultClaimSummary;
+};
+
 const activeStatuses = [
   'ready_check',
   'active',
@@ -52,6 +85,9 @@ const activeStatuses = [
   'completed',
   'dispute_pending',
   'forfeited',
+  'jury_open',
+  'settled',
+  'settlement_pending',
 ];
 
 export function useActiveCourtSession(dareId?: string): ActiveCourtSessionState {
@@ -109,7 +145,8 @@ export function useActiveCourtSession(dareId?: string): ActiveCourtSessionState 
       return;
     }
 
-    setSession(courtResult.court ? mapCourtSession(dareResult.dare, courtResult.court, userId) : null);
+    const metadata = await fetchCourtMetadata(dareResult.dare.id, userId);
+    setSession(courtResult.court ? mapCourtSession(dareResult.dare, courtResult.court, userId, metadata) : null);
     setSource('server');
     setError(null);
     setLoading(false);
@@ -168,7 +205,48 @@ async function fetchCourtSession(dareId: string) {
   return { court: data as CourtSessionRow | null, error: null, ok: true as const };
 }
 
-function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string): CourtSession {
+async function fetchCourtMetadata(dareId: string, userId: string): Promise<CourtMetadata> {
+  if (!supabaseClient) return createEmptyMetadata();
+
+  const [evidenceResult, claimsResult, juryResult] = await Promise.all([
+    supabaseClient
+      .from('evidence_objects')
+      .select('id,user_id,status,byte_size,uploaded_at,created_at')
+      .eq('dare_id', dareId)
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false }),
+    supabaseClient
+      .from('dare_result_claims')
+      .select('id,user_id,claimed_outcome,evidence_object_ids,created_at')
+      .eq('dare_id', dareId)
+      .order('created_at', { ascending: false }),
+    supabaseClient
+      .from('jury_cases')
+      .select('id,status,verdict,votes_needed,opened_at,evidence_a_id,evidence_b_id')
+      .eq('dare_id', dareId)
+      .not('status', 'in', '("closed","voided")')
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const evidenceRows = evidenceResult.error ? [] : (evidenceResult.data as EvidenceObjectRow[] | null) ?? [];
+  const claimRows = claimsResult.error ? [] : (claimsResult.data as ResultClaimRow[] | null) ?? [];
+  const juryRow = juryResult.error ? null : juryResult.data as JuryCaseRow | null;
+
+  return {
+    evidence: mapEvidenceSummary(evidenceRows, userId),
+    juryCase: juryRow ? mapJuryCaseSummary(juryRow) : null,
+    resultClaims: mapResultClaimSummary(claimRows, userId),
+  };
+}
+
+function mapCourtSession(
+  dare: DareRow,
+  court: CourtSessionRow,
+  userId: string,
+  metadata: CourtMetadata,
+): CourtSession {
   const isIssuer = dare.issuer_id === userId;
   const isChallenger = dare.challenger_id === userId;
   const currentHeartbeat = isIssuer ? court.player_a_heartbeat_at : court.player_b_heartbeat_at;
@@ -179,8 +257,10 @@ function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string):
     connectionState: court.phase === 'active' ? 'connected' : 'reconnecting',
     dareType: dare.dare_type ?? 'skill',
     dareId: dare.id,
+    evidence: metadata.evidence,
     heartbeatAgeSeconds: getHeartbeatAgeSeconds(currentHeartbeat),
-    phase: mapPhase(court.phase),
+    juryCase: metadata.juryCase,
+    phase: mapPhase(court.phase, dare.status),
     playerA: {
       ...activeCourtSession.playerA,
       isReady: court.player_a_ready,
@@ -201,6 +281,8 @@ function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string):
     },
     potKobo: dare.dare_type === 'task' ? dare.reward_amount ?? 0 : dare.stake_amount * 2,
     resolutionType: dare.resolution_type ?? 'answer_key',
+    resultClaims: metadata.resultClaims,
+    status: dare.status,
     timeRemainingSeconds: getTimeRemainingSeconds(court.server_end_time, dare.duration_seconds),
     title: dare.title,
     viewerRole: isIssuer ? 'participant_a' : isChallenger ? 'participant_b' : 'spectator',
@@ -209,11 +291,70 @@ function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string):
   };
 }
 
-function mapPhase(phase: string): CourtSession['phase'] {
+function mapPhase(phase: string, status: CourtDareStatus): CourtSession['phase'] {
+  if (status === 'settled') return 'settled';
+  if (status === 'jury_open') return 'disputed';
+  if (status === 'dispute_pending') return 'disputed';
+  if (status === 'settlement_pending' || status === 'completed') return 'settlement_pending';
   if (phase === 'ready_check' || phase === 'waiting') return 'ready';
   if (phase === 'countdown') return 'countdown';
   if (phase === 'active') return 'active';
+  if (phase === 'awaiting_result') return 'awaiting_result';
+  if (phase === 'disputed') return 'disputed';
+  if (phase === 'completed') return 'settlement_pending';
   return 'settlement_pending';
+}
+
+function createEmptyMetadata(): CourtMetadata {
+  return {
+    evidence: {
+      latestSubmittedAt: null,
+      submittedCount: 0,
+      totalCount: 0,
+      uploadedCount: 0,
+      viewerSubmittedCount: 0,
+    },
+    juryCase: null,
+    resultClaims: {
+      claimsCount: 0,
+      evidenceObjectCount: 0,
+      latestClaimedOutcome: null,
+      latestSubmittedAt: null,
+      viewerClaimed: false,
+    },
+  };
+}
+
+function mapEvidenceSummary(rows: EvidenceObjectRow[], userId: string): CourtEvidenceSummary {
+  const uploadedRows = rows.filter((row) => row.status === 'uploaded' || row.status === 'accepted');
+  return {
+    latestSubmittedAt: uploadedRows[0]?.uploaded_at ?? uploadedRows[0]?.created_at ?? null,
+    submittedCount: uploadedRows.length,
+    totalCount: rows.length,
+    uploadedCount: uploadedRows.length,
+    viewerSubmittedCount: uploadedRows.filter((row) => row.user_id === userId).length,
+  };
+}
+
+function mapResultClaimSummary(rows: ResultClaimRow[], userId: string): CourtResultClaimSummary {
+  return {
+    claimsCount: rows.length,
+    evidenceObjectCount: rows.reduce((total, row) => total + (row.evidence_object_ids?.length ?? 0), 0),
+    latestClaimedOutcome: rows[0]?.claimed_outcome ?? null,
+    latestSubmittedAt: rows[0]?.created_at ?? null,
+    viewerClaimed: rows.some((row) => row.user_id === userId),
+  };
+}
+
+function mapJuryCaseSummary(row: JuryCaseRow): CourtJuryCaseSummary {
+  return {
+    evidenceCount: Number(Boolean(row.evidence_a_id)) + Number(Boolean(row.evidence_b_id)),
+    id: row.id,
+    openedAt: row.opened_at,
+    status: row.status,
+    verdict: row.verdict,
+    votesNeeded: row.votes_needed,
+  };
 }
 
 function getHeartbeatAgeSeconds(value: string | null) {

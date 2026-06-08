@@ -943,7 +943,15 @@ Provider webhook handlers must be replay-safe.
 
 ## KYC Routes
 
-KYC provider integration is outside the current implementation until the first market provider is selected. The current action layer implements the internal KYC request/status/admin decision flow so the mobile app and admin console integrate against stable contracts before provider onboarding.
+Phase decision: the current KYC implementation is accepted for this phase as private document intake plus internal/manual review. The app can receive KYC documents, upload them to private Supabase Storage, store a redacted storage reference in `kyc_verifications`, return user status through the safe KYC status route, and let an admin approve or reject the submission. Automated third-party verification through Dojah, Prembly, Smile Identity, or another provider is deferred until the first-market provider is selected.
+
+Deferred future work:
+
+- third-party KYC API initiation and callback/webhook handling
+- provider-specific liveness, BVN/NIN/passport checks, sanctions/PEP checks, and provider risk flags
+- file magic-byte validation, malware scanning, and orphan-upload cleanup jobs
+
+These deferred items must be revisited before treating KYC as fully automated identity verification. They are not blockers for the current phase, where the required capability is secure document receipt and storage for review.
 
 ### `POST /kyc/submit`
 
@@ -955,7 +963,20 @@ Input:
 {
   "kycTierRequested": "kyc1",
   "documents": {
-    "providerReference": "optional-provider-token"
+    "contract": "private_storage_v1",
+    "documentType": "nin",
+    "documentNumberLast4": "1234",
+    "legalName": {
+      "firstInitial": "A",
+      "lastInitial": "O"
+    },
+    "documentImage": {
+      "storageBucket": "kyc-documents",
+      "storagePath": "<auth-user-id>/<upload-id>.jpg",
+      "mimeType": "image/jpeg",
+      "byteSize": 120000,
+      "originalFileName": "identity.jpg"
+    }
   }
 }
 ```
@@ -964,7 +985,9 @@ Validation:
 
 - authenticated active account
 - requested tier is `kyc1`, `kyc2`, or `kyc3`
-- documents payload is an object; raw ID images must not be stored in the database
+- documents payload follows `private_storage_v1` or future `provider_reference_v1`
+- raw identity numbers, legal names, base64 images, and raw ID images must not be stored in the database
+- private-storage payload references the authenticated user's own `kyc-documents` object path
 - no duplicate pending submission for the same tier
 - idempotency key
 
@@ -975,7 +998,7 @@ Returns:
 
 Implemented Edge action: `POST /kyc/submit`.
 
-Implemented Postgres function: `public.submit_kyc_action(...)`, executable only by `service_role`. It validates the account, tier, and document payload, prevents duplicate pending submissions for the same tier, creates a `kyc_verifications` row, and writes `kyc.verification_submitted` to `audit_logs`.
+Implemented Postgres function: `public.submit_kyc_action(...)`, executable only by `service_role`. It validates the account, tier, and document payload, prevents duplicate pending submissions for the same tier, creates a `kyc_verifications` row, and writes `kyc.verification_submitted` to `audit_logs`. Direct `anon` and `authenticated` table access to `kyc_verifications` is revoked; client status reads go through `GET /kyc/status`.
 
 ### `GET /kyc/status`
 

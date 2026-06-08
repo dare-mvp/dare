@@ -16,13 +16,18 @@ import {
 } from "../_shared/validation.ts";
 import { firstForwardedIp } from "../_shared/request.ts";
 import { mapDareQueryError } from "./dare_errors.ts";
+import {
+  type SubmitKycDocuments,
+  validateKycDocuments,
+  verifyKycDocumentsReference,
+} from "./kyc_validation.ts";
 
 const KYC_TIERS = ["kyc1", "kyc2", "kyc3"] as const;
 type KycTier = typeof KYC_TIERS[number];
 
 type SubmitKycPayload = {
   kycTierRequested: KycTier;
-  documents: Record<string, unknown>;
+  documents: SubmitKycDocuments;
 };
 
 type SubmitKycRpcRow = {
@@ -67,6 +72,12 @@ export async function submitKycRequest(
     };
   }
 
+  await verifyKycDocumentsReference(
+    serviceClient,
+    authUser.id,
+    envelope.payload.documents,
+  );
+
   const row = await callSubmitKycRpc(
     serviceClient,
     authUser.id,
@@ -104,11 +115,9 @@ function validateSubmitKycPayload(value: unknown): SubmitKycPayload {
     });
   }
 
-  const documents = assertRecord(payload.documents, "payload.documents");
-
   return {
     kycTierRequested: tier as KycTier,
-    documents,
+    documents: validateKycDocuments(payload.documents),
   };
 }
 

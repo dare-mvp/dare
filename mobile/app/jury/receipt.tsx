@@ -3,25 +3,32 @@ import { CheckCircle2 } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
+import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { JuryFlowFrame } from '../../src/features/jury/components/JuryFlowFrame';
+import { getJuryResultCopy } from '../../src/features/jury/juryResultCopy';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function JuryReceiptScreen() {
   const router = useRouter();
-  const { caseId, status, vote, votesCast, votesNeeded } = useLocalSearchParams<{
+  const { caseId, dareStatus, status, verdict, vote, votesCast, votesNeeded, winnerId } = useLocalSearchParams<{
     caseId?: string;
+    dareStatus?: string;
     status?: string;
+    verdict?: string;
     vote?: string;
     votesCast?: string;
     votesNeeded?: string;
+    winnerId?: string;
   }>();
-  const submittedVote = vote === 'B' ? 'B' : 'A';
+  const submittedVote = formatVote(vote);
+  const resultCopy = getJuryResultCopy({ dareStatus, status, verdict, vote, votesCast, votesNeeded, winnerId });
   const receiptLines = [
     { label: 'Case', value: caseId ? caseId.toUpperCase() : 'PREVIEW' },
     { label: 'Votes', value: votesCast && votesNeeded ? `${votesCast}/${votesNeeded}` : 'Pending tally' },
     { label: 'Status', value: status ? formatLabel(status) : 'Vote submitted' },
-    { label: 'Trust event', value: 'Pending verdict' },
+    { label: 'Result', value: resultCopy.resultLabel },
+    { label: 'Trust event', value: resultCopy.trustEvent },
   ];
 
   return (
@@ -33,10 +40,16 @@ export default function JuryReceiptScreen() {
     >
       <View style={styles.hero}>
         <CheckCircle2 color={colors.success} size={32} />
-        <StatusBadge label={`PACKET ${submittedVote}`} tone="success" />
+        <StatusBadge label={submittedVote} tone="success" />
         <Text style={styles.title}>Jury vote received</Text>
-        <Text style={styles.body}>Reward and trust updates are finalized after the case verdict is settled.</Text>
+        <Text style={styles.body}>{resultCopy.settlementMessage}</Text>
       </View>
+
+      <InlineAlert
+        tone={resultCopy.tone}
+        title={resultCopy.settlementLabel}
+        message={resultCopy.settlementMessage}
+      />
 
       <View style={styles.receipt}>
         {receiptLines.map((line) => (
@@ -58,6 +71,12 @@ export default function JuryReceiptScreen() {
 
 function formatLabel(value: string) {
   return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatVote(value?: string) {
+  if (value === 'void') return 'VOID';
+  if (value === 'escalate') return 'ESCALATE';
+  return `PACKET ${value === 'B' ? 'B' : 'A'}`;
 }
 
 const styles = StyleSheet.create({

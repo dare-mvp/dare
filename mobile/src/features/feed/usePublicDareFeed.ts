@@ -114,6 +114,32 @@ export function usePublicDareFeed(): PublicDareFeedState {
     };
   }, []);
 
+  useEffect(() => {
+    if (!supabaseClient) return undefined;
+
+    const channel = supabaseClient
+      .channel('public-dare-feed-refresh')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dares' },
+        () => {
+          void fetchFeed();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'court_sessions' },
+        () => {
+          void fetchFeed();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabaseClient?.removeChannel(channel);
+    };
+  }, [fetchFeed]);
+
   return { error, items, lastSyncedAt, loading, refresh: fetchFeed, source };
 }
 

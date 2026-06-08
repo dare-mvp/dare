@@ -25,6 +25,13 @@ import {
 import { isUuid } from '../../src/lib/ids';
 import { colors } from '../../src/theme/tokens';
 
+type UploadStatus = 'failed' | 'ready' | 'uploaded' | 'uploading';
+type SubmittedEvidence = {
+  id: string;
+  juryCaseId: string | null;
+  side: 'A' | 'B';
+};
+
 export default function EvidenceUploadScreen() {
   const router = useRouter();
   const { claimOutcome, dareId, mode, rationale, reason, summary } = useLocalSearchParams<{
@@ -39,12 +46,14 @@ export default function EvidenceUploadScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<SelectedEvidenceFile | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('ready');
+  const [submittedEvidence, setSubmittedEvidence] = useState<SubmittedEvidence | null>(null);
   const files: EvidenceDraftFile[] = selectedFile
     ? [{
         id: selectedFile.uri,
         name: selectedFile.fileName,
         sizeLabel: formatEvidenceSize(selectedFile.byteSize),
-        status: submitting ? 'uploading' : 'ready',
+        status: submitting ? 'uploading' : uploadStatus,
       }]
     : [];
 
@@ -66,17 +75,31 @@ export default function EvidenceUploadScreen() {
         onPickMedia={() => {
           void handlePickMedia();
         }}
-        onRemoveFile={() => setSelectedFile(null)}
+        onRemoveFile={() => {
+          setSelectedFile(null);
+          setUploadStatus('ready');
+          setSubmittedEvidence(null);
+        }}
+        onRetryFile={() => {
+          void handleSubmitEvidence();
+        }}
       />
       <InlineAlert
         tone="info"
-        title="Blind review ready"
-        message="Evidence should support the claim without unnecessary personal details."
+        title="Evidence guardrails"
+        message="Attach one PNG, JPEG, or MP4 up to 10 MB. Evidence should support the claim without unnecessary personal details."
       />
+      {submittedEvidence ? (
+        <InlineAlert
+          tone="success"
+          title="Evidence uploaded"
+          message={`Submitted evidence ${shortId(submittedEvidence.id)} is attached to this ${isResultClaim ? 'result claim' : 'dispute'}.`}
+        />
+      ) : null}
       {submitError ? (
         <InlineAlert
           tone="danger"
-          title="Dispute submission failed"
+          title={isResultClaim ? 'Result evidence failed' : 'Dispute submission failed'}
           message={submitError}
         />
       ) : null}
@@ -86,7 +109,7 @@ export default function EvidenceUploadScreen() {
         icon={<UploadCloud color={colors.text} size={18} />}
         label={submitting ? 'Submitting' : isResultClaim ? 'Submit result evidence' : 'Submit dispute evidence'}
         onPress={() => {
-          void handleSubmitDispute();
+          void handleSubmitEvidence();
         }}
       />
     </DisputeFlowFrame>
@@ -94,6 +117,8 @@ export default function EvidenceUploadScreen() {
 
   async function handlePickMedia() {
     setSubmitError(null);
+    setUploadStatus('ready');
+    setSubmittedEvidence(null);
     const result = await pickEvidenceFromLibrary();
     if (!result.ok) {
       setSubmitError(result.message);
@@ -105,6 +130,8 @@ export default function EvidenceUploadScreen() {
 
   async function handlePickDocument() {
     setSubmitError(null);
+    setUploadStatus('ready');
+    setSubmittedEvidence(null);
     const result = await pickEvidenceDocument();
     if (!result.ok) {
       setSubmitError(result.message);
@@ -116,6 +143,8 @@ export default function EvidenceUploadScreen() {
 
   async function handleCaptureEvidence() {
     setSubmitError(null);
+    setUploadStatus('ready');
+    setSubmittedEvidence(null);
     const result = await captureEvidenceWithCamera();
     if (!result.ok) {
       setSubmitError(result.message);
@@ -125,7 +154,7 @@ export default function EvidenceUploadScreen() {
     if ('file' in result) setSelectedFile(result.file);
   }
 
-  async function handleSubmitDispute() {
+  async function handleSubmitEvidence() {
     if (!isUuid(dareId)) {
       router.push('/disputes/status');
       return;
@@ -151,40 +180,15 @@ export default function EvidenceUploadScreen() {
 
     setSubmitting(true);
     setSubmitError(null);
+    setUploadStatus(submittedEvidence ? 'uploaded' : 'uploading');
 
-    const uploadRequest = await requestEvidenceUpload(dareId, {
-      fileName: selectedFile.fileName,
-      fileSizeBytes: selectedFile.byteSize,
-      mimeType: selectedFile.mimeType,
-    });
-
-    if (!uploadRequest.ok) {
-      setSubmitError(uploadRequest.error.message);
-      setSubmitting(false);
-      return;
-    }
-
-    const uploadResult = await uploadSelectedEvidence(uploadRequest.data, selectedFile);
-    if (!uploadResult.ok) {
-      setSubmitError(uploadResult.message);
-      setSubmitting(false);
-      return;
-    }
-
-    const confirmResult = await confirmEvidenceUpload(dareId, {
-      evidenceObjectId: uploadRequest.data.evidenceObjectId,
-    });
-
-    if (!confirmResult.ok) {
-      setSubmitError(confirmResult.error.message);
-      setSubmitting(false);
-      return;
-    }
+    const evidence = submittedEvidence ?? await uploadAndConfirmEvidence(dareId, selectedFile);
+    if (!evidence) return;
 
     if (isResultClaim) {
       const claimResult = await submitResultClaim(dareId, {
         claimedOutcome: resultClaimOutcome!,
-        evidenceObjectIds: [uploadRequest.data.evidenceObjectId],
+        evidenceObjectIds: [evidence.id],
         rationale: rationale || undefined,
       });
 
@@ -200,6 +204,9 @@ export default function EvidenceUploadScreen() {
         params: {
           claimState: claimResult.data.claimState,
           dareId: claimResult.data.dareId,
+          evidenceCount: '1',
+          evidenceObjectId: evidence.id,
+          juryCaseId: evidence.juryCaseId ?? undefined,
           status: claimResult.data.dareStatus,
           winnerId: claimResult.data.agreedWinnerId ?? undefined,
         },
@@ -208,7 +215,7 @@ export default function EvidenceUploadScreen() {
     }
 
     const disputeResult = await fileDispute(dareId, {
-      evidenceObjectIds: [uploadRequest.data.evidenceObjectId],
+      evidenceObjectIds: [evidence.id],
       reason: reason!,
       summary: summary!,
     });
@@ -224,10 +231,59 @@ export default function EvidenceUploadScreen() {
       pathname: '/disputes/status',
       params: {
         dareId: disputeResult.data.dareId,
+        evidenceObjectId: evidence.id,
+        evidenceSide: evidence.side,
         juryCaseId: disputeResult.data.juryCaseId,
       },
     });
   }
+
+  async function uploadAndConfirmEvidence(dareIdValue: string, file: SelectedEvidenceFile): Promise<SubmittedEvidence | null> {
+    const uploadRequest = await requestEvidenceUpload(dareIdValue, {
+      fileName: file.fileName,
+      fileSizeBytes: file.byteSize,
+      mimeType: file.mimeType,
+    });
+
+    if (!uploadRequest.ok) {
+      setSubmitError(uploadRequest.error.message);
+      setUploadStatus('failed');
+      setSubmitting(false);
+      return null;
+    }
+
+    const uploadResult = await uploadSelectedEvidence(uploadRequest.data, file);
+    if (!uploadResult.ok) {
+      setSubmitError(uploadResult.message);
+      setUploadStatus('failed');
+      setSubmitting(false);
+      return null;
+    }
+
+    const confirmResult = await confirmEvidenceUpload(dareIdValue, {
+      evidenceObjectId: uploadRequest.data.evidenceObjectId,
+    });
+
+    if (!confirmResult.ok) {
+      setSubmitError(confirmResult.error.message);
+      setUploadStatus('failed');
+      setSubmitting(false);
+      return null;
+    }
+
+    const evidence = {
+      id: confirmResult.data.evidenceObjectId,
+      juryCaseId: confirmResult.data.juryCaseId,
+      side: confirmResult.data.side,
+    };
+    setSubmittedEvidence(evidence);
+    setUploadStatus('uploaded');
+    return evidence;
+  }
+}
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 function isResultClaimOutcome(value: unknown): value is ResultClaimOutcome {

@@ -12,8 +12,10 @@ import { colors, fonts, radius, spacing, typography } from '../../src/theme/toke
 
 export default function DisputeStatusScreen() {
   const router = useRouter();
-  const { dareId, juryCaseId } = useLocalSearchParams<{
+  const { dareId, evidenceObjectId, evidenceSide, juryCaseId } = useLocalSearchParams<{
     dareId?: string;
+    evidenceObjectId?: string;
+    evidenceSide?: string;
     juryCaseId?: string;
   }>();
   const { dare, error: dareError, loading: dareLoading, source } = useDareDetail(dareId);
@@ -48,7 +50,7 @@ export default function DisputeStatusScreen() {
           <Text style={styles.title}>{dare?.title ?? 'DARE unavailable'}</Text>
           <Text style={styles.body}>
             {juryCaseId
-              ? `Evidence has been received for case ${juryCaseId}.`
+              ? `Evidence has been received for case ${shortId(juryCaseId)}.`
               : 'Evidence has been received. A review path will determine whether settlement can continue.'}
           </Text>
         </View>
@@ -67,6 +69,14 @@ export default function DisputeStatusScreen() {
         message="Payout and trust changes remain pending until the dispute is resolved."
       />
 
+      {evidenceObjectId ? (
+        <InlineAlert
+          tone="success"
+          title="Evidence submitted"
+          message={`Evidence ${shortId(evidenceObjectId)} is attached${evidenceSide === 'A' || evidenceSide === 'B' ? ` to side ${evidenceSide}` : ''}.`}
+        />
+      ) : null}
+
       <ActionButton
         accessibilityLabel="Back to court settlement"
         label="Back to settlement"
@@ -77,6 +87,10 @@ export default function DisputeStatusScreen() {
       />
     </DisputeFlowFrame>
   );
+}
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 const styles = StyleSheet.create({

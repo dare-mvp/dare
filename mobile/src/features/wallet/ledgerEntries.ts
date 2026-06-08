@@ -1,8 +1,11 @@
-import { WalletTransaction, WalletTransactionType } from './types';
+import { getWalletTransactionCopy } from './transactionCopy';
+import { WalletTransaction, WalletTransactionStatus } from './types';
 
 export type LedgerEntryRow = {
   amount: number;
   created_at: string;
+  currency?: string;
+  dare_id?: string | null;
   direction: 'credit' | 'debit';
   id: string;
   metadata: Record<string, unknown> | null;
@@ -11,37 +14,37 @@ export type LedgerEntryRow = {
 };
 
 export function mapLedgerEntry(row: LedgerEntryRow): WalletTransaction {
+  const copy = getWalletTransactionCopy({
+    amountKobo: row.amount,
+    dareId: row.dare_id ?? null,
+    direction: row.direction,
+    id: row.id,
+    metadata: row.metadata,
+    rawType: row.type,
+    status: row.status,
+  });
+
   return {
     amountKobo: row.amount,
     createdLabel: formatCreatedLabel(row.created_at),
+    description: copy.description,
+    details: copy.details,
     direction: row.direction,
     id: row.id,
-    label: getLedgerLabel(row),
+    label: copy.label,
+    rawType: row.type,
+    referenceLabel: copy.referenceLabel,
     status: mapLedgerStatus(row.status),
-    type: mapLedgerType(row.type),
+    type: copy.type,
   };
 }
 
-function getLedgerLabel(row: LedgerEntryRow) {
-  const metadataLabel = typeof row.metadata?.label === 'string' ? row.metadata.label : null;
-  if (metadataLabel) return metadataLabel;
-
-  return row.type.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function mapLedgerStatus(status: string): WalletTransaction['status'] {
+function mapLedgerStatus(status: string): WalletTransactionStatus {
   if (status === 'posted') return 'confirmed';
+  if (status === 'failed') return 'failed';
   if (status === 'reversed') return 'reversed';
+  if (status === 'voided') return 'voided';
   return 'pending';
-}
-
-function mapLedgerType(type: string): WalletTransactionType {
-  if (type === 'deposit_confirmed') return 'deposit';
-  if (type === 'withdrawal_pending' || type === 'withdrawal_completed') return 'withdrawal_pending';
-  if (type === 'escrow_hold') return 'stake_lock';
-  if (type === 'escrow_release') return 'stake_release';
-  if (type === 'juror_reward') return 'jury_reward';
-  return 'payout';
 }
 
 function formatCreatedLabel(value: string) {

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { MoneyAmount } from '../../../components/ui/MoneyAmount';
 import { colors } from '../../../theme/tokens';
+import { formatDareTypeLabel, formatFundingModelLabel } from '../../create/createLabels';
 import { getCategoryVisual } from '../categoryVisuals';
 import { avatarStyles, styles } from './DareCard.styles';
 
@@ -74,7 +75,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
   const isHot = dare.status === 'active' || Boolean(dare.viewers);
   const lockedAmount = isTask ? dare.rewardKobo ?? dare.stakeKobo : dare.stakeKobo;
   const lockedLabel = isTask ? 'Reward' : 'Stake';
-  const fundingLabel = formatFundingModel(dare.fundingModel, isTask);
+  const fundingLabel = formatFundingModelLabel(dare.fundingModel, dare.dareType ?? 'skill');
 
   return (
     <Pressable
@@ -135,9 +136,9 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
       <View style={styles.footer}>
         <View>
-          <Text style={styles.footerMain}>{isTask ? 'Task-Based' : 'Skill-Based'} - {fundingLabel}</Text>
+          <Text style={styles.footerMain}>{formatDareTypeLabel(dare.dareType ?? 'skill')} - {fundingLabel}</Text>
           <Text style={styles.footerSub}>{dare.createdAgo}</Text>
-          <Text style={styles.footerSub}>{dare.resolution}</Text>
+          <Text style={styles.footerSub}>Resolution: {dare.resolution}</Text>
         </View>
         <View style={styles.actionWrap}>
           {dare.viewers ? <Eye color={colors.textMuted} size={14} /> : null}
@@ -148,15 +149,6 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
     </Pressable>
   );
-}
-
-function formatFundingModel(
-  fundingModel: DareFeedItem['fundingModel'],
-  isTask: boolean,
-) {
-  if (fundingModel === 'darer_reward') return 'Darer Reward';
-  if (fundingModel === 'two_sided_stake') return 'Two-Sided Stake';
-  return isTask ? 'Darer Reward' : 'Two-Sided Stake';
 }
 
 function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; player: PlayerSummary }) {

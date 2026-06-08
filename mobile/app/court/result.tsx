@@ -12,9 +12,12 @@ import { colors, fonts, radius, spacing, typography } from '../../src/theme/toke
 
 export default function CourtResultScreen() {
   const router = useRouter();
-  const { claimState, dareId, scoreA, scoreB, status, winnerId } = useLocalSearchParams<{
+  const { claimState, dareId, evidenceCount, evidenceObjectId, juryCaseId, scoreA, scoreB, status, winnerId } = useLocalSearchParams<{
     claimState?: string;
     dareId?: string;
+    evidenceCount?: string;
+    evidenceObjectId?: string;
+    juryCaseId?: string;
     scoreA?: string;
     scoreB?: string;
     status?: string;
@@ -24,12 +27,11 @@ export default function CourtResultScreen() {
   const session = court.session ?? activeCourtSession;
   const nextScoreA = scoreA ? Number.parseInt(scoreA, 10) : session.playerA.score;
   const nextScoreB = scoreB ? Number.parseInt(scoreB, 10) : session.playerB.score;
-  const serverCompleted = status === 'completed' || status === 'settled';
-  const resultTitle = serverCompleted
-    ? 'Server result recorded'
-    : claimState
-      ? formatClaimState(claimState)
-      : 'Awaiting final result';
+  const currentStatus = status ?? session.status;
+  const submittedEvidenceCount = evidenceCount ? Number.parseInt(evidenceCount, 10) : session.evidence.uploadedCount;
+  const activeJuryCaseId = juryCaseId ?? session.juryCase?.id;
+  const resultTitle = getResultTitle(currentStatus, claimState);
+  const resultBody = getResultBody(currentStatus, claimState, session.resultClaims.claimsCount);
 
   return (
     <CourtFlowFrame
@@ -40,18 +42,31 @@ export default function CourtResultScreen() {
     >
       <View style={styles.hero}>
         <Trophy color={colors.warning} size={34} />
-        <StatusBadge label={(status ?? 'RESULT').toUpperCase()} tone="success" />
+        <StatusBadge label={formatStatus(currentStatus)} tone={getStatusTone(currentStatus)} />
         <Text style={styles.title}>{resultTitle}</Text>
+        <Text style={styles.body}>{resultBody}</Text>
         <Text style={styles.body}>Score {nextScoreA} - {nextScoreB}</Text>
         <View style={styles.revealChip}>
           <Sparkles color={colors.success} size={14} />
-          <Text style={styles.revealText}>Trust update pending settlement</Text>
+          <Text style={styles.revealText}>{currentStatus === 'settled' ? 'Trust update settled' : 'Trust update pending settlement'}</Text>
         </View>
       </View>
 
       <View style={styles.panel}>
         <ResultLine label="Winner" value={winnerId ? 'Confirmed by server' : 'Pending server confirmation'} />
         <ResultLine label="Resolution" value={formatResolution(session.resolutionType)} />
+        {session.resolutionType !== 'answer_key' ? (
+          <ResultLine label="Result claims" value={`${session.resultClaims.claimsCount}/2 submitted`} />
+        ) : null}
+        {session.resolutionType === 'evidence' || submittedEvidenceCount > 0 ? (
+          <ResultLine
+            label="Evidence"
+            value={evidenceObjectId ? `Submitted ${shortId(evidenceObjectId)}` : `${submittedEvidenceCount} uploaded`}
+          />
+        ) : null}
+        {activeJuryCaseId ? (
+          <ResultLine label="Jury case" value={`${shortId(activeJuryCaseId)} - ${formatStatus(session.juryCase?.status ?? 'filed')}`} />
+        ) : null}
         <View style={styles.moneyLine}>
           <Text style={styles.label}>Pot</Text>
           <MoneyAmount amountKobo={session.potKobo} tone="locked" />
@@ -69,16 +84,29 @@ export default function CourtResultScreen() {
             params: { dareId },
           })}
         />
-        <ActionButton
-          accessibilityLabel="File dispute"
-          icon={<ShieldAlert color={colors.text} size={18} />}
-          label="File dispute"
-          onPress={() => router.push({
-            pathname: '/disputes/file',
-            params: { dareId },
-          })}
-          variant="secondary"
-        />
+        {currentStatus === 'dispute_pending' || currentStatus === 'jury_open' || activeJuryCaseId ? (
+          <ActionButton
+            accessibilityLabel="View dispute status"
+            icon={<ShieldAlert color={colors.text} size={18} />}
+            label="Dispute status"
+            onPress={() => router.push({
+              pathname: '/disputes/status',
+              params: { dareId, juryCaseId: activeJuryCaseId },
+            })}
+            variant="secondary"
+          />
+        ) : currentStatus !== 'settled' ? (
+          <ActionButton
+            accessibilityLabel="File dispute"
+            icon={<ShieldAlert color={colors.text} size={18} />}
+            label="File dispute"
+            onPress={() => router.push({
+              pathname: '/disputes/file',
+              params: { dareId },
+            })}
+            variant="secondary"
+          />
+        ) : null}
       </View>
     </CourtFlowFrame>
   );
@@ -89,6 +117,37 @@ function formatClaimState(value: string) {
   if (value === 'conflicted') return 'Claims conflict';
   if (value === 'dispute_requested') return 'Dispute requested';
   return 'Claim recorded';
+}
+
+function getResultTitle(status: string, claimState?: string) {
+  if (status === 'settled') return 'Settlement complete';
+  if (status === 'dispute_pending') return 'Dispute opened';
+  if (status === 'jury_open') return 'Jury review open';
+  if (status === 'settlement_pending' || status === 'completed') return 'Server result recorded';
+  if (claimState) return formatClaimState(claimState);
+  return 'Awaiting final result';
+}
+
+function getResultBody(status: string, claimState: string | undefined, claimsCount: number) {
+  if (status === 'dispute_pending') return 'Evidence and result claims are paused for dispute review.';
+  if (status === 'jury_open') return 'Jurors are reviewing the submitted evidence packet.';
+  if (status === 'settled') return 'Payout and trust updates have been finalized.';
+  if (claimState === 'pending') return `Your result claim is recorded. Claims submitted: ${claimsCount}/2.`;
+  return 'The result is visible now. Payout and trust changes wait for settlement.';
+}
+
+function getStatusTone(status: string) {
+  if (status === 'settled' || status === 'completed' || status === 'settlement_pending') return 'success';
+  if (status === 'dispute_pending' || status === 'jury_open') return 'warning';
+  return 'neutral';
+}
+
+function formatStatus(value: string) {
+  return value.replace(/[_-]/g, ' ').toUpperCase();
+}
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 function formatResolution(value: typeof activeCourtSession.resolutionType) {

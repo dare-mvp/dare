@@ -52,7 +52,7 @@ export function CourtArena({ session }: CourtArenaProps) {
         <View style={styles.footerRight}>
           <View style={styles.liveLabel}>
             <Radio color={colors.danger} size={13} />
-            <StatusBadge label="ACTIVE NOW" tone="danger" />
+            <StatusBadge label={getStatusLabel(session.phase)} tone={session.phase === 'active' ? 'danger' : 'neutral'} />
           </View>
           <Text style={styles.spectators}>{session.spectators} watching</Text>
         </View>
@@ -66,7 +66,13 @@ function getModeLabel(resolutionType: CourtSession['resolutionType']) {
   if (resolutionType === 'evidence') return 'Evidence';
   return 'Answer';
 }
-
+function getStatusLabel(phase: CourtSession['phase']) {
+  if (phase === 'active') return 'ACTIVE NOW';
+  if (phase === 'awaiting_result') return 'AWAITING RESULT';
+  if (phase === 'disputed') return 'REVIEW';
+  if (phase === 'settled') return 'SETTLED';
+  return 'PENDING';
+}
 function PlayerPanel({ alignRight = false, player }: { alignRight?: boolean; player: CourtPlayer }) {
   return (
     <View style={styles.playerPanel}>

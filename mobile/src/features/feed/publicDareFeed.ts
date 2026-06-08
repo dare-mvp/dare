@@ -1,4 +1,5 @@
 import { formatRelativeTime } from '../../lib/format/time';
+import { formatResolutionLabel } from '../create/createLabels';
 import { DareFeedItem, PlayerSummary } from './components/DareCard';
 
 export type PublicDareFeedRow = {
@@ -44,7 +45,7 @@ export function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
     id: row.id,
     playerA: issuer,
     playerB: challenger,
-    resolution: formatResolution(row.resolution_type),
+    resolution: formatResolutionLabel(row.resolution_type),
     scoreA: row.score_a ?? undefined,
     scoreB: row.score_b ?? undefined,
     rewardKobo: row.reward_amount ?? 0,
@@ -79,13 +80,6 @@ function getActionLabel(status: DareFeedItem['status']) {
   if (status === 'active') return 'Challenge underway';
   if (status === 'disputed') return 'Jury reviewing';
   return 'View result';
-}
-
-function formatResolution(value: string) {
-  if (value === 'answer_key') return 'Answer Key';
-  if (value === 'witnessed') return 'Witnessed';
-  if (value === 'evidence') return 'Evidence';
-  return formatLabel(value);
 }
 
 function formatLabel(value: string) {

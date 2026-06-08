@@ -28,7 +28,7 @@ export type IconOption<T> = {
 
 export const resolutionOptions: Array<IconOption<ResolutionType>> = [
   {
-    body: 'Creator-authored objective task with a committed answer key for settlement.',
+    body: 'Creator-provided prompt with a committed answer key for settlement.',
     icon: <KeyRound color={colors.primary} size={20} />,
     label: 'Answer Key',
     value: 'answer_key',
@@ -49,13 +49,13 @@ export const resolutionOptions: Array<IconOption<ResolutionType>> = [
 
 export const dareTypeOptions: Array<IconOption<DareType>> = [
   {
-    body: 'Two participants compete. Both stakes lock in escrow before Court.',
+    body: 'Two participants compete. Both players lock matched stakes before Court.',
     icon: <Trophy color={colors.primary} size={20} />,
     label: 'Skill-Based',
     value: 'skill',
   },
   {
-    body: 'The Darer funds a reward. The performer accepts without staking money.',
+    body: 'The Darer locks the reward. The performer accepts without staking money.',
     icon: <Banknote color={colors.warning} size={20} />,
     label: 'Task-Based',
     value: 'task',

@@ -35,6 +35,7 @@ type NotificationsState = {
 
 export function useNotifications(): NotificationsState {
   const auth = useAuth();
+  const userId = auth.user?.id ?? null;
   const [items, setItems] = useState<AppNotification[]>(() =>
     auth.status === 'authenticated' || auth.status === 'loading' ? [] : mockNotifications,
   );
@@ -162,6 +163,25 @@ export function useNotifications(): NotificationsState {
       mounted = false;
     };
   }, [auth.status]);
+
+  useEffect(() => {
+    if (auth.status !== 'authenticated' || !userId || !supabaseClient) return undefined;
+
+    const channel = supabaseClient
+      .channel(`notification-inbox-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', filter: `user_id=eq.${userId}`, schema: 'public', table: 'notifications' },
+        () => {
+          void loadNotifications();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabaseClient?.removeChannel(channel);
+    };
+  }, [auth.status, loadNotifications, userId]);
 
   return {
     error,

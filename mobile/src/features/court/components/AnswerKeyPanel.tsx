@@ -5,17 +5,19 @@ import { CourtQuestion } from '../types';
 
 type AnswerKeyPanelProps = {
   answerText?: string;
+  disabled?: boolean;
   onChangeAnswer?: (value: string) => void;
   question: CourtQuestion;
 };
 
-export function AnswerKeyPanel({ answerText, onChangeAnswer, question }: AnswerKeyPanelProps) {
+export function AnswerKeyPanel({ answerText, disabled = false, onChangeAnswer, question }: AnswerKeyPanelProps) {
   return (
     <View style={styles.panel}>
       <Text style={styles.kicker}>Answer Key Prompt</Text>
       <Text style={styles.prompt}>{question.prompt}</Text>
       <TextInput
         accessibilityLabel="Answer text"
+        editable={!disabled}
         multiline
         onChangeText={onChangeAnswer}
         placeholder="Type your answer exactly as agreed in the DARE rules"
@@ -24,7 +26,9 @@ export function AnswerKeyPanel({ answerText, onChangeAnswer, question }: AnswerK
         textAlignVertical="top"
         value={answerText}
       />
-      <Text style={styles.caption}>Your answer is only counted after confirmation.</Text>
+      <Text style={styles.caption}>
+        {disabled ? 'Answer submission is closed for this Court state.' : 'Your answer is only counted after confirmation.'}
+      </Text>
     </View>
   );
 }

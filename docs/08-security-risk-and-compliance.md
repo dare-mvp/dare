@@ -181,6 +181,13 @@ Skill-based classification does not remove regulatory obligations.
 
 ### KYC / AML
 
+Current phase decision:
+
+- DARE can receive KYC document uploads into private storage and store only redacted document metadata plus a private storage reference.
+- Internal/manual KYC review through the admin action is acceptable for this phase.
+- Automated vendor verification through Dojah, Prembly, Smile Identity, or another KYC provider is deferred until the first-market provider is selected.
+- Magic-byte validation, malware scanning, and orphan-upload cleanup are future hardening items, not current-phase blockers.
+
 Required planning:
 
 - KYC tiers
