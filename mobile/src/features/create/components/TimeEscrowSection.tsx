@@ -9,19 +9,27 @@ import { CreateDareDraft } from '../types';
 import { SelectPill } from './SelectPill';
 
 type TimeEscrowSectionProps = {
+  dareType: CreateDareDraft['dareType'];
   durationError?: string;
   durationSeconds: number;
   onDurationChange: (value: number) => void;
+  onRewardChange: (value: string) => void;
   onStakeChange: (value: string) => void;
+  rewardError?: string;
+  rewardNaira: string;
   stakeError?: string;
   stakeNaira: string;
 };
 
 export function TimeEscrowSection({
+  dareType,
   durationError,
   durationSeconds,
   onDurationChange,
+  onRewardChange,
   onStakeChange,
+  rewardError,
+  rewardNaira,
   stakeError,
   stakeNaira,
 }: TimeEscrowSectionProps) {
@@ -51,13 +59,17 @@ export function TimeEscrowSection({
         value={formatMinutes(durationSeconds)}
       />
       <TextField
-        error={stakeError}
+        error={dareType === 'task' ? rewardError : stakeError}
         keyboardType="numeric"
-        label="Stake amount"
+        label={dareType === 'task' ? 'Reward amount' : 'Stake amount'}
         leftIcon={<CircleDollarSign color={colors.warning} size={16} />}
-        onChangeText={(value) => onStakeChange(value.replace(/[^0-9]/g, ''))}
-        placeholder="Minimum NGN 100"
-        value={stakeNaira}
+        onChangeText={(value) => {
+          const normalized = value.replace(/[^0-9]/g, '');
+          if (dareType === 'task') onRewardChange(normalized);
+          else onStakeChange(normalized);
+        }}
+        placeholder={dareType === 'task' ? 'Minimum reward NGN 100' : 'Minimum stake NGN 100'}
+        value={dareType === 'task' ? rewardNaira : stakeNaira}
       />
     </View>
   );

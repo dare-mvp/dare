@@ -4,7 +4,7 @@
 
 Build a production-safe mobile MVP that proves the DARE loop without taking on every product surface from the prototype.
 
-The MVP should answer:
+The MVP answers:
 
 - Will users create and accept structured challenges?
 - Can DARE safely hold and settle funds?
@@ -13,17 +13,21 @@ The MVP should answer:
 
 ## Recommended MVP DARE Type
 
-Start with Algorithmic DAREs.
+Start with creator-authored Court DAREs using two stake models and the same Answer Key or Witnessed/Evidence review paths:
+
+- Skill-Based DARE: two participants both stake.
+- Task-Based DARE: only the Darer funds the reward.
 
 Reasons:
 
-- Server-scored outcomes are easier to audit.
-- No media upload required for the primary flow.
-- Jury can be reserved for disputes instead of every match.
-- Faster settlement.
-- Lower operational burden than physical/evidence categories.
+- Users, not the platform, define the challenge.
+- Skill-Based and Task-Based DAREs share the same public, social, witnessed, evidence-based, and dispute-resolvable pattern.
+- The Court proves presence, timing, and performance.
+- Objective knowledge-style challenges can use a pre-committed answer key.
+- Subjective or real-world challenges can use witnesses, evidence, and jury/admin review.
+- The platform stays focused on escrow, proof, dispute integrity, and settlement.
 
-Evidence-based DAREs should follow after wallet, state machine, and dispute operations are stable.
+The old platform-authored challenge model is not the product direction. See [`16-dare-resolution-model.md`](16-dare-resolution-model.md).
 
 ## MVP Included
 
@@ -46,13 +50,15 @@ Evidence-based DAREs should follow after wallet, state machine, and dispute oper
 
 ### DARE Core
 
-- Create Algorithmic DARE
+- Create creator-authored DARE
+- Select Skill-Based or Task-Based funding model
 - Open DARE feed
 - Accept DARE
-- Escrow hold for both users
+- Escrow hold for both participants on Skill-Based DAREs
+- Escrow hold for the Darer's reward on Task-Based DAREs
 - Ready-up flow
 - Server-authoritative match start
-- Quiz/scored challenge
+- Live Court with timer, presence, proof, and result capture
 - Result screen
 - Settlement
 - Notifications
@@ -75,7 +81,7 @@ Evidence-based DAREs should follow after wallet, state machine, and dispute oper
 ## MVP Excluded
 
 - Tournaments / Arena
-- Replicate Wager creator economy
+- Replicate DARE creator economy
 - Physical DARE category
 - what3words integration
 - AI voice-to-DARE
@@ -83,25 +89,29 @@ Evidence-based DAREs should follow after wallet, state machine, and dispute oper
 - Full spectator economy rewards
 - USSD production gateway
 - Multi-country launch
-- Real-money Honour DAREs
+- Real-money Informal mutual-confirmation DAREs
 
 ## MVP User Stories
 
 ### Create
 
-As a verified player, I can create a quiz-based DARE with rules, duration, stake, and payout preview.
+As a verified player, I can create a Skill-Based DARE with rules, duration, proof requirements, stake, and payout preview.
+
+As a verified Darer, I can create a Task-Based DARE with rules, duration, proof requirements, reward, and payout/refund preview.
 
 ### Accept
 
 As a verified player, I can review another user's DARE constitution and accept it if I have enough balance and meet requirements.
 
+As a verified performer, I can accept a Task-Based DARE without staking my own funds when I meet the eligibility requirements.
+
 ### Play
 
-As a player, I can enter the Court, ready up, answer questions, and see my score update.
+As a player, I can enter the Court, ready up, perform or answer according to the creator-authored constitution, and see the server-confirmed result path.
 
 ### Settle
 
-As a winner, I can see my payout after the server settles the DARE.
+As a winner or task performer, I can see my payout after the server settles the DARE.
 
 ### Dispute
 
@@ -153,7 +163,7 @@ As an admin, I can inspect disputed DAREs, ledger events, and user history.
 4. Mobile app shell and auth.
 5. Wallet deposit and transaction history.
 6. DARE create/accept/escrow.
-7. Court and algorithmic scoring.
+7. Court presence, proof, answer-key/witnessed result capture.
 8. Settlement and notifications.
 9. Dispute queue and admin review.
 10. Closed beta with capped stakes.
@@ -170,4 +180,3 @@ Do not launch real-money MVP until:
 - Escrow settlement is server-only.
 - Admin can freeze users, DAREs, and withdrawals.
 - Support and dispute playbooks exist.
-

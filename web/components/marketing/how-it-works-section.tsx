@@ -4,30 +4,30 @@ const STEPS = [
   {
     number: '01',
     icon: Target,
-    title: 'Create a DARE',
+    title: 'Author the DARE',
     description:
-      'Pick your challenge category, set a wager amount, and send the invite to your opponent.',
+      'Choose Skill-Based competition or Task-Based reward, then write the rules, proof, time limit, and settlement path.',
   },
   {
     number: '02',
     icon: CheckCircle2,
-    title: 'Opponent accepts',
+    title: 'Escrow locks',
     description:
-      'Funds are locked in escrow the moment both players confirm. No one can back out without penalty.',
+      'Skill-Based locks both stakes. Task-Based locks only the Darer-funded reward.',
   },
   {
     number: '03',
     icon: Timer,
-    title: 'Complete the challenge',
+    title: 'Run Court',
     description:
-      'Each player submits evidence when the challenge is complete. The Court timer keeps it fair.',
+      'Participants answer, perform live with witnesses, or submit evidence under a server-controlled timer.',
   },
   {
     number: '04',
     icon: Trophy,
     title: 'Settlement',
     description:
-      'The winner is determined by evidence review or jury vote. Funds are released to the wallet instantly.',
+      'Answer Key checks, Witnessed signals, Evidence review, or jury verdicts release payout or refund.',
   },
 ];
 
@@ -39,7 +39,7 @@ export function HowItWorksSection() {
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
             How it works
           </h2>
-          <p className="mt-3 text-muted-foreground">Four steps from challenge to payout.</p>
+          <p className="mt-3 text-muted-foreground">Four steps from user-authored rules to settlement.</p>
         </div>
 
         <div className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">

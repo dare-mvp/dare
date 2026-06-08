@@ -16,20 +16,26 @@ import {
 import { DisputeFlowFrame } from '../../src/features/disputes/components/DisputeFlowFrame';
 import {
   confirmEvidenceUpload,
-  DisputeReason,
   fileDispute,
   requestEvidenceUpload,
+  submitResultClaim,
+  type DisputeReason,
+  type ResultClaimOutcome,
 } from '../../src/lib/actions/endpoints';
 import { isUuid } from '../../src/lib/ids';
 import { colors } from '../../src/theme/tokens';
 
 export default function EvidenceUploadScreen() {
   const router = useRouter();
-  const { dareId, reason, summary } = useLocalSearchParams<{
+  const { claimOutcome, dareId, mode, rationale, reason, summary } = useLocalSearchParams<{
+    claimOutcome?: ResultClaimOutcome;
     dareId?: string;
+    mode?: 'dispute' | 'result-claim';
+    rationale?: string;
     reason?: DisputeReason;
     summary?: string;
   }>();
+  const isResultClaim = mode === 'result-claim';
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<SelectedEvidenceFile | null>(null);
@@ -47,7 +53,7 @@ export default function EvidenceUploadScreen() {
       eyebrow="Evidence"
       onBack={() => router.back()}
       title="Attach evidence."
-      subtitle="Use clear files that help a reviewer understand the dispute without seeing player identities."
+      subtitle={isResultClaim ? 'Use clear files that prove the claimed result under the DARE rules.' : 'Use clear files that help a reviewer understand the dispute without seeing player identities.'}
     >
       <EvidenceUploader
         files={files}
@@ -75,10 +81,10 @@ export default function EvidenceUploadScreen() {
         />
       ) : null}
       <ActionButton
-        accessibilityLabel="Submit dispute evidence"
+        accessibilityLabel={isResultClaim ? 'Submit result evidence' : 'Submit dispute evidence'}
         disabled={submitting || !selectedFile}
         icon={<UploadCloud color={colors.text} size={18} />}
-        label={submitting ? 'Submitting' : 'Submit evidence'}
+        label={submitting ? 'Submitting' : isResultClaim ? 'Submit result evidence' : 'Submit dispute evidence'}
         onPress={() => {
           void handleSubmitDispute();
         }}
@@ -120,10 +126,23 @@ export default function EvidenceUploadScreen() {
   }
 
   async function handleSubmitDispute() {
-    if (!isUuid(dareId) || !summary || !reason) {
+    if (!isUuid(dareId)) {
       router.push('/disputes/status');
       return;
     }
+
+    if (!isResultClaim && (!summary || !reason)) {
+      router.push('/disputes/status');
+      return;
+    }
+
+    if (isResultClaim && !isResultClaimOutcome(claimOutcome)) {
+      setSubmitError('Choose a valid result before attaching evidence.');
+      return;
+    }
+    const resultClaimOutcome = isResultClaim && isResultClaimOutcome(claimOutcome)
+      ? claimOutcome
+      : null;
 
     if (!selectedFile) {
       setSubmitError('Attach one evidence file before submitting.');
@@ -162,10 +181,36 @@ export default function EvidenceUploadScreen() {
       return;
     }
 
+    if (isResultClaim) {
+      const claimResult = await submitResultClaim(dareId, {
+        claimedOutcome: resultClaimOutcome!,
+        evidenceObjectIds: [uploadRequest.data.evidenceObjectId],
+        rationale: rationale || undefined,
+      });
+
+      if (!claimResult.ok) {
+        setSubmitError(claimResult.error.message);
+        setSubmitting(false);
+        return;
+      }
+
+      setSubmitting(false);
+      router.push({
+        pathname: '/court/result',
+        params: {
+          claimState: claimResult.data.claimState,
+          dareId: claimResult.data.dareId,
+          status: claimResult.data.dareStatus,
+          winnerId: claimResult.data.agreedWinnerId ?? undefined,
+        },
+      });
+      return;
+    }
+
     const disputeResult = await fileDispute(dareId, {
       evidenceObjectIds: [uploadRequest.data.evidenceObjectId],
-      reason,
-      summary,
+      reason: reason!,
+      summary: summary!,
     });
 
     if (!disputeResult.ok) {
@@ -183,4 +228,14 @@ export default function EvidenceUploadScreen() {
       },
     });
   }
+}
+
+function isResultClaimOutcome(value: unknown): value is ResultClaimOutcome {
+  return (
+    value === 'challenger_won' ||
+    value === 'dispute' ||
+    value === 'issuer_won' ||
+    value === 'performer_completed' ||
+    value === 'void'
+  );
 }

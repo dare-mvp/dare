@@ -301,10 +301,10 @@ def build_document() -> None:
 
     doc.add_heading("1. Executive Summary", level=1)
     doc.add_paragraph(
-        "DARE is a mobile-first social challenge platform for peer-to-peer skill challenges. A user creates a challenge, another user accepts it, both parties agree to a written rule set called a constitution, funds may be locked in escrow, the challenge runs in a live Court experience, and the result is resolved by server scoring, evidence, or a dispute review process. The product is designed around rule clarity, escrow transparency, auditability, user trust, and responsible participation."
+        "DARE is a mobile-first social challenge platform for peer-to-peer skill challenges. A user creates a challenge, another user accepts it, both parties agree to a written rule set called a constitution, funds may be locked in escrow, the challenge runs in a live Court experience, and the result is resolved by answer-key verification, witnessed live result, evidence review, or a dispute review process. The product is designed around rule clarity, escrow transparency, auditability, user trust, and responsible participation."
     )
     doc.add_paragraph(
-        "DARE should be reviewed by counsel as a regulated-risk product. Although the commercial positioning is not a generic betting app and the intended first release prioritizes skill-based, server-scored contests, the combination of entry value, prize value, peer competition, platform fees, wallets, and payouts means counsel must classify the product under Nigerian state gaming/lottery/prize-competition laws, payment rules, AML/CFT obligations, data protection law, consumer protection rules, advertising standards, tax obligations, and app-store/payment-processor policies."
+        "DARE should be reviewed by counsel as a regulated-risk product. Although the commercial positioning is not a generic betting app and the intended first release prioritizes skill-based, answer-key verified contests, the combination of entry value, prize value, peer competition, platform fees, wallets, and payouts means counsel must classify the product under Nigerian state gaming/lottery/prize-competition laws, payment rules, AML/CFT obligations, data protection law, consumer protection rules, advertising standards, tax obligations, and app-store/payment-processor policies."
     )
     doc.add_paragraph(
         "The recommended launch discipline is to begin with one Nigerian jurisdiction, likely Lagos if commercially and legally viable, and only open real-money gameplay after counsel confirms licensing posture, payment-provider approval, KYC/AML operations, responsible gaming controls, and regulatory reporting obligations."
@@ -321,7 +321,7 @@ def build_document() -> None:
             ],
             [
                 "Launch scope",
-                "MVP should start with algorithmic/server-scored DAREs, not physical evidence dares or honour dares with real stakes.",
+                "MVP should support answer_key, witnessed, and evidence DAREs with strict limits, audit trails, and dispute controls before expanding to high-risk physical formats.",
                 "Confirm if this narrower MVP changes license class, permitted advertising, payment approval, or consumer terms.",
             ],
             [
@@ -346,7 +346,7 @@ def build_document() -> None:
         "A DARE can be thought of as a contract-like challenge object inside the app. Each DARE contains the test, category, duration, proof method, stake, fee, payout preview, settlement method, and edge-case handling. After both sides accept the constitution, the terms become immutable for that DARE unless both parties explicitly accept an amended version."
     )
     doc.add_paragraph(
-        "The initial product should avoid open-ended physical dares and uncertain proof workflows. The safer MVP is algorithmic: for example, a quiz, timed answer round, or deterministic skill task scored by the server. Evidence-based dares, spectator-vote dares, honour dares, creator challenges, tournaments, and wider marketplace features can follow only after the licensing, wallet, dispute, and risk operations are proven."
+        "The initial product should avoid open-ended physical dares and uncertain proof workflows. The safer MVP is creator-authored answer_key, witnessed, and evidence flows with clear constitutions, conservative stake limits, and auditable review. Tournaments, creator economy, and wider marketplace features can follow only after licensing, wallet, dispute, and risk operations are proven."
     )
 
     doc.add_heading("3. What DARE Is and Is Not", level=1)
@@ -423,7 +423,7 @@ def build_document() -> None:
             ["Open / targeted pending", "DARE is available for an opponent or sent to a specific opponent.", "Eligibility checks, expiry, issuer escrow policy, responsible play limits."],
             ["Accepted", "Opponent has accepted terms.", "Both users must have accepted the same constitution version."],
             ["Ready check", "Players prepare for Court.", "Server readiness, heartbeat, reconnect grace, no timer manipulation."],
-            ["Active", "Challenge is live.", "Server start/end time, server-scored result, anti-cheat, event log."],
+            ["Active", "Challenge is live.", "Server start/end time, answer-key verified result, anti-cheat, event log."],
             ["Completed", "A provisional result exists.", "Dispute window, evidence preservation, settlement hold if needed."],
             ["Dispute pending / jury open", "A dispute or evidence review is active.", "Escrow remains held; blind evidence packet; juror eligibility; admin escalation."],
             ["Settled", "Escrow released according to final result.", "Append-only ledger, fee entry, payout entry, audit log."],
@@ -590,7 +590,7 @@ def build_document() -> None:
     add_numbered(
         doc,
         [
-            "Classify the MVP algorithmic DARE product under Nigerian law for the proposed launch state.",
+            "Classify the MVP answer_key DARE product under Nigerian law for the proposed launch state.",
             "Identify whether the platform needs a Lagos State Lotteries and Gaming Authority license or equivalent state license before beta or public launch.",
             "Identify whether federal/FCT licenses, state registrations, or inter-state restrictions apply if users from multiple states can access the app.",
             "Determine whether product mechanics must change to fit a lower-risk category, such as capped-stake skill competitions, no-rake competitions, promotional competitions, or non-cash rewards.",
@@ -627,7 +627,7 @@ def build_document() -> None:
     add_bullets(
         doc,
         [
-            "Can DARE lawfully launch algorithmic real-money DAREs in Lagos without being licensed as betting/gaming/lottery/interactive gaming? If not, what license class applies?",
+            "Can DARE lawfully launch answer_key real-money DAREs in Lagos without being licensed as betting/gaming/lottery/interactive gaming? If not, what license class applies?",
             "Does the platform fee create or increase gambling/gaming classification risk?",
             "Are peer-to-peer stakes treated differently from platform-funded prizes?",
             "Can DARE hold user funds internally, or must all funds remain with a licensed payment provider/trust account?",
@@ -646,8 +646,8 @@ def build_document() -> None:
         ["Included in first real-money MVP", "Deferred until after licensing/operations validation"],
         [
             [
-                "Algorithmic/server-scored DAREs; wallet deposit; escrow hold; ready-up Court; server timer; result screen; settlement; dispute filing; admin queue; KYC tiering; limits; audit logs.",
-                "Physical dares; evidence-first dares; honour dares with real stakes; tournaments; creator economy; spectator rewards; multi-country launch; USSD production gateway; AI voice-to-DARE.",
+                "Answer Key, Witnessed, and Evidence DAREs; wallet deposit; escrow hold; ready-up Court; server timer; result screen; settlement; dispute filing; admin queue; KYC tiering; limits; audit logs.",
+                "High-risk physical formats; unsupported handshake-only outcomes with real stakes; tournaments; creator economy; spectator rewards; multi-country launch; USSD production gateway; AI voice-to-DARE.",
             ]
         ],
         [4680, 4680],
@@ -664,7 +664,7 @@ def build_document() -> None:
             ["Escrow", "Internal hold or provider-backed segregation of funds pending challenge result or dispute resolution."],
             ["Juror", "Eligible user assigned to review blind evidence and vote on disputes or evidence-based outcomes."],
             ["Trust score", "Server-calculated reputation metric based on completed DAREs, disputes, forfeits, jury behavior, and risk events."],
-            ["Algorithmic DARE", "DARE resolved by server-scored rules, such as timed quiz or deterministic answers."],
+            ["Answer Key DARE", "DARE resolved by answer-key verified rules, such as timed quiz or deterministic answers."],
             ["Evidence DARE", "DARE resolved using submitted media or proof, usually with jury/admin review."],
         ],
         [2100, 7260],

@@ -13,8 +13,9 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jet
 export const metadata: Metadata = {
   metadataBase: new URL('https://daregamesapp.com'),
   applicationName: 'DARE',
-  title: 'DARE - Challenge. Wager. Win.',
-  description: 'DARE is a hyper-local P2P social wagering platform. Challenge friends, wager on your skills, and win.',
+  title: 'DARE - Skill Challenges and Task Rewards',
+  description:
+    'DARE is a hyper-local platform for user-authored Skill-Based DAREs and Task-Based rewards with escrow-backed, proof-led settlement.',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -31,8 +32,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
   },
   openGraph: {
-    title: 'DARE - Challenge. Wager. Win.',
-    description: 'Challenge friends to real-money skill competitions with proof-based settlement.',
+    title: 'DARE - Skill Challenges and Task Rewards',
+    description:
+      'Create Skill-Based or Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
     url: '/',
     siteName: 'DARE',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'DARE' }],
@@ -40,8 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DARE - Challenge. Wager. Win.',
-    description: 'Challenge friends to real-money skill competitions with proof-based settlement.',
+    title: 'DARE - Skill Challenges and Task Rewards',
+    description:
+      'Create Skill-Based or Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
     images: ['/og-image.png'],
   },
 };

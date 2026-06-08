@@ -51,6 +51,11 @@ import {
   selfExclude,
   updateResponsibleGamingSettings,
 } from "./routes/responsible_gaming.ts";
+import {
+  recordWitnessAttendance,
+  submitResultClaim,
+  submitWitnessVote,
+} from "./routes/result_claims.ts";
 import { requestWithdrawal } from "./routes/withdrawals.ts";
 import { completeDare, settleDare } from "./routes/settlement.ts";
 
@@ -475,6 +480,54 @@ async function route(context: RouteContext): Promise<Response> {
     actionPath[2] === "evidence"
   ) {
     const result = await requestEvidenceUpload(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "claims"
+  ) {
+    const result = await submitResultClaim(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "witness-attendance"
+  ) {
+    const result = await recordWitnessAttendance(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "witness-votes"
+  ) {
+    const result = await submitWitnessVote(
       context.request,
       actionPath[1],
       context.getClient(),

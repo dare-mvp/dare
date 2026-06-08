@@ -4,31 +4,31 @@ import { Scale, Lock, Shield, ChevronRight, BadgeCheck, UserCheck, Clock } from 
 const PILLARS = [
   {
     icon: Scale,
-    title: 'Skill Wins Here',
+    title: 'User-Authored Rules',
     description:
-      'The Predominance Test: outcomes decided by player skill, not chance. Every DARE category is audited for skill determination.',
-    highlights: ['Blind jury review', 'Evidence-based verdicts', 'No house edge'],
+      'The creator writes the constitution: rules, proof, time limit, win condition, tie handling, and dispute path.',
+    highlights: ['Skill-Based or Task-Based', 'User-authored content', 'Clear proof standard'],
   },
   {
     icon: Lock,
     title: 'Funds in Escrow',
     description:
-      'Money is locked the moment a DARE is accepted, released only on settlement. No admin can access your funds.',
-    highlights: ['Instant lock on accept', 'Smart release logic', 'Immutable ledger'],
+      'Skill-Based DAREs lock both stakes. Task-Based DAREs lock the Darer-funded reward until settlement, refund, or void.',
+    highlights: ['Two-sided stakes', 'Darer-funded rewards', 'Immutable ledger'],
   },
   {
     icon: Shield,
-    title: 'Responsible Gaming',
+    title: 'Proof-Led Settlement',
     description:
-      'Identity verified, deposit limits enforced, self-exclusion available on demand. We prioritise player welfare.',
-    highlights: ['KYC required', 'Deposit limits', 'Self-exclusion'],
+      'Answer Key checks, Witnessed live signals, Evidence packets, and blinded jury review keep outcomes tied to proof.',
+    highlights: ['Answer Key', 'Witnessed', 'Evidence review'],
   },
 ];
 
 const TRUST_BADGES = [
   { icon: BadgeCheck, label: 'KYC Verified Players' },
-  { icon: UserCheck, label: 'Blind Jury System' },
-  { icon: Clock, label: 'Instant Settlement' },
+  { icon: UserCheck, label: 'Blinded Review Packets' },
+  { icon: Clock, label: 'Server Settlement' },
 ];
 
 export function TrustSafetySection() {
@@ -40,7 +40,7 @@ export function TrustSafetySection() {
             Trust &amp; Safety
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Built for real money. Held to a higher standard.
+            Built for user-authored DAREs, escrowed funds, and proof-led settlement.
           </p>
 
           {/* Trust badges */}

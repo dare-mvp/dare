@@ -12,10 +12,12 @@ import { ConstitutionPreview } from '../../src/features/create/components/Consti
 import { CreateStepper } from '../../src/features/create/components/CreateStepper';
 import { SelectPill } from '../../src/features/create/components/SelectPill';
 import { TimeEscrowSection } from '../../src/features/create/components/TimeEscrowSection';
-import { draftToRouteParams } from '../../src/features/create/createDarePayload';
+import { getCreateStakeAvailabilityError } from '../../src/features/create/createEligibility';
+import { saveCreateDareDraft } from '../../src/features/create/createDraftStore';
 import {
   categoryOptions,
   createSectionIcons,
+  dareTypeOptions,
   resolutionOptions,
 } from '../../src/features/create/createVisuals';
 import { useCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
@@ -26,12 +28,17 @@ import { colors, fonts, radius, spacing, typography } from '../../src/theme/toke
 export default function CreateScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
-  const { draft, escrowKobo, platformFeeKobo, stakeKobo, updateDraft, validation } = useCreateDareDraft();
-  const canReview = validation.isValid && data.capabilities.canCreateDare;
+  const { draft, escrowKobo, platformFeeKobo, rewardKobo, stakeKobo, updateDraft, validation } = useCreateDareDraft();
+  const createGate = getCreateGate(data);
+  const stakeAvailabilityError = getCreateStakeAvailabilityError(escrowKobo, data);
+  const canReview = validation.isValid && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error;
   const visibleErrors = {
+    answerKey: draft.answerKey ? validation.errors.answerKey : undefined,
+    answerKeyRules: draft.answerKeyRules ? validation.errors.answerKeyRules : undefined,
     opponent: draft.opponent ? validation.errors.opponent : undefined,
+    rewardNaira: draft.rewardNaira ? validation.errors.rewardNaira ?? stakeAvailabilityError ?? undefined : undefined,
     rules: draft.rules ? validation.errors.rules : undefined,
-    stakeNaira: draft.stakeNaira ? validation.errors.stakeNaira : undefined,
+    stakeNaira: draft.stakeNaira ? validation.errors.stakeNaira ?? stakeAvailabilityError ?? undefined : undefined,
     title: draft.title ? validation.errors.title : undefined,
     durationSeconds: validation.errors.durationSeconds,
   };
@@ -61,10 +68,32 @@ export default function CreateScreen() {
           />
         ) : null}
 
+        {!loading && !error && !data.capabilities.canCreateDare ? (
+          <InlineAlert
+            tone="warning"
+            title={createGate.title}
+            message={createGate.message}
+          />
+        ) : null}
+
         <CreateStepper />
 
         <View style={styles.section}>
-          <SectionTitle eyebrow="Type" icon={createSectionIcons.type} title="Choose how this challenge resolves" />
+          <SectionTitle eyebrow="Funding" icon={createSectionIcons.type} title="Choose the DARE type" />
+          {dareTypeOptions.map((option) => (
+            <PressCard
+              body={option.body}
+              icon={option.icon}
+              key={option.value}
+              label={option.label}
+              onPress={() => updateDraft('dareType', option.value)}
+              selected={draft.dareType === option.value}
+            />
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <SectionTitle eyebrow="Resolution" icon={createSectionIcons.type} title="Choose how this DARE resolves" />
           {resolutionOptions.map((option) => (
             <PressCard
               body={option.body}
@@ -114,10 +143,31 @@ export default function CreateScreen() {
             textAlignVertical="top"
             value={draft.rules}
           />
+          {draft.resolutionType === 'answer_key' ? (
+            <>
+              <TextField
+                error={visibleErrors.answerKey}
+                label="Committed answer key"
+                leftIcon={<ShieldCheck color={colors.textMuted} size={16} />}
+                onChangeText={(value) => updateDraft('answerKey', value)}
+                placeholder="Required for Answer Key DAREs"
+                secureTextEntry
+                value={draft.answerKey}
+              />
+              <TextField
+                error={visibleErrors.answerKeyRules}
+                label="Answer judging rule (optional)"
+                leftIcon={<ShieldCheck color={colors.textMuted} size={16} />}
+                onChangeText={(value) => updateDraft('answerKeyRules', value)}
+                placeholder="e.g. spelling must match exactly, no abbreviations"
+                value={draft.answerKeyRules}
+              />
+            </>
+          ) : null}
           <TextField
             autoCapitalize="none"
             error={visibleErrors.opponent}
-            label="Opponent (optional)"
+            label={draft.dareType === 'task' ? 'Performer (optional)' : 'Opponent (optional)'}
             leftIcon={<UserRound color={colors.textMuted} size={16} />}
             onChangeText={(value) => updateDraft('opponent', value)}
             placeholder="@username or leave open"
@@ -130,14 +180,19 @@ export default function CreateScreen() {
           durationSeconds={draft.durationSeconds}
           onDurationChange={(value) => updateDraft('durationSeconds', value)}
           onStakeChange={(value) => updateDraft('stakeNaira', value)}
+          onRewardChange={(value) => updateDraft('rewardNaira', value)}
+          rewardError={visibleErrors.rewardNaira}
+          rewardNaira={draft.rewardNaira}
           stakeError={visibleErrors.stakeNaira}
           stakeNaira={draft.stakeNaira}
+          dareType={draft.dareType}
         />
 
         <ConstitutionPreview
           draft={draft}
           escrowKobo={escrowKobo}
           platformFeeKobo={platformFeeKobo}
+          rewardKobo={rewardKobo}
           stakeKobo={stakeKobo}
         />
 
@@ -149,17 +204,51 @@ export default function CreateScreen() {
 
         <ActionButton
           accessibilityLabel="Review DARE escrow"
-          disabled={!canReview}
+          disabled={data.capabilities.canCreateDare ? !canReview : loading || Boolean(error)}
           icon={<ShieldCheck color={colors.text} size={18} />}
-          label="Review escrow"
-          onPress={() => router.push({
-            pathname: '/create/review',
-            params: draftToRouteParams(draft),
-          })}
+          label={data.capabilities.canCreateDare ? 'Review escrow' : createGate.label}
+          onPress={() => {
+            if (!data.capabilities.canCreateDare) {
+              router.push(createGate.route);
+              return;
+            }
+
+            router.push({
+              pathname: '/create/review',
+              params: { draftId: saveCreateDareDraft(draft) },
+            });
+          }}
         />
       </ScrollView>
     </Screen>
   );
+}
+
+function getCreateGate(data: ReturnType<typeof useMe>['data']) {
+  if (data.profile.kycStatus === 'pending') {
+    return {
+      label: 'KYC status',
+      message: 'KYC review must finish before you can create money-backed DAREs.',
+      route: '/kyc-status' as const,
+      title: 'KYC review pending',
+    };
+  }
+
+  if (data.profile.kycStatus === 'not_started') {
+    return {
+      label: 'Verify account',
+      message: 'Complete KYC before creating money-backed DAREs.',
+      route: '/kyc-intro' as const,
+      title: 'Verification required',
+    };
+  }
+
+  return {
+    label: 'Review account',
+    message: 'Your account, wallet, or limits are not currently eligible to create DAREs.',
+    route: '/(tabs)/profile' as const,
+    title: 'Create unavailable',
+  };
 }
 
 function SectionTitle({ eyebrow, icon, title }: { eyebrow: string; icon: ReactNode; title: string }) {

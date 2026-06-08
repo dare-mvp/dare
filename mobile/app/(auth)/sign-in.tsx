@@ -42,6 +42,7 @@ export default function SignInScreen() {
   return (
     <AuthFrame
       eyebrow="Sign in"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       title="Return to your DARE account."
       subtitle="Use the email connected to your wallet, KYC, limits, and court history."
       footer={<AuthFooterLink label="Need an account? Create one" onPress={() => router.push('/age-gate')} />}

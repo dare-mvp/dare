@@ -35,8 +35,12 @@ type NotificationsState = {
 
 export function useNotifications(): NotificationsState {
   const auth = useAuth();
-  const [items, setItems] = useState<AppNotification[]>(mockNotifications);
-  const [source, setSource] = useState<NotificationSource>('mock');
+  const [items, setItems] = useState<AppNotification[]>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? [] : mockNotifications,
+  );
+  const [source, setSource] = useState<NotificationSource>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? 'server' : 'mock',
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(auth.status === 'loading');
   const [mutating, setMutating] = useState(false);
@@ -63,8 +67,8 @@ export function useNotifications(): NotificationsState {
       .limit(50);
 
     if (queryError) {
-      setItems(mockNotifications);
-      setSource('mock');
+      setItems([]);
+      setSource('server');
       setError(getLoadUserMessage('notifications'));
     } else {
       setItems(mapNotificationRows((data ?? []) as NotificationRow[]));
@@ -140,8 +144,8 @@ export function useNotifications(): NotificationsState {
       if (!mounted) return;
 
       if (queryError) {
-        setItems(mockNotifications);
-        setSource('mock');
+        setItems([]);
+        setSource('server');
         setError(getLoadUserMessage('notifications'));
       } else {
         setItems(mapNotificationRows((data ?? []) as NotificationRow[]));

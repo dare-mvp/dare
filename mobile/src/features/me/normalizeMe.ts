@@ -15,6 +15,62 @@ const previewCapabilities = {
   canWithdraw: true,
 };
 
+const emptyCapabilities = {
+  canAcceptDare: false,
+  canCreateDare: false,
+  canDeposit: false,
+  canJury: false,
+  canUpdateProfile: false,
+  canWithdraw: false,
+};
+
+const emptyWalletSummary: WalletSummary = {
+  activeChallenges: 0,
+  availableKobo: 0,
+  dareCoins: 0,
+  escrowKobo: 0,
+  maxStakeLabel: 'No stake limit set',
+  pendingWithdrawalKobo: 0,
+  tier: 'Newcomer',
+  totalEarnedKobo: 0,
+  trustScore: 0,
+  transactions: [],
+};
+
+const emptyProfileSummary: ProfileSummary = {
+  accountStatus: 'limited',
+  avatarInitial: 'D',
+  displayName: 'DARE account',
+  disputes: 0,
+  earnedLabel: formatNgnCompactFromKobo(0),
+  juryCategories: [],
+  juryOptIn: false,
+  kycStatus: 'not_started',
+  kycTier: 'KYC not started',
+  limits: [
+    {
+      currentLabel: 'No daily limit set',
+      label: 'Daily deposit limit',
+    },
+    {
+      currentLabel: 'No stake limit set',
+      label: 'Max stake per DARE',
+    },
+    {
+      currentLabel: 'Not active',
+      label: 'Self-exclusion',
+    },
+  ],
+  maxStakeLabel: 'No stake limit set',
+  pointsToNextTier: 0,
+  recentChallenges: [],
+  specialties: [],
+  tier: 'Newcomer',
+  trustScore: 0,
+  winRate: '0%',
+  wins: 0,
+};
+
 export function createPreviewMeState(): MeState {
   return {
     capabilities: previewCapabilities,
@@ -22,6 +78,16 @@ export function createPreviewMeState(): MeState {
     source: 'mock',
     user: null,
     wallet: walletSummary,
+  };
+}
+
+export function createEmptyMeState(): MeState {
+  return {
+    capabilities: emptyCapabilities,
+    profile: emptyProfileSummary,
+    source: 'server',
+    user: null,
+    wallet: emptyWalletSummary,
   };
 }
 
@@ -46,7 +112,7 @@ function normalizeWallet(payload: MeResponse): WalletSummary {
 
   if (!wallet) {
     return {
-      ...walletSummary,
+      ...emptyWalletSummary,
       maxStakeLabel: formatMaxStake(payload.responsibleGaming.maxStakePerDare),
       tier: payload.user.tier,
       trustScore: payload.user.trustScore,
@@ -54,7 +120,7 @@ function normalizeWallet(payload: MeResponse): WalletSummary {
   }
 
   return {
-    ...walletSummary,
+    ...emptyWalletSummary,
     availableKobo: wallet.available,
     escrowKobo: wallet.escrowed,
     maxStakeLabel: formatMaxStake(payload.responsibleGaming.maxStakePerDare),
@@ -67,11 +133,11 @@ function normalizeWallet(payload: MeResponse): WalletSummary {
 function normalizeProfile(payload: MeResponse, wallet: WalletSummary): ProfileSummary {
   const user = payload.user;
   const completed = user.wins + user.losses;
-  const displayName = user.displayName || user.username || profileSummary.displayName;
-  const juryCategories = user.juryCategories.length > 0 ? user.juryCategories : profileSummary.juryCategories;
+  const displayName = user.displayName || user.username || emptyProfileSummary.displayName;
+  const juryCategories = user.juryCategories;
 
   return {
-    ...profileSummary,
+    ...emptyProfileSummary,
     accountStatus: normalizeAccountStatus(user.accountStatus),
     avatarInitial: getInitial(displayName),
     displayName,
@@ -109,16 +175,16 @@ function formatLimit(amountKobo: number | null, fallback: string) {
 }
 
 function formatMaxStake(amountKobo: number | null) {
-  return amountKobo === null ? walletSummary.maxStakeLabel : formatNgnCompactFromKobo(amountKobo);
+  return amountKobo === null ? emptyWalletSummary.maxStakeLabel : formatNgnCompactFromKobo(amountKobo);
 }
 
 function formatWinRate(wins: number, total: number) {
-  if (total <= 0) return profileSummary.winRate;
+  if (total <= 0) return emptyProfileSummary.winRate;
   return `${Math.round((wins / total) * 100)}%`;
 }
 
 function getInitial(value: string) {
-  return value.trim().charAt(0).toUpperCase() || profileSummary.avatarInitial;
+  return value.trim().charAt(0).toUpperCase() || emptyProfileSummary.avatarInitial;
 }
 
 function normalizeAccountStatus(status: string): ProfileSummary['accountStatus'] {

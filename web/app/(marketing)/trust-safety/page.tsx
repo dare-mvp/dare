@@ -5,11 +5,11 @@ import { MarketingFooter } from '@/components/marketing/footer';
 export const metadata: Metadata = {
   title: 'Trust & Safety',
   description:
-    'How DARE protects players through the Predominance Test, escrow-secured funds, identity verification, and responsible gaming controls.',
+    'How DARE protects user-authored Skill-Based and Task-Based DAREs through escrow, proof-led settlement, identity verification, and responsible gaming controls.',
   openGraph: {
     title: 'Trust & Safety | DARE',
     description:
-      'How DARE protects players through the Predominance Test, escrow-secured funds, identity verification, and responsible gaming controls.',
+      'How DARE protects user-authored Skill-Based and Task-Based DAREs through escrow, proof-led settlement, identity verification, and responsible gaming controls.',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 };
@@ -23,8 +23,8 @@ export default function TrustSafetyPage() {
             Trust &amp; Safety
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Real money deserves real protection. Here&apos;s exactly how DARE is built to keep
-            your funds and data safe.
+            Real money DAREs need clear rules, protected funds, private evidence, and settlement
+            paths users can understand before escrow locks.
           </p>
         </div>
         <TrustSafetySection />

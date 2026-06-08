@@ -15,7 +15,7 @@ The dispute and jury system is DARE's fairness engine. It must make outcomes fee
 
 ## Dispute Eligibility
 
-A participant may dispute when:
+A participant can dispute when:
 
 - The DARE is completed but still inside the dispute window.
 - The participant is a party to the DARE.
@@ -25,7 +25,7 @@ A participant may dispute when:
 
 Recommended dispute window for MVP:
 
-- 10 to 30 minutes for algorithmic DAREs.
+- 10 to 30 minutes for answer-key or mutually confirmed Court DAREs.
 - Up to 24 hours for evidence-based DAREs.
 
 ## Dispute Case Lifecycle
@@ -55,11 +55,11 @@ Recommended baseline:
 - No detected relationship to either participant.
 - KYC tier sufficient for case value.
 
-The strategy document suggests trust score greater than 500 and at least 10 completed DAREs for juror eligibility. That should be validated during beta.
+MVP juror eligibility requires `trust_score >= 500`, `completed_dares >= 10`, active KYC, no active self-exclusion, and no current account restriction.
 
 ## Juror Assignment
 
-Assignments should be server-side and random within eligibility constraints.
+Assignments are server-side and random within eligibility constraints.
 
 Constraints:
 
@@ -71,7 +71,7 @@ Constraints:
 
 ## Blind Evidence Packets
 
-Jurors should review A/B packets without unnecessary identity signals.
+Jurors review A/B packets without unnecessary identity signals.
 
 Packet contents:
 
@@ -85,12 +85,12 @@ Packet contents:
 Do not show:
 
 - Username if not required
-- Trust score if it may bias verdict
+- Trust score
 - Current vote tally before juror votes
 
 ## Vote Requirements
 
-Each juror vote should include:
+Each juror vote includes:
 
 - Vote: A, B, void, or escalate
 - Written rationale
@@ -114,13 +114,13 @@ Possible verdicts:
 
 - Uphold original result.
 - Overturn result.
-- Void DARE and refund both users.
+- Void DARE and refund escrow according to the DARE type.
 - Escalate to admin.
 - Penalize bad-faith actor.
 
 ## Trust Score
 
-Trust score should reflect reliability, fairness, and platform safety.
+Trust score reflects reliability, fairness, and platform safety.
 
 Positive signals:
 
@@ -142,15 +142,15 @@ Negative signals:
 - Payment reversal
 - Abuse report upheld
 
-Trust score should not be directly editable by the client.
+Trust score is not directly editable by the client.
 
 ## Tier Effects
 
-Tiers may control:
+Tiers control:
 
 - Max stake
 - Juror eligibility
-- Honour DARE eligibility
+- Informal mutual-confirmation DARE eligibility
 - Tournament creation
 - DARE Master status
 - Withdrawal speed
@@ -207,4 +207,3 @@ Admins need:
 - Action audit log
 - Freeze/unfreeze controls
 - Settlement override with reason
-

@@ -8,6 +8,7 @@ type ConstitutionPreviewProps = {
   draft: CreateDareDraft;
   escrowKobo: number;
   platformFeeKobo: number;
+  rewardKobo: number;
   stakeKobo: number;
 };
 
@@ -15,22 +16,24 @@ export function ConstitutionPreview({
   draft,
   escrowKobo,
   platformFeeKobo,
+  rewardKobo,
   stakeKobo,
 }: ConstitutionPreviewProps) {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>DARE Constitution</Text>
       <PreviewRow label="Challenge" value={draft.title || 'Not set'} />
+      <PreviewRow label="DARE type" value={draft.dareType === 'task' ? 'TASK-BASED' : 'SKILL-BASED'} />
       <PreviewRow label="Category" value={draft.category.toUpperCase()} />
-      <PreviewRow label="Resolution" value={draft.resolutionType.toUpperCase()} />
+      <PreviewRow label="Resolution" value={formatResolution(draft.resolutionType)} />
       <PreviewRow label="Duration" value={formatDuration(draft.durationSeconds)} />
       <PreviewRow label="Opponent" value={draft.opponent || 'Open challenge'} />
       <PreviewRow label="Rules" value={draft.rules || 'Rules not set'} />
 
       <View style={styles.moneyPanel}>
-        <MoneyLine label="Stake" value={stakeKobo} />
-        <MoneyLine label="Platform fee" value={platformFeeKobo} />
-        <MoneyLine emphasis label="Escrow required" value={escrowKobo} />
+        <MoneyLine label={draft.dareType === 'task' ? 'Reward' : 'Stake'} value={draft.dareType === 'task' ? rewardKobo : stakeKobo} />
+        <MoneyLine label="Estimated settlement fee" value={platformFeeKobo} />
+        <MoneyLine emphasis label={draft.dareType === 'task' ? 'Reward to lock' : 'Stake to lock'} value={escrowKobo} />
       </View>
     </View>
   );
@@ -57,6 +60,10 @@ function MoneyLine({ emphasis = false, label, value }: { emphasis?: boolean; lab
 function formatDuration(seconds: number) {
   if (seconds < 60) return `${seconds}s`;
   return `${Math.round(seconds / 60)} min`;
+}
+
+function formatResolution(value: CreateDareDraft['resolutionType']) {
+  return value.replace(/[_-]/g, ' ').toUpperCase();
 }
 
 const styles = StyleSheet.create({

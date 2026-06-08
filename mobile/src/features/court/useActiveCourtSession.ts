@@ -21,8 +21,11 @@ type DareRow = {
   challenger_id: string | null;
   category: string;
   duration_seconds: number;
+  dare_type?: 'skill' | 'task';
   id: string;
   issuer_id: string;
+  resolution_type?: 'answer_key' | 'witnessed' | 'evidence';
+  reward_amount?: number;
   stake_amount: number;
   status: string;
   title: string;
@@ -53,13 +56,19 @@ const activeStatuses = [
 
 export function useActiveCourtSession(dareId?: string): ActiveCourtSessionState {
   const auth = useAuth();
-  const [session, setSession] = useState<CourtSession | null>(activeCourtSession);
-  const [source, setSource] = useState<CourtSource>('mock');
+  const [session, setSession] = useState<CourtSession | null>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? null : activeCourtSession,
+  );
+  const [source, setSource] = useState<CourtSource>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? 'server' : 'mock',
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(auth.status === 'loading');
 
   const load = useCallback(async () => {
     if (auth.status === 'loading') {
+      setSession(null);
+      setSource('server');
       setLoading(true);
       return;
     }
@@ -118,7 +127,7 @@ async function fetchCourtDare(userId: string, dareId?: string) {
 
   let query = supabaseClient
     .from('dares')
-    .select('id,title,category,status,stake_amount,duration_seconds,issuer_id,challenger_id,updated_at');
+    .select('id,title,category,status,dare_type,resolution_type,stake_amount,reward_amount,duration_seconds,issuer_id,challenger_id,updated_at');
 
   if (isUuid(dareId)) {
     query = query.eq('id', dareId);
@@ -166,8 +175,9 @@ function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string):
 
   return {
     ...activeCourtSession,
-    challengeType: `${formatLabel(dare.category)} challenge`,
+    challengeType: `${dare.dare_type === 'task' ? 'Task-Based' : 'Skill-Based'} ${formatLabel(dare.category)} DARE - ${formatResolution(dare.resolution_type)}`,
     connectionState: court.phase === 'active' ? 'connected' : 'reconnecting',
+    dareType: dare.dare_type ?? 'skill',
     dareId: dare.id,
     heartbeatAgeSeconds: getHeartbeatAgeSeconds(currentHeartbeat),
     phase: mapPhase(court.phase),
@@ -184,14 +194,18 @@ function mapCourtSession(dare: DareRow, court: CourtSessionRow, userId: string):
       ...activeCourtSession.playerB,
       isReady: court.player_b_ready,
       isYou: isChallenger,
-      name: isChallenger ? 'You' : 'Challenger',
+      name: isChallenger ? 'You' : dare.dare_type === 'task' ? 'Performer' : 'Challenger',
       score: court.score_b,
       tier: isChallenger ? 'Your side' : 'Player B',
       trustScore: 0,
     },
-    potKobo: dare.stake_amount * 2,
+    potKobo: dare.dare_type === 'task' ? dare.reward_amount ?? 0 : dare.stake_amount * 2,
+    resolutionType: dare.resolution_type ?? 'answer_key',
     timeRemainingSeconds: getTimeRemainingSeconds(court.server_end_time, dare.duration_seconds),
     title: dare.title,
+    viewerRole: isIssuer ? 'participant_a' : isChallenger ? 'participant_b' : 'spectator',
+    votesA: court.votes_a,
+    votesB: court.votes_b,
   };
 }
 
@@ -214,4 +228,11 @@ function getTimeRemainingSeconds(serverEndTime: string | null, fallbackSeconds: 
 
 function formatLabel(value: string) {
   return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatResolution(value: DareRow['resolution_type']) {
+  if (value === 'answer_key') return 'Answer Key';
+  if (value === 'witnessed') return 'Witnessed';
+  if (value === 'evidence') return 'Evidence';
+  return 'Answer Key';
 }

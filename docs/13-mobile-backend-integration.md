@@ -8,7 +8,7 @@ The Expo app reads backend configuration from public Expo environment variables:
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `EXPO_PUBLIC_ACTIONS_FUNCTION_URL`
 
-`EXPO_PUBLIC_ACTIONS_FUNCTION_URL` should normally be:
+`EXPO_PUBLIC_ACTIONS_FUNCTION_URL` is:
 
 ```text
 https://<project-ref>.supabase.co/functions/v1/actions
@@ -49,7 +49,7 @@ The mobile app now has:
 - DARE acceptance via `POST /dares/{id}/accept` for live UUID-backed feed items
 - authenticated court tab/status/result/settlement reads from participant-readable `dares` and `court_sessions`
 - court ready/countdown screens use the live court session state; ready-up waits for `active` before moving into countdown
-- safe court current-question read via `GET /court/{dareId}/question`, backed by `get_current_court_question_action`, returning prompt/options without `correct_option`
+- creator-authored court prompt read via `GET /court/{dareId}/question`, backed by `get_current_court_question_action`, returning prompt/options without answer-key material
 - court ready-up via `POST /dares/{id}/ready`
 - court heartbeat via `POST /court/{id}/heartbeat`
 - court chat send helper via idempotent `POST /court/{dareId}/messages`
@@ -66,6 +66,25 @@ The mobile app now has:
 
 Some secondary screens still render static product/help content until each feature has a durable read model and action contract.
 
+## Current Create Resolution Boundary
+
+Product decision: DARE is creator-authored. The platform does not generate primary challenge questions or tasks. See [`16-dare-resolution-model.md`](16-dare-resolution-model.md).
+
+The Create tab currently lets a player choose Answer Key, Witnessed, or Evidence. These choices are sent to the backend and persisted on `dares.resolution_type`:
+
+- Answer Key -> `answer_key`
+- Witnessed -> `witnessed`
+- Evidence -> `evidence`
+
+Today, Witnessed and Evidence are stored resolution choices, not separate full post-accept lifecycles. The create transaction, escrow hold, targeted/open status, accept action, and ready-check court creation are shared across all three resolution types.
+
+The `answer_key` implementation uses creator-authored prompt instructions and a committed answer key:
+
+- Answer Key: issuer-authored prompts/answers committed before Court and hidden from the challenger.
+- Witnessed: audience/witness signals and result claims captured during live Court.
+- Evidence: proof capture/upload and jury/admin review.
+- Settlement follows confirmed result, answer-key verification, jury/admin verdict, or void/refund policy.
+
 `mobile/.env.example` exists and is the expected template for local Expo backend configuration.
 
 ## Test Coverage Notes
@@ -77,17 +96,20 @@ Some secondary screens still render static product/help content until each featu
 ## Remaining Launch Gates
 
 - Jury evidence packets still need richer signed evidence previews; the current mobile read shows live case reason and evidence counts only.
-- Support remains static content. A ticket/contact provider contract is not defined yet.
+- Witnessed and Evidence need full Court branching after acceptance; they are currently persisted as choices but do not yet have separate post-accept lifecycles.
+- Add richer result-claim, witness-signal, and evidence-review surfaces for the non-answer-key paths.
+- Support remains static content in the current build. A ticket/contact provider is outside the current implementation and must be selected before production support launch.
 - Evidence upload still needs upload progress, retry/resume, and client-side metadata stripping before production use.
 - Court chat still needs a mobile screen; the idempotent `POST /court/{dareId}/messages` action route is implemented.
 - Admin DARE freeze remains unbuilt, and admin routes still need an operator UI before live-money launch.
-- KYC provider webhook remains deferred until the provider is selected.
+- KYC provider webhook is outside the current implementation. The internal/manual KYC review contract remains the active integration surface until a provider is selected.
 - Payment provider legal approval, KYC/AML policy, support playbooks, dispute playbooks, and CI execution of the DB-backed integration suite remain pre-launch gates.
 
 ## Next Wiring Order
 
-1. Add richer jury evidence preview/signed-download support for jurors.
-2. Add the mobile court chat screen on top of the existing `POST /court/{dareId}/messages` action route.
-3. Add production file hardening: image/video metadata stripping, upload progress, and retry/resume behavior.
-4. Add admin DARE freeze and operator UI for freeze, withdrawal approval, KYC, and jury operations.
-5. Run the DB-backed RPC integration suite in CI after local/remote migration sync.
+1. Add mobile Court chat and witness/audience signal surfaces.
+2. Add result-claim screens for witnessed and evidence paths.
+3. Add richer jury evidence preview/signed-download support for jurors.
+4. Add production file hardening: image/video metadata stripping, upload progress, and retry/resume behavior.
+5. Add admin DARE freeze and operator UI for freeze, withdrawal approval, KYC, and jury operations.
+6. Run the DB-backed RPC integration suite in CI after local/remote migration sync.

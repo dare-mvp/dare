@@ -12,12 +12,15 @@ import { useMe } from '../../src/features/me/useMe';
 import { TransactionRow } from '../../src/features/wallet/components/TransactionRow';
 import { WalletHero } from '../../src/features/wallet/components/WalletHero';
 import { WalletMetricCard } from '../../src/features/wallet/components/WalletMetricCard';
+import { useWalletLedger } from '../../src/features/wallet/useWalletLedger';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function WalletScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
+  const ledger = useWalletLedger();
   const summary = data.wallet;
+  const transactions = ledger.source === 'server' ? ledger.transactions : summary.transactions;
 
   return (
     <Screen>
@@ -28,7 +31,7 @@ export default function WalletScreen() {
         title="Wallet"
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {data.source === 'mock' && !error ? (
+        {(data.source === 'mock' || ledger.source === 'mock') && !error ? (
           <InlineAlert
             tone="info"
             title={loading ? 'Syncing account' : 'Preview data'}
@@ -41,6 +44,14 @@ export default function WalletScreen() {
             tone="danger"
             title="Account sync failed"
             message={error}
+          />
+        ) : null}
+
+        {ledger.error ? (
+          <InlineAlert
+            tone="danger"
+            title="Ledger sync failed"
+            message={ledger.error}
           />
         ) : null}
 
@@ -118,8 +129,8 @@ export default function WalletScreen() {
             <Text style={styles.panelTitle}>Transaction history</Text>
             <Text style={styles.mutedLabel}>Last 20</Text>
           </View>
-          {summary.transactions.length > 0 ? (
-            summary.transactions.map((transaction) => (
+          {transactions.length > 0 ? (
+            transactions.map((transaction) => (
               <TransactionRow
                 key={transaction.id}
                 onPress={() => router.push(`/wallet/transaction/${transaction.id}`)}
@@ -129,9 +140,11 @@ export default function WalletScreen() {
           ) : (
             <View style={styles.emptyTransactions}>
               <ReceiptText color={colors.textMuted} size={26} />
-              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptyTitle}>{ledger.loading ? 'Loading transactions' : 'No transactions yet'}</Text>
               <Text style={styles.emptyText}>
-                Confirmed wallet activity will appear here after deposits, withdrawals, escrow, and payouts.
+                {ledger.loading
+                  ? 'Fetching confirmed ledger entries from the backend.'
+                  : 'Confirmed wallet activity will appear here after deposits, withdrawals, escrow, and payouts.'}
               </Text>
             </View>
           )}

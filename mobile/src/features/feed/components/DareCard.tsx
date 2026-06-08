@@ -10,6 +10,9 @@ export type DareFeedItem = {
   id: string;
   title: string;
   category: string;
+  dareType?: 'skill' | 'task';
+  fundingModel?: 'two_sided_stake' | 'darer_reward';
+  rewardKobo?: number;
   stakeKobo: number;
   status: 'open' | 'live' | 'active' | 'completed' | 'disputed';
   resolution: string;
@@ -67,7 +70,11 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
   const category = getCategoryVisual(dare.category);
   const CategoryIcon = category.Icon;
   const opponent = dare.playerB;
+  const isTask = dare.dareType === 'task';
   const isHot = dare.status === 'active' || Boolean(dare.viewers);
+  const lockedAmount = isTask ? dare.rewardKobo ?? dare.stakeKobo : dare.stakeKobo;
+  const lockedLabel = isTask ? 'Reward' : 'Stake';
+  const fundingLabel = formatFundingModel(dare.fundingModel, isTask);
 
   return (
     <Pressable
@@ -89,7 +96,8 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
         </View>
         <View style={styles.stakePill}>
           <LockKeyhole color={colors.warning} size={13} />
-          <MoneyAmount amountKobo={dare.stakeKobo} tone="locked" />
+          <Text style={styles.stakeLabel}>{lockedLabel}</Text>
+          <MoneyAmount amountKobo={lockedAmount} tone="locked" />
         </View>
       </View>
       {isHot ? (
@@ -107,7 +115,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
           <View style={styles.vsBadge}>
             <Text style={styles.vsText}>VS</Text>
           </View>
-          {opponent ? <PlayerBlock alignRight player={opponent} /> : <OpenSlot />}
+          {opponent ? <PlayerBlock alignRight player={opponent} /> : <OpenSlot label={isTask ? 'Performer' : 'Open'} />}
         </View>
         <View style={styles.playerMetaRow}>
           <View style={styles.metaColumn}>
@@ -119,7 +127,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
               <PlayerMetaLine alignRight player={opponent} />
             ) : (
               <Text numberOfLines={1} style={[styles.openMeta, styles.metaRight]}>
-                Awaiting challenger
+                {isTask ? 'Awaiting performer' : 'Awaiting challenger'}
               </Text>
             )}
           </View>
@@ -127,8 +135,9 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
       <View style={styles.footer}>
         <View>
-          <Text style={styles.footerMain}>{dare.resolution} resolution</Text>
+          <Text style={styles.footerMain}>{isTask ? 'Task-Based' : 'Skill-Based'} - {fundingLabel}</Text>
           <Text style={styles.footerSub}>{dare.createdAgo}</Text>
+          <Text style={styles.footerSub}>{dare.resolution}</Text>
         </View>
         <View style={styles.actionWrap}>
           {dare.viewers ? <Eye color={colors.textMuted} size={14} /> : null}
@@ -139,6 +148,15 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
     </Pressable>
   );
+}
+
+function formatFundingModel(
+  fundingModel: DareFeedItem['fundingModel'],
+  isTask: boolean,
+) {
+  if (fundingModel === 'darer_reward') return 'Darer Reward';
+  if (fundingModel === 'two_sided_stake') return 'Two-Sided Stake';
+  return isTask ? 'Darer Reward' : 'Two-Sided Stake';
 }
 
 function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; player: PlayerSummary }) {
@@ -156,7 +174,7 @@ function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; pla
   );
 }
 
-function OpenSlot() {
+function OpenSlot({ label }: { label: string }) {
   return (
     <View style={[styles.player, styles.playerRight]}>
       <View style={[styles.avatar, styles.openAvatar]}>
@@ -164,7 +182,7 @@ function OpenSlot() {
       </View>
       <View style={[styles.playerCopy, styles.rightText]}>
         <Text numberOfLines={1} style={styles.playerName}>
-          Open
+          {label}
         </Text>
       </View>
     </View>

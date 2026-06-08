@@ -7,11 +7,14 @@ export type PublicDareFeedRow = {
   challenger_username: string | null;
   court_phase: string | null;
   created_at: string;
+  dare_type?: 'skill' | 'task';
+  funding_model?: 'two_sided_stake' | 'darer_reward';
   id: string;
   issuer_tier: string;
   issuer_trust_score: number;
   issuer_username: string;
   resolution_type: string;
+  reward_amount?: number;
   score_a?: number | null;
   score_b?: number | null;
   stake_amount: number;
@@ -36,12 +39,15 @@ export function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
     actionLabel: getActionLabel(status),
     category: formatLabel(row.category),
     createdAgo: formatRelativeTime(row.created_at),
+    dareType: row.dare_type ?? 'skill',
+    fundingModel: row.funding_model ?? (row.dare_type === 'task' ? 'darer_reward' : 'two_sided_stake'),
     id: row.id,
     playerA: issuer,
     playerB: challenger,
     resolution: formatResolution(row.resolution_type),
     scoreA: row.score_a ?? undefined,
     scoreB: row.score_b ?? undefined,
+    rewardKobo: row.reward_amount ?? 0,
     stakeKobo: row.stake_amount,
     status,
     title: row.title,
@@ -60,6 +66,7 @@ function mapPlayer(username: string, tier: string, trustScore: number, seed: str
 function mapStatus(status: string, courtPhase: string | null): DareFeedItem['status'] {
   if (courtPhase === 'ready_check' || courtPhase === 'countdown') return 'live';
   if (status === 'open') return 'open';
+  if (status === 'targeted_pending') return 'live';
   if (status === 'active') return 'active';
   if (status === 'completed' || status === 'settled') return 'completed';
   if (status === 'jury_open' || status === 'disputed') return 'disputed';
@@ -75,8 +82,8 @@ function getActionLabel(status: DareFeedItem['status']) {
 }
 
 function formatResolution(value: string) {
-  if (value === 'algorithmic') return 'Algorithmic';
-  if (value === 'jury') return 'Jury';
+  if (value === 'answer_key') return 'Answer Key';
+  if (value === 'witnessed') return 'Witnessed';
   if (value === 'evidence') return 'Evidence';
   return formatLabel(value);
 }

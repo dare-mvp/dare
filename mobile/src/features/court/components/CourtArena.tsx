@@ -19,6 +19,7 @@ const accentColors: Record<CourtPlayer['accent'], string> = {
 
 export function CourtArena({ session }: CourtArenaProps) {
   const timerCritical = session.timeRemainingSeconds <= 10;
+  const modeLabel = getModeLabel(session.resolutionType);
 
   return (
     <View style={styles.arena}>
@@ -38,7 +39,7 @@ export function CourtArena({ session }: CourtArenaProps) {
         <PlayerPanel player={session.playerA} />
         <View style={styles.centerClash}>
           <Text style={styles.centerVs}>VS</Text>
-          <Text style={styles.roundLabel}>Round</Text>
+          <Text style={styles.roundLabel}>{modeLabel}</Text>
         </View>
         <PlayerPanel player={session.playerB} alignRight />
       </View>
@@ -58,6 +59,12 @@ export function CourtArena({ session }: CourtArenaProps) {
       </View>
     </View>
   );
+}
+
+function getModeLabel(resolutionType: CourtSession['resolutionType']) {
+  if (resolutionType === 'witnessed') return 'Witness';
+  if (resolutionType === 'evidence') return 'Evidence';
+  return 'Answer';
 }
 
 function PlayerPanel({ alignRight = false, player }: { alignRight?: boolean; player: CourtPlayer }) {

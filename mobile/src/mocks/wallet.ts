@@ -25,7 +25,7 @@ export const walletSummary: WalletSummary = {
       createdLabel: '24 May',
       direction: 'debit',
       id: 'tx-2',
-      label: 'Stake locked for football quiz',
+      label: 'Stake locked for football DARE',
       status: 'confirmed',
       type: 'stake_lock',
     },

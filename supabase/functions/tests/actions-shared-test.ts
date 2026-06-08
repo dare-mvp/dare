@@ -206,7 +206,7 @@ Deno.test("PATCH /profiles/me updates only safe profile fields", async () => {
         requestId,
         payload: {
           displayName: "Ada Lovelace",
-          bio: "Algorithmic DARE player",
+          bio: "Answer Key DARE player",
           city: "Lagos",
         },
       },
@@ -219,7 +219,7 @@ Deno.test("PATCH /profiles/me updates only safe profile fields", async () => {
   const body = await response.json();
   assertEquals(body.ok, true);
   assertEquals(body.data.user.displayName, "Ada Lovelace");
-  assertEquals(body.data.user.bio, "Algorithmic DARE player");
+  assertEquals(body.data.user.bio, "Answer Key DARE player");
   assertEquals(body.data.user.city, "Lagos");
 });
 
@@ -1046,14 +1046,19 @@ Deno.test("POST /dares creates an open DARE with issuer escrow", async () => {
     payload: {
       title: "Name 20 African capitals in 60 seconds",
       category: "knowledge",
+      dareType: "skill",
+      resolutionType: "answer_key",
       stakeAmount: 50000,
+      rewardAmount: 0,
       currency: "NGN",
       durationSeconds: 60,
       targetUsername: null,
       constitution: {
         test: "Name 20 African capitals in 60 seconds",
         rules: "Answers must be submitted before the timer ends.",
-        proofMethod: "Platform scoring",
+        answerKey: "Lagos",
+        answerKeyRules: "Exact answer required.",
+        proofMethod: "Committed answer key",
         edgeCases: "Tie refunds both players.",
       },
     },
@@ -1073,6 +1078,7 @@ Deno.test("POST /dares creates an open DARE with issuer escrow", async () => {
   assertEquals(body.data.status, "open");
   assertEquals(body.data.stakeAmount, 50000);
   assertEquals(state.dares.length, 1);
+  assertEquals(state.dares[0].resolution_type, "answer_key");
   assertEquals(state.dareConstitutions.length, 1);
   assertEquals(state.escrowHolds.length, 1);
   assertEquals(state.ledgerEntries.length, 1);
@@ -1096,14 +1102,19 @@ Deno.test("POST /dares is blocked by action rate limits before mutation", async 
         payload: {
           title: "Name 20 African capitals in 60 seconds",
           category: "knowledge",
+          dareType: "skill",
+          resolutionType: "answer_key",
           stakeAmount: 50000,
+          rewardAmount: 0,
           currency: "NGN",
           durationSeconds: 60,
           targetUsername: null,
           constitution: {
             test: "Name 20 African capitals in 60 seconds",
             rules: "Answers must be submitted before the timer ends.",
-            proofMethod: "Platform scoring",
+            answerKey: "Lagos",
+            answerKeyRules: "Exact answer required.",
+            proofMethod: "Committed answer key",
             edgeCases: "Tie refunds both players.",
           },
         },
@@ -1117,6 +1128,52 @@ Deno.test("POST /dares is blocked by action rate limits before mutation", async 
   assertEquals(body.ok, false);
   assertEquals(body.error.code, "RATE_LIMITED");
   assertEquals(state.dares.length, 0);
+  assertEquals(state.ledgerEntries.length, 0);
+});
+
+Deno.test("POST /dares enforces max stake limits before mutation", async () => {
+  const state = createFakeState();
+  state.responsibleGaming.max_stake_per_dare_kobo = 20000;
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "create-dare:max-stake",
+        payload: {
+          title: "Name 20 African capitals in 60 seconds",
+          category: "knowledge",
+          dareType: "skill",
+          resolutionType: "answer_key",
+          stakeAmount: 50000,
+          rewardAmount: 0,
+          currency: "NGN",
+          durationSeconds: 60,
+          targetUsername: null,
+          constitution: {
+            test: "Name 20 African capitals in 60 seconds",
+            rules: "Answers must be submitted before the timer ends.",
+            answerKey: "Lagos",
+            answerKeyRules: "Exact answer required.",
+            proofMethod: "Committed answer key",
+            edgeCases: "Tie refunds both players.",
+          },
+        },
+      },
+      "http://localhost/functions/v1/actions/dares",
+    ),
+  );
+
+  assertEquals(response.status, 429);
+  const body = await response.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.error.code, "LIMIT_EXCEEDED");
+  assertEquals(state.dares.length, 0);
+  assertEquals(state.escrowHolds.length, 0);
   assertEquals(state.ledgerEntries.length, 0);
 });
 
@@ -1255,6 +1312,7 @@ Deno.test("POST /dares/{id}/ready starts court after both players are ready", as
     status: "ready_check",
     duration_seconds: 60,
   });
+  state.darePrompts[0].dare_id = dareId;
   state.courtSessions.push({
     id: "d23e4567-e89b-12d3-a456-426614174000",
     dare_id: dareId,
@@ -1299,9 +1357,9 @@ Deno.test("POST /dares/{id}/ready starts court after both players are ready", as
   assertEquals(issuerBody.data.playerAReady, true);
   assertEquals(challengerBody.data.phase, "active");
   assertEquals(challengerBody.data.playerBReady, true);
-  assertEquals(challengerBody.data.assignedRounds, 5);
+  assertEquals(challengerBody.data.assignedRounds, 1);
   assertEquals(state.dares[0].status, "active");
-  assertEquals(state.dareQuizRounds.length, 5);
+  assertEquals(state.dareQuizRounds.length, 0);
   assertEquals(state.auditLogs.length, 2);
 });
 
@@ -1549,10 +1607,10 @@ Deno.test("POST /court/{dareId}/messages rejects non-participants", async () => 
   assertEquals(state.courtChatMessages.length, 0);
 });
 
-Deno.test("POST /dares/{id}/answers scores from server question data", async () => {
+Deno.test("POST /dares/{id}/answers scores from committed creator answer key", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
-  const questionId = state.quizQuestions[0].id;
+  const questionId = state.darePrompts[0].id;
   state.dares.push({
     id: dareId,
     issuer_id: state.user.id,
@@ -1569,13 +1627,20 @@ Deno.test("POST /dares/{id}/answers scores from server question data", async () 
     server_start_time: "2026-05-21T00:00:00.000Z",
     server_end_time: "2099-05-21T00:01:00.000Z",
   });
-  state.dareQuizRounds.push({
+  state.darePrompts[0].dare_id = dareId;
+  state.dareAnswerKeys[0].dare_id = dareId;
+  state.dareAnswerKeys[0].prompt_id = questionId;
+  state.darePrompts[0].id = questionId;
+  state.darePrompts[0].position = 0;
+  state.darePrompts[0].prompt = "What is the capital of Lagos State?";
+  state.dareAnswerKeys[0].answer_text = "Ikeja";
+  state.dareAnswerKeys[0].answer_hash = "ikeja";
+  state.dareAnswerKeys[0].answer_salt = "fake";
+  state.darePromptAssignments.push({
     id: "e23e4567-e89b-12d3-a456-426614174000",
     dare_id: dareId,
-    question_id: questionId,
+    prompt_id: questionId,
     round_index: 0,
-    question_delivered_at_a: "2026-05-21T00:00:00.000Z",
-    question_delivered_at_b: "2026-05-21T00:00:00.000Z",
   });
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
@@ -1588,9 +1653,8 @@ Deno.test("POST /dares/{id}/answers scores from server question data", async () 
         requestId,
         idempotencyKey: "answer:abc123456",
         payload: {
-          roundIndex: 0,
+          answerText: "Ikeja",
           questionId,
-          selectedOption: 2,
         },
       },
       `http://localhost/functions/v1/actions/dares/${dareId}/answers`,
@@ -1602,9 +1666,8 @@ Deno.test("POST /dares/{id}/answers scores from server question data", async () 
         requestId,
         idempotencyKey: "answer:abc123456",
         payload: {
-          roundIndex: 0,
+          answerText: "Ikeja",
           questionId,
-          selectedOption: 2,
         },
       },
       `http://localhost/functions/v1/actions/dares/${dareId}/answers`,
@@ -1618,14 +1681,14 @@ Deno.test("POST /dares/{id}/answers scores from server question data", async () 
   assertEquals(body.data.correct, true);
   assertEquals(body.data.scoreA, 1);
   assertEquals(body.data.scoreB, 0);
-  assertEquals(state.dareQuizAnswers.length, 1);
+  assertEquals(state.dareAnswerSubmissions.length, 1);
   assertEquals(state.idempotencyRecords.length, 1);
 });
 
 Deno.test("GET /court/{dareId}/question returns prompt without answer key", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
-  const questionId = state.quizQuestions[0].id;
+  const questionId = state.darePrompts[0].id;
   state.dares.push({
     id: dareId,
     issuer_id: state.user.id,
@@ -1642,14 +1705,8 @@ Deno.test("GET /court/{dareId}/question returns prompt without answer key", asyn
     server_start_time: "2026-05-21T00:00:00.000Z",
     server_end_time: "2099-05-21T00:01:00.000Z",
   });
-  state.dareQuizRounds.push({
-    id: "e23e4567-e89b-12d3-a456-426614174000",
-    dare_id: dareId,
-    question_id: questionId,
-    round_index: 0,
-    question_delivered_at_a: null,
-    question_delivered_at_b: null,
-  });
+  state.darePrompts[0].dare_id = dareId;
+  state.darePrompts[0].prompt = "What is the capital of Lagos State?";
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
     createServiceClient: () => fakeClient(state),
@@ -1667,7 +1724,7 @@ Deno.test("GET /court/{dareId}/question returns prompt without answer key", asyn
   assertEquals(body.ok, true);
   assertEquals(body.data.questionId, questionId);
   assertEquals(body.data.roundIndex, 0);
-  assertEquals(body.data.options, ["A", "B", "C", "D"]);
+  assertEquals(body.data.options, []);
   assertEquals("correctOption" in body.data, false);
   assertEquals("correct_option" in body.data, false);
 });
@@ -1681,6 +1738,7 @@ Deno.test("POST /dares/{id}/complete determines winner from answers", async () =
     id: dareId,
     issuer_id: state.user.id,
     challenger_id: challengerId,
+    dare_type: "skill",
     status: "active",
     winner_id: null,
     completed_at: null,
@@ -1694,11 +1752,10 @@ Deno.test("POST /dares/{id}/complete determines winner from answers", async () =
     score_b: 0,
     server_end_time: "2026-05-21T00:00:00.000Z",
   });
-  state.dareQuizRounds.push({ dare_id: dareId, round_index: 0 });
-  state.dareQuizAnswers.push({
+  state.dareAnswerSubmissions.push({
     dare_id: dareId,
     user_id: state.user.id,
-    question_id: state.quizQuestions[0].id,
+    prompt_id: state.darePrompts[0].id,
     correct: true,
   });
 
@@ -1967,6 +2024,344 @@ Deno.test("POST /dares/{id}/evidence/confirm attaches evidence to the jury case"
   assertEquals(state.auditLogs[0].action, "evidence.upload_confirmed");
 });
 
+Deno.test("POST /dares/{id}/evidence/confirm supports evidence resolution before dispute", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const evidenceId = "a23e4567-e89b-42d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    status: "active",
+    resolution_type: "evidence",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+  });
+  state.evidenceObjects.push({
+    id: evidenceId,
+    dare_id: dareId,
+    user_id: state.user.id,
+    storage_bucket: "dare-evidence",
+    storage_path: `${dareId}/${state.user.id}/${evidenceId}.png`,
+    media_type: "image/png",
+    byte_size: 2048,
+    status: "pending",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "evidence-confirm-result:abc123456",
+        payload: {
+          evidenceObjectId: evidenceId,
+          contentHash: "0123456789abcdef",
+        },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/evidence/confirm`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.juryCaseId, null);
+  assertEquals(body.data.status, "uploaded");
+  assertEquals(state.evidenceObjects[0].status, "uploaded");
+});
+
+Deno.test("POST /dares/{id}/results/claims records witnessed result until both participants agree", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const challengerId = "723e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: challengerId,
+    dare_type: "skill",
+    resolution_type: "witnessed",
+    status: "active",
+    winner_id: null,
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "result-claim:abc123456",
+        payload: {
+          claimedOutcome: "issuer_won",
+          claimedWinnerId: state.user.id,
+          rationale: "Both players witnessed the finish.",
+        },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/claims`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.claimState, "pending");
+  assertEquals(body.data.dareStatus, "awaiting_result");
+  assertEquals(body.data.agreedWinnerId, null);
+  assertEquals(state.dares[0].status, "awaiting_result");
+  assertEquals(state.courtSessions[0].phase, "awaiting_result");
+  assertEquals(state.resultClaims.length, 1);
+});
+
+Deno.test("POST /dares/{id}/results/claims completes witnessed result on matching claim", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const issuerId = "823e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: issuerId,
+    challenger_id: state.user.id,
+    dare_type: "skill",
+    resolution_type: "witnessed",
+    status: "awaiting_result",
+    winner_id: null,
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "awaiting_result",
+  });
+  state.resultClaims.push({
+    id: "c23e4567-e89b-42d3-a456-426614174000",
+    dare_id: dareId,
+    user_id: issuerId,
+    claimed_outcome: "issuer_won",
+    claimed_winner_id: issuerId,
+    rationale: "Issuer finished first.",
+    evidence_object_ids: [],
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "result-claim-match:abc123456",
+        payload: {
+          claimedOutcome: "issuer_won",
+          claimedWinnerId: issuerId,
+          rationale: "I agree with the witnessed result.",
+        },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/claims`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.claimState, "agreed");
+  assertEquals(body.data.dareStatus, "completed");
+  assertEquals(body.data.agreedWinnerId, issuerId);
+  assertEquals(state.dares[0].status, "completed");
+  assertEquals(state.courtSessions[0].phase, "completed");
+  assertEquals(state.resultClaims.length, 2);
+});
+
+Deno.test("POST /dares/{id}/results/witness-votes requires eligible attendance", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const issuerId = "823e4567-e89b-12d3-a456-426614174000";
+  const challengerId = "723e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: issuerId,
+    challenger_id: challengerId,
+    dare_type: "skill",
+    resolution_type: "witnessed",
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+    votes_a: 0,
+    votes_b: 0,
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const rejected = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "witness-vote:missing-attendance",
+        payload: { vote: "A" },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/witness-votes`,
+    ),
+  );
+  assertEquals(rejected.status, 409);
+  assertEquals((await rejected.json()).error.code, "INVALID_STATE");
+
+  const attendance = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        payload: {},
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/witness-attendance`,
+    ),
+  );
+  assertEquals(attendance.status, 200);
+  assertEquals(state.witnessAttendances.length, 1);
+  state.witnessAttendances[0].joined_at = "2026-05-21T00:02:30.000Z";
+  state.witnessAttendances[0].last_seen_at = "2026-05-21T00:03:00.000Z";
+
+  const accepted = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "witness-vote:eligible-attendance",
+        payload: { vote: "A" },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/witness-votes`,
+    ),
+  );
+  assertEquals(accepted.status, 200);
+  const body = await accepted.json();
+  assertEquals(body.ok, true);
+  assertEquals(body.data.votesA, 1);
+  assertEquals(state.dareVotes.length, 1);
+});
+
+Deno.test("POST /dares/{id}/results/claims opens dispute path on explicit dispute", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const challengerId = "723e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: challengerId,
+    dare_type: "skill",
+    resolution_type: "witnessed",
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+  });
+  state.escrowHolds.push({
+    id: "a23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    user_id: state.user.id,
+    wallet_account_id: state.wallet.wallet_account_id,
+    amount: 50000,
+    currency: "NGN",
+    status: "held",
+    hold_reason: "dare_active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "result-claim-dispute:abc123456",
+        payload: {
+          claimedOutcome: "dispute",
+          rationale: "The witnessed result is contested and needs review.",
+        },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/claims`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.data.claimState, "dispute_requested");
+  assertEquals(body.data.dareStatus, "dispute_pending");
+  assertEquals(body.data.courtPhase, "disputed");
+  assertEquals(state.juryCases.length, 1);
+  assertEquals(state.escrowHolds[0].hold_reason, "dispute_pending");
+});
+
+Deno.test("POST /dares/{id}/results/claims opens dispute path on conflicting claims", async () => {
+  const state = createFakeState();
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const issuerId = "823e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: issuerId,
+    challenger_id: state.user.id,
+    dare_type: "skill",
+    resolution_type: "witnessed",
+    status: "awaiting_result",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "awaiting_result",
+  });
+  state.resultClaims.push({
+    id: "c23e4567-e89b-42d3-a456-426614174000",
+    dare_id: dareId,
+    user_id: issuerId,
+    claimed_outcome: "issuer_won",
+    claimed_winner_id: issuerId,
+    rationale: "Issuer finished first.",
+    evidence_object_ids: [],
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const response = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "result-claim-conflict:abc123456",
+        payload: {
+          claimedOutcome: "challenger_won",
+          claimedWinnerId: state.user.id,
+          rationale: "I disagree with the witnessed result.",
+        },
+      },
+      `http://localhost/functions/v1/actions/dares/${dareId}/results/claims`,
+    ),
+  );
+
+  assertEquals(response.status, 200);
+  const body = await response.json();
+  assertEquals(body.data.claimState, "conflicted");
+  assertEquals(body.data.dareStatus, "dispute_pending");
+  assertEquals(body.data.courtPhase, "disputed");
+  assertEquals(state.juryCases.length, 1);
+});
+
 Deno.test("POST /admin/jury-cases/{id}/resolve returns dare to settlement path", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
@@ -2143,6 +2538,12 @@ Deno.test("POST /jury-cases/{id}/votes reaches a settlement pending verdict", as
 Deno.test("POST /dares/{id}/complete returns 403 for non-admin", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: "823e4567-e89b-12d3-a456-426614174000",
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    status: "active",
+  });
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
     createServiceClient: () => fakeClient(state),
@@ -2162,6 +2563,12 @@ Deno.test("POST /dares/{id}/complete returns 403 for non-admin", async () => {
 Deno.test("POST /dares/{id}/settle returns 403 for non-admin", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: "823e4567-e89b-12d3-a456-426614174000",
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    status: "completed",
+  });
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
     createServiceClient: () => fakeClient(state),
@@ -2674,6 +3081,30 @@ function createFakeState() {
     })) as Record<string, unknown>[],
     dareQuizRounds: [] as Record<string, unknown>[],
     dareQuizAnswers: [] as Record<string, unknown>[],
+    darePrompts: [{
+      id: "10000000-0000-4000-9000-000000000000",
+      dare_id: null,
+      created_by: "123e4567-e89b-12d3-a456-426614174000",
+      prompt: "What is the capital of Lagos State?",
+      answer_format: "short_text",
+      response_options: null,
+      position: 0,
+    }] as Record<string, unknown>[],
+    dareAnswerKeys: [{
+      id: "10000000-0000-4000-9001-000000000000",
+      dare_id: null,
+      prompt_id: "10000000-0000-4000-9000-000000000000",
+      answer_text: "Ikeja",
+      answer_hash: "ikeja",
+      answer_salt: "fake",
+      match_strategy: "normalized_exact",
+      answer_key_rules: "Exact answer required.",
+    }] as Record<string, unknown>[],
+    dareAnswerSubmissions: [] as Record<string, unknown>[],
+    resultClaims: [] as Record<string, unknown>[],
+    witnessAttendances: [] as Record<string, unknown>[],
+    dareVotes: [] as Record<string, unknown>[],
+    darePromptAssignments: [] as Record<string, unknown>[],
     auditLogs: [] as Record<string, unknown>[],
     idempotencyRecords: [] as Record<string, unknown>[],
     ledgerEntries: [] as Record<string, unknown>[],
@@ -2811,6 +3242,24 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
 
       if (functionName === "submit_dare_answer_action") {
         return fakeSubmitAnswerRpc(state, args) as Promise<QueryResponse<T>>;
+      }
+
+      if (functionName === "submit_result_claim_action") {
+        return fakeSubmitResultClaimRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "record_witness_attendance_action") {
+        return fakeRecordWitnessAttendanceRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "submit_witness_vote_action") {
+        return fakeSubmitWitnessVoteRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
       }
 
       if (functionName === "complete_dare_action") {
@@ -3234,7 +3683,11 @@ function fakeConfirmEvidenceUploadRpc(
     ["filed", "accepted_for_review", "jury_assignment", "jury_voting"]
       .includes(row.status as string)
   );
-  if (!juryCase) {
+  if (
+    !juryCase &&
+    !(dare.resolution_type === "evidence" &&
+      ["active", "awaiting_result"].includes(dare.status as string))
+  ) {
     return Promise.resolve({
       data: [],
       error: { message: "jury_case_not_found" },
@@ -3245,16 +3698,16 @@ function fakeConfirmEvidenceUploadRpc(
   evidence.status = "uploaded";
   evidence.uploaded_at = "2026-05-21T00:05:00.000Z";
   evidence.content_hash = args.p_content_hash ?? null;
-  if (side === "A") {
+  if (juryCase && side === "A") {
     juryCase.evidence_a_id = evidence.id;
-  } else {
+  } else if (juryCase) {
     juryCase.evidence_b_id = evidence.id;
   }
 
   return Promise.resolve({
     data: [{
       evidence_object_id: evidence.id,
-      jury_case_id: juryCase.id,
+      jury_case_id: juryCase?.id ?? null,
       dare_id: dare.id,
       side,
       status: evidence.status,
@@ -3441,6 +3894,11 @@ function fakeCreateDareRpc(
   args: Record<string, unknown>,
 ): Promise<QueryResponse<Record<string, unknown>[]>> {
   const ledgerKey = args.p_ledger_idempotency_key;
+  const dareType = args.p_dare_type === "task" ? "task" : "skill";
+  const fundingModel = dareType === "task" ? "darer_reward" : "two_sided_stake";
+  const stakeAmount = dareType === "skill" ? Number(args.p_stake_amount) : 0;
+  const rewardAmount = dareType === "task" ? Number(args.p_reward_amount) : 0;
+  const escrowAmount = dareType === "task" ? rewardAmount : stakeAmount;
   const existingLedger = state.ledgerEntries.find((entry) =>
     entry.idempotency_key === ledgerKey
   );
@@ -3455,9 +3913,20 @@ function fakeCreateDareRpc(
     });
   }
 
+  const maxStake = state.responsibleGaming.max_stake_per_dare_kobo;
   if (
-    typeof args.p_stake_amount !== "number" ||
-    state.wallet.available_balance < args.p_stake_amount
+    typeof maxStake === "number" &&
+    escrowAmount > maxStake
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "responsible_gaming_limit" },
+    });
+  }
+
+  if (
+    !Number.isFinite(escrowAmount) ||
+    state.wallet.available_balance < escrowAmount
   ) {
     return Promise.resolve({
       data: [],
@@ -3471,7 +3940,11 @@ function fakeCreateDareRpc(
     challenger_id: null,
     title: args.p_title,
     status: "open",
-    stake_amount: args.p_stake_amount,
+    resolution_type: args.p_resolution_type ?? "answer_key",
+    dare_type: dareType,
+    funding_model: fundingModel,
+    stake_amount: stakeAmount,
+    reward_amount: rewardAmount,
     currency: args.p_currency,
     constitution_id: "823e4567-e89b-12d3-a456-426614174000",
   };
@@ -3488,28 +3961,57 @@ function fakeCreateDareRpc(
     dare_id: dare.id,
     type: "escrow_hold",
     direction: "debit",
-    amount: args.p_stake_amount,
+    amount: escrowAmount,
     currency: args.p_currency,
     status: "posted",
     idempotency_key: ledgerKey,
-    metadata: { role: "issuer" },
+    metadata: { role: "issuer", fundingModel },
   };
   const escrow = {
     id: "a23e4567-e89b-12d3-a456-426614174000",
     dare_id: dare.id,
     user_id: args.p_issuer_id,
     held_ledger_entry_id: ledger.id,
+    amount: escrowAmount,
+    currency: args.p_currency,
+    status: "held",
   };
 
   state.dares.push(dare);
   state.dareConstitutions.push(constitution);
   state.ledgerEntries.push(ledger);
   state.escrowHolds.push(escrow);
+  if (dare.resolution_type === "answer_key") {
+    const prompt = {
+      id: "10000000-0000-4000-9000-000000000000",
+      dare_id: dare.id,
+      created_by: args.p_issuer_id,
+      prompt: args.p_constitution_test,
+      answer_format: "short_text",
+      response_options: null,
+      position: 0,
+    };
+    state.darePrompts[0] = prompt;
+    state.dareAnswerKeys[0] = {
+      id: "10000000-0000-4000-9001-000000000000",
+      dare_id: dare.id,
+      prompt_id: prompt.id,
+      answer_text: args.p_answer_key_text,
+      answer_hash: normalizeAnswer(String(args.p_answer_key_text ?? "")),
+      answer_salt: "fake",
+      match_strategy: "normalized_exact",
+      answer_key_rules: args.p_answer_key_rules ?? null,
+    };
+  }
 
   return Promise.resolve({
     data: [createDareRpcRow(dare, escrow, ledger)],
     error: null,
   });
+}
+
+function normalizeAnswer(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function fakeAcceptDareRpc(
@@ -3545,8 +4047,9 @@ function fakeAcceptDareRpc(
   }
 
   if (
-    typeof dare.stake_amount !== "number" ||
-    state.wallet.available_balance < dare.stake_amount
+    dare.dare_type !== "task" &&
+    (typeof dare.stake_amount !== "number" ||
+      state.wallet.available_balance < dare.stake_amount)
   ) {
     return Promise.resolve({
       data: [],
@@ -3554,7 +4057,8 @@ function fakeAcceptDareRpc(
     });
   }
 
-  const ledger = {
+  const isTask = dare.dare_type === "task";
+  const ledger = isTask ? null : {
     id: "b23e4567-e89b-12d3-a456-426614174000",
     wallet_account_id: state.wallet.wallet_account_id,
     user_id: args.p_challenger_id,
@@ -3567,22 +4071,29 @@ function fakeAcceptDareRpc(
     idempotency_key: ledgerKey,
     metadata: { role: "challenger" },
   };
-  const escrow = {
+  const escrow = isTask ? null : {
     id: "c23e4567-e89b-12d3-a456-426614174000",
     dare_id: dare.id,
     user_id: args.p_challenger_id,
-    held_ledger_entry_id: ledger.id,
+    held_ledger_entry_id: ledger?.id,
+    amount: dare.stake_amount,
+    currency: dare.currency,
+    status: "held",
   };
   const court = {
     id: "d23e4567-e89b-12d3-a456-426614174000",
     dare_id: dare.id,
     phase: "ready_check",
+    player_a_ready: false,
+    player_b_ready: false,
+    score_a: 0,
+    score_b: 0,
   };
 
   dare.status = "ready_check";
   dare.challenger_id = args.p_challenger_id;
-  state.ledgerEntries.push(ledger);
-  state.escrowHolds.push(escrow);
+  if (ledger) state.ledgerEntries.push(ledger);
+  if (escrow) state.escrowHolds.push(escrow);
   state.courtSessions.push(court);
 
   return Promise.resolve({
@@ -3602,7 +4113,11 @@ function createDareRpcRow(
     escrow_hold_id: escrow.id,
     ledger_entry_id: ledger.id,
     status: dare.status,
+    dare_type: dare.dare_type ?? "skill",
+    funding_model: dare.funding_model ?? "two_sided_stake",
     stake_amount: dare.stake_amount,
+    reward_amount: dare.reward_amount ?? 0,
+    escrow_amount: ledger.amount ?? dare.stake_amount,
     currency: dare.currency,
     challenger_id: dare.challenger_id,
   };
@@ -3611,16 +4126,20 @@ function createDareRpcRow(
 function acceptDareRpcRow(
   dare: Record<string, unknown>,
   court: Record<string, unknown>,
-  escrow: Record<string, unknown>,
-  ledger: Record<string, unknown>,
+  escrow: Record<string, unknown> | null,
+  ledger: Record<string, unknown> | null,
 ): Record<string, unknown> {
   return {
     dare_id: dare.id,
     court_session_id: court.id,
-    escrow_hold_id: escrow.id,
-    ledger_entry_id: ledger.id,
+    escrow_hold_id: escrow?.id ?? null,
+    ledger_entry_id: ledger?.id ?? null,
     status: dare.status,
+    dare_type: dare.dare_type ?? "skill",
+    funding_model: dare.funding_model ?? "two_sided_stake",
     stake_amount: dare.stake_amount,
+    reward_amount: dare.reward_amount ?? 0,
+    escrow_amount: ledger?.amount ?? 0,
     currency: dare.currency,
   };
 }
@@ -3811,24 +4330,6 @@ function fakeReadyDareRpc(
     court.player_b_ready &&
     court.phase === "ready_check"
   ) {
-    const questions = state.quizQuestions.filter((question) =>
-      question.category === dare.category && question.active === true
-    );
-    if (questions.length < 5) {
-      return Promise.resolve({
-        data: [],
-        error: { message: "question_pool_insufficient" },
-      });
-    }
-
-    for (const [index, question] of questions.slice(0, 5).entries()) {
-      state.dareQuizRounds.push({
-        id: `round-${index}`,
-        dare_id: dare.id,
-        question_id: question.id,
-        round_index: index,
-      });
-    }
     court.phase = "active";
     court.server_start_time = "2026-05-21T00:00:00.000Z";
     court.server_end_time = "2026-05-21T00:01:00.000Z";
@@ -3845,8 +4346,8 @@ function fakeReadyDareRpc(
       player_b_ready: court.player_b_ready,
       server_start_time: court.server_start_time,
       server_end_time: court.server_end_time,
-      assigned_rounds: state.dareQuizRounds.filter((round) =>
-        round.dare_id === dare.id
+      assigned_rounds: state.darePrompts.filter((prompt) =>
+        prompt.dare_id === dare.id
       ).length,
     }],
     error: null,
@@ -3954,22 +4455,20 @@ function fakeSubmitAnswerRpc(
     return Promise.resolve({ data: [], error: { message: "not_participant" } });
   }
 
-  const round = state.dareQuizRounds.find((row) =>
-    row.dare_id === dare.id &&
-    row.round_index === args.p_round_index &&
-    row.question_id === args.p_question_id
+  const prompt = state.darePrompts.find((row) =>
+    row.dare_id === dare.id && row.id === args.p_prompt_id
   );
-  if (!round) {
+  if (!prompt) {
     return Promise.resolve({
       data: [],
       error: { message: "question_not_assigned" },
     });
   }
 
-  const existing = state.dareQuizAnswers.find((answer) =>
+  const existing = state.dareAnswerSubmissions.find((answer) =>
     answer.dare_id === dare.id &&
     answer.user_id === args.p_user_id &&
-    answer.question_id === args.p_question_id
+    answer.prompt_id === args.p_prompt_id
   );
   if (existing) {
     return Promise.resolve({
@@ -3978,17 +4477,18 @@ function fakeSubmitAnswerRpc(
     });
   }
 
-  const question = state.quizQuestions.find((row) =>
-    row.id === args.p_question_id
+  const answerKey = state.dareAnswerKeys.find((row) =>
+    row.dare_id === dare.id && row.prompt_id === args.p_prompt_id
   );
-  if (!question) {
+  if (!answerKey) {
     return Promise.resolve({
       data: [],
       error: { message: "question_not_found" },
     });
   }
 
-  const correct = args.p_selected_option === question.correct_option;
+  const correct = normalizeAnswer(String(args.p_answer_text ?? "")) ===
+    answerKey.answer_hash;
   if (correct && args.p_user_id === dare.issuer_id) {
     court.score_a = (court.score_a as number) + 1;
   } else if (correct) {
@@ -3999,19 +4499,21 @@ function fakeSubmitAnswerRpc(
     id: "f23e4567-e89b-12d3-a456-426614174000",
     dare_id: dare.id,
     user_id: args.p_user_id,
-    question_id: args.p_question_id,
-    round_index: args.p_round_index,
-    selected_option: args.p_selected_option,
+    prompt_id: args.p_prompt_id,
+    answer_text: args.p_answer_text,
+    answer_hash: normalizeAnswer(String(args.p_answer_text ?? "")),
+    round_index: prompt.position,
+    selected_option: null,
     correct,
-    response_ms: 1000,
+    response_ms: null,
   };
-  state.dareQuizAnswers.push(answer);
+  state.dareAnswerSubmissions.push(answer);
 
   return Promise.resolve({
     data: [{
       answer_id: answer.id,
       dare_id: dare.id,
-      question_id: answer.question_id,
+      question_id: answer.prompt_id,
       round_index: answer.round_index,
       selected_option: answer.selected_option,
       correct: answer.correct,
@@ -4022,6 +4524,375 @@ function fakeSubmitAnswerRpc(
     }],
     error: null,
   });
+}
+
+function addSeconds(isoTimestamp: string, seconds: number): string {
+  return new Date(Date.parse(isoTimestamp) + seconds * 1000).toISOString();
+}
+
+function fakeRecordWitnessAttendanceRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const dare = state.dares.find((row) => row.id === args.p_dare_id);
+  if (!dare) {
+    return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+  if (dare.resolution_type !== "witnessed") {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_resolution_type" },
+    });
+  }
+  if (
+    args.p_user_id === dare.issuer_id || args.p_user_id === dare.challenger_id
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "participant_cannot_witness_vote" },
+    });
+  }
+  if (!["active", "awaiting_result"].includes(dare.status as string)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_dare_state" },
+    });
+  }
+
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) {
+    return Promise.resolve({ data: [], error: { message: "court_not_found" } });
+  }
+  if (!["active", "awaiting_result"].includes(court.phase as string)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_court_phase" },
+    });
+  }
+
+  let attendance = state.witnessAttendances.find((row) =>
+    row.dare_id === dare.id && row.witness_user_id === args.p_user_id
+  );
+  if (!attendance) {
+    attendance = {
+      id: `e23e4567-e89b-42d3-a456-${
+        String(state.witnessAttendances.length).padStart(12, "0")
+      }`,
+      dare_id: dare.id,
+      court_session_id: court.id,
+      witness_user_id: args.p_user_id,
+      joined_at: "2026-05-21T00:03:00.000Z",
+      last_seen_at: "2026-05-21T00:03:00.000Z",
+      status: "present",
+    };
+    state.witnessAttendances.push(attendance);
+  } else {
+    attendance.court_session_id = court.id;
+    attendance.last_seen_at = "2026-05-21T00:03:00.000Z";
+    attendance.status = "present";
+  }
+
+  const voteEligibleAt = addSeconds(String(attendance.joined_at), 15);
+  return Promise.resolve({
+    data: [{
+      attendance_id: attendance.id,
+      dare_id: dare.id,
+      user_id: args.p_user_id,
+      joined_at: attendance.joined_at,
+      last_seen_at: attendance.last_seen_at,
+      vote_eligible_at: voteEligibleAt,
+      eligible_to_vote: Date.parse(String(attendance.joined_at)) <=
+        Date.parse("2026-05-21T00:02:45.000Z"),
+    }],
+    error: null,
+  });
+}
+
+function fakeSubmitWitnessVoteRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const dare = state.dares.find((row) => row.id === args.p_dare_id);
+  if (!dare) {
+    return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+  if (dare.resolution_type !== "witnessed") {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_resolution_type" },
+    });
+  }
+  if (
+    args.p_user_id === dare.issuer_id || args.p_user_id === dare.challenger_id
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "participant_cannot_witness_vote" },
+    });
+  }
+  if (!["active", "awaiting_result"].includes(dare.status as string)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_dare_state" },
+    });
+  }
+
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) {
+    return Promise.resolve({ data: [], error: { message: "court_not_found" } });
+  }
+  if (!["active", "awaiting_result"].includes(court.phase as string)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_court_phase" },
+    });
+  }
+
+  const attendance = state.witnessAttendances.find((row) =>
+    row.dare_id === dare.id &&
+    row.court_session_id === court.id &&
+    row.witness_user_id === args.p_user_id &&
+    row.status === "present"
+  );
+  const hasEligibleAttendance = attendance &&
+    Date.parse(String(attendance.joined_at)) <=
+      Date.parse("2026-05-21T00:02:45.000Z") &&
+    Date.parse(String(attendance.last_seen_at)) >=
+      Date.parse("2026-05-21T00:01:30.000Z");
+  if (!hasEligibleAttendance) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "witness_attendance_required" },
+    });
+  }
+
+  if (
+    state.dareVotes.some((row) =>
+      row.dare_id === dare.id && row.voter_id === args.p_user_id
+    )
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "witness_vote_already_submitted" },
+    });
+  }
+
+  const vote = String(args.p_vote);
+  if (!["A", "B"].includes(vote)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_witness_vote" },
+    });
+  }
+
+  const voteRow = {
+    id: `e33e4567-e89b-42d3-a456-${
+      String(state.dareVotes.length).padStart(12, "0")
+    }`,
+    dare_id: dare.id,
+    voter_id: args.p_user_id,
+    vote,
+  };
+  state.dareVotes.push(voteRow);
+  court.votes_a = Number(court.votes_a ?? 0) + (vote === "A" ? 1 : 0);
+  court.votes_b = Number(court.votes_b ?? 0) + (vote === "B" ? 1 : 0);
+  if (court.phase === "active") court.phase = "awaiting_result";
+  if (dare.status === "active") dare.status = "awaiting_result";
+
+  return Promise.resolve({
+    data: [{
+      vote_id: voteRow.id,
+      dare_id: dare.id,
+      voter_id: args.p_user_id,
+      vote,
+      votes_a: court.votes_a,
+      votes_b: court.votes_b,
+      phase: court.phase,
+    }],
+    error: null,
+  });
+}
+
+function fakeSubmitResultClaimRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const dare = state.dares.find((row) => row.id === args.p_dare_id);
+  if (!dare) {
+    return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+
+  if (
+    args.p_user_id !== dare.issuer_id && args.p_user_id !== dare.challenger_id
+  ) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
+  }
+
+  if (!["witnessed", "evidence"].includes(dare.resolution_type as string)) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_resolution_type" },
+    });
+  }
+
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) {
+    return Promise.resolve({ data: [], error: { message: "court_not_found" } });
+  }
+
+  if (
+    !["active", "awaiting_result"].includes(dare.status as string) ||
+    !["active", "awaiting_result"].includes(court.phase as string)
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_dare_state" },
+    });
+  }
+
+  const outcome = String(args.p_claimed_outcome);
+  const expectedWinnerId = outcome === "issuer_won"
+    ? dare.issuer_id
+    : outcome === "challenger_won" || outcome === "performer_completed"
+    ? dare.challenger_id
+    : null;
+  if (
+    args.p_claimed_winner_id && args.p_claimed_winner_id !== expectedWinnerId
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_claimed_winner" },
+    });
+  }
+
+  const evidenceObjectIds = Array.isArray(args.p_evidence_object_ids)
+    ? args.p_evidence_object_ids as string[]
+    : [];
+  if (dare.resolution_type === "evidence" && evidenceObjectIds.length === 0) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "evidence_required" },
+    });
+  }
+
+  if (
+    evidenceObjectIds.some((id) =>
+      !state.evidenceObjects.some((evidence) =>
+        evidence.id === id &&
+        evidence.dare_id === dare.id &&
+        evidence.user_id === args.p_user_id &&
+        ["uploaded", "accepted"].includes(evidence.status as string)
+      )
+    )
+  ) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "invalid_evidence_state" },
+    });
+  }
+
+  const existingClaim = state.resultClaims.find((row) =>
+    row.dare_id === dare.id && row.user_id === args.p_user_id
+  );
+  if (existingClaim) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "result_claim_already_submitted" },
+    });
+  }
+  const claim = {
+    id: `f23e4567-e89b-42d3-a456-${
+      String(state.resultClaims.length).padStart(12, "0")
+    }`,
+    dare_id: dare.id,
+    user_id: args.p_user_id,
+    claimed_outcome: outcome,
+    claimed_winner_id: expectedWinnerId,
+    rationale: args.p_rationale ?? null,
+    evidence_object_ids: evidenceObjectIds,
+  };
+  state.resultClaims.push(claim);
+
+  if (dare.status === "active") dare.status = "awaiting_result";
+  if (court.phase === "active") court.phase = "awaiting_result";
+
+  const otherClaim = state.resultClaims.find((row) =>
+    row.dare_id === dare.id && row.user_id !== args.p_user_id
+  );
+  let claimState = "pending";
+  let agreedWinnerId: unknown = null;
+  if (otherClaim) {
+    if (
+      otherClaim.claimed_outcome === outcome &&
+      otherClaim.claimed_winner_id === expectedWinnerId &&
+      outcome !== "dispute"
+    ) {
+      dare.status = "completed";
+      dare.winner_id = expectedWinnerId;
+      dare.completed_at = "2026-05-21T00:02:00.000Z";
+      dare.dispute_deadline_at = "2026-05-21T00:17:00.000Z";
+      court.phase = "completed";
+      claimState = "agreed";
+      agreedWinnerId = expectedWinnerId;
+    } else if (
+      otherClaim.claimed_outcome === "dispute" || outcome === "dispute"
+    ) {
+      claimState = "dispute_requested";
+      openFakeResultDispute(state, dare, court, args.p_user_id as string);
+    } else {
+      claimState = "conflicted";
+      openFakeResultDispute(state, dare, court, args.p_user_id as string);
+    }
+  } else if (outcome === "dispute") {
+    claimState = "dispute_requested";
+    openFakeResultDispute(state, dare, court, args.p_user_id as string);
+  }
+
+  return Promise.resolve({
+    data: [{
+      claim_id: claim.id,
+      dare_id: dare.id,
+      user_id: args.p_user_id,
+      resolution_type: dare.resolution_type,
+      claimed_outcome: outcome,
+      claimed_winner_id: expectedWinnerId,
+      claim_state: claimState,
+      dare_status: dare.status,
+      court_phase: court.phase,
+      agreed_winner_id: agreedWinnerId,
+      claims_count: state.resultClaims.filter((row) => row.dare_id === dare.id)
+        .length,
+    }],
+    error: null,
+  });
+}
+
+function openFakeResultDispute(
+  state: ReturnType<typeof createFakeState>,
+  dare: Record<string, unknown>,
+  court: Record<string, unknown>,
+  openedByUserId: string,
+): void {
+  if (!state.juryCases.some((row) => row.dare_id === dare.id)) {
+    state.juryCases.push({
+      id: `b23e4567-e89b-42d3-a456-${
+        String(state.juryCases.length).padStart(12, "0")
+      }`,
+      dare_id: dare.id,
+      opened_by_user_id: openedByUserId,
+      status: "filed",
+      reason: "Result claims require jury review.",
+      evidence_a_id: null,
+      evidence_b_id: null,
+    });
+  }
+  dare.status = "dispute_pending";
+  court.phase = "disputed";
+  for (const hold of state.escrowHolds) {
+    if (hold.dare_id === dare.id && hold.status === "held") {
+      hold.hold_reason = "dispute_pending";
+    }
+  }
 }
 
 function fakeCurrentCourtQuestionRpc(
@@ -4051,39 +4922,19 @@ function fakeCurrentCourtQuestionRpc(
     });
   }
 
-  const answered = state.dareQuizAnswers.filter((answer) =>
+  const answered = state.dareAnswerSubmissions.filter((answer) =>
     answer.dare_id === dare.id && answer.user_id === args.p_user_id
   );
-  const round = state.dareQuizRounds
+  const prompt = state.darePrompts
     .filter((row) => row.dare_id === dare.id)
-    .sort((a, b) => Number(a.round_index) - Number(b.round_index))
-    .find((row) =>
-      !answered.some((answer) => answer.question_id === row.question_id)
-    );
+    .sort((a, b) => Number(a.position) - Number(b.position))
+    .find((row) => !answered.some((answer) => answer.prompt_id === row.id));
 
-  if (!round) {
+  if (!prompt) {
     return Promise.resolve({
       data: [],
       error: { message: "no_question_available" },
     });
-  }
-
-  const question = state.quizQuestions.find((row) =>
-    row.id === round.question_id
-  );
-  if (!question) {
-    return Promise.resolve({
-      data: [],
-      error: { message: "question_not_found" },
-    });
-  }
-
-  if (args.p_user_id === dare.issuer_id) {
-    round.question_delivered_at_a = round.question_delivered_at_a ??
-      "2026-05-21T00:03:00.000Z";
-  } else {
-    round.question_delivered_at_b = round.question_delivered_at_b ??
-      "2026-05-21T00:03:00.000Z";
   }
 
   return Promise.resolve({
@@ -4091,15 +4942,15 @@ function fakeCurrentCourtQuestionRpc(
       answered_rounds: answered.length,
       court_session_id: court.id,
       dare_id: dare.id,
-      options: question.options,
+      options: [],
       phase: court.phase,
-      prompt: question.prompt,
-      question_id: question.id,
-      round_index: round.round_index,
+      prompt: prompt.prompt,
+      question_id: prompt.id,
+      round_index: prompt.position,
       score_a: court.score_a,
       score_b: court.score_b,
       server_end_time: court.server_end_time,
-      total_rounds: state.dareQuizRounds.filter((row) =>
+      total_rounds: state.darePrompts.filter((row) =>
         row.dare_id === dare.id
       ).length,
     }],
@@ -4116,24 +4967,34 @@ function fakeCompleteDareRpc(
     return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
   }
 
+  if (
+    args.p_actor_user_id !== dare.issuer_id &&
+    args.p_actor_user_id !== dare.challenger_id &&
+    !state.profile.is_admin
+  ) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
+  }
+
   const court = state.courtSessions.find((row) => row.dare_id === dare.id);
   if (!court) {
     return Promise.resolve({ data: [], error: { message: "court_not_found" } });
   }
 
   const scoreA =
-    state.dareQuizAnswers.filter((answer) =>
+    state.dareAnswerSubmissions.filter((answer) =>
       answer.dare_id === dare.id &&
       answer.user_id === dare.issuer_id &&
       answer.correct === true
     ).length;
   const scoreB =
-    state.dareQuizAnswers.filter((answer) =>
+    state.dareAnswerSubmissions.filter((answer) =>
       answer.dare_id === dare.id &&
       answer.user_id === dare.challenger_id &&
       answer.correct === true
     ).length;
-  const winnerId = scoreA > scoreB
+  const winnerId = dare.dare_type === "task"
+    ? (scoreB > 0 ? dare.challenger_id : null)
+    : scoreA > scoreB
     ? dare.issuer_id
     : scoreB > scoreA
     ? dare.challenger_id
@@ -4169,6 +5030,14 @@ function fakeSettleDareRpc(
   const dare = state.dares.find((row) => row.id === args.p_dare_id);
   if (!dare) {
     return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+
+  if (
+    args.p_actor_user_id !== dare.issuer_id &&
+    args.p_actor_user_id !== dare.challenger_id &&
+    !state.profile.is_admin
+  ) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
   }
 
   if (dare.status === "settled") {

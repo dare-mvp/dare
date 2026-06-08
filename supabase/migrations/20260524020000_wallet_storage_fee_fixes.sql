@@ -304,7 +304,7 @@ begin
     p_title,
     p_description,
     p_category,
-    'algorithmic',
+    'answer_key',
     v_status,
     p_stake_amount,
     p_currency,

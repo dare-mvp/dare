@@ -67,8 +67,8 @@ export default function TermsPage() {
                   before depositing funds or entering paid challenges.
                 </li>
                 <li>
-                  Not be prohibited by law in your jurisdiction from participating in skill-based
-                  wagering activities.
+                  Not be prohibited by law in your jurisdiction from participating in paid
+                  skill-based challenge activities.
                 </li>
               </ul>
               <p className="mt-4">
@@ -101,7 +101,9 @@ export default function TermsPage() {
                 DARE is a <strong className="text-foreground">skill-based challenges platform</strong>{' '}
                 where users can issue and accept peer-to-peer (P2P) challenges across supported
                 categories including sports, gaming, fitness, creative arts, intellectual challenges,
-                and street skills.
+                and street skills. Skill-Based DAREs use two-sided stakes. Task-Based DAREs use a
+                Darer-funded reward for a performer who completes the task. Users author the DARE
+                rules; DARE does not create the challenge content as the DARE itself.
               </p>
               <p className="mt-4">
                 Challenge outcomes are determined by player performance according to the{' '}
@@ -119,24 +121,26 @@ export default function TermsPage() {
 
             <Section title="4. Escrow and Funds">
               <p>
-                When a challenge is accepted, both parties&apos; stakes are immediately locked in a
-                secure escrow account managed by DARE. Neither party can access the escrowed funds
-                until the challenge is settled.
+                When a DARE is funded, the applicable stake or reward is locked in a secure escrow
+                account managed by DARE. Skill-Based DAREs lock both participants&apos; stakes.
+                Task-Based DAREs lock only the Darer-funded reward. Participants cannot access
+                escrowed funds until the DARE is settled, refunded, or voided under platform policy.
               </p>
               <p className="mt-4">
-                Funds are released to the winning party following verified settlement. In the event
-                of a dispute, funds remain in escrow until a final determination is reached through
-                the DARE Jury system (see Section 5).
+                Funds are released following verified settlement. Skill-Based DAREs pay the eligible
+                winner. Task-Based DAREs pay the eligible performer after valid completion. In the
+                event of a dispute, funds remain in escrow until a final determination is reached
+                through the DARE Jury system (see Section 5).
               </p>
               <p className="mt-4">
                 Deposits and withdrawals are processed via our approved payment partners (currently
                 Paystack). Processing times and any applicable fees are displayed at the time of
                 transaction. DARE does not charge a deposit fee; a platform service fee may be
-                deducted from winnings as disclosed at the time of challenge creation.
+                deducted from payouts as disclosed at the time of DARE creation.
               </p>
               <p className="mt-4">
-                Minimum and maximum stake amounts are set per challenge category and may be adjusted
-                by DARE at any time with notice.
+                Minimum and maximum stake or reward amounts are set per challenge category and may
+                be adjusted by DARE at any time with notice.
               </p>
             </Section>
 
@@ -144,23 +148,25 @@ export default function TermsPage() {
               <Subsection title="5.1 Creating a Challenge">
                 <p>
                   When you create a challenge you must specify: the category, the precise task or
-                  condition of victory, the stake amount, the time limit for completion, and the
-                  evidence standard required to prove the outcome.
+                  condition of victory or completion, the stake or reward amount, the time limit for
+                  completion, the resolution path, and the evidence standard required to prove the
+                  outcome. Resolution paths may include Answer Key, Witnessed, or Evidence review.
                 </p>
               </Subsection>
               <Subsection title="5.2 Accepting a Challenge">
                 <p>
-                  Accepting a challenge constitutes a binding agreement. Once accepted and stakes
-                  locked, neither party may withdraw without forfeiting their stake, except where
-                  DARE determines the challenge terms were unclear or the challenge was created in
-                  bad faith.
+                  Accepting a challenge constitutes a binding agreement. Once accepted and escrow is
+                  locked, neither party may withdraw without the applicable forfeit, refund, or
+                  completion policy applying, except where DARE determines the challenge terms were
+                  unclear or the challenge was created in bad faith.
                 </p>
               </Subsection>
               <Subsection title="5.3 Evidence and Proof">
                 <p>
                   Users must submit evidence of the outcome (video, photo, witness confirmation, or
-                  other agreed format) within the challenge time limit. Failure to submit valid
-                  evidence within the deadline will be treated as a loss by the non-submitting party.
+                  other agreed format) or answers required by the DARE constitution within the
+                  challenge time limit. Failure to submit valid proof within the deadline follows the
+                  forfeit, refund, or review rules in the DARE constitution.
                 </p>
               </Subsection>
               <Subsection title="5.4 The DARE Jury">
@@ -185,12 +191,12 @@ export default function TermsPage() {
                   monthly caps on how much you can deposit.
                 </li>
                 <li>
-                  <strong className="text-foreground">Stake limits</strong> — cap the maximum amount
-                  you can wager on a single challenge.
+                  <strong className="text-foreground">Stake and reward limits</strong> — cap the
+                  maximum amount you can commit to a single DARE.
                 </li>
                 <li>
                   <strong className="text-foreground">Self-exclusion</strong> — suspend your account
-                  from wagering for a chosen period (minimum 24 hours; maximum permanent).
+                  from paid DARE participation for a chosen period (minimum 24 hours; maximum permanent).
                   Self-exclusion takes effect immediately and cannot be reversed before the chosen
                   period expires.
                 </li>
@@ -236,12 +242,12 @@ export default function TermsPage() {
 
             <Section title="8. Fees and Taxes">
               <p>
-                DARE charges a platform service fee on winning payouts. The current fee schedule is
-                displayed within the app before you confirm a challenge. DARE reserves the right to
+                DARE charges a platform service fee on eligible payouts. The current fee schedule is
+                displayed within the app before you confirm a DARE. DARE reserves the right to
                 update the fee schedule with 14 days&apos; notice.
               </p>
               <p className="mt-4">
-                You are solely responsible for any taxes payable on your winnings under the laws of
+                You are solely responsible for any taxes payable on your payouts under the laws of
                 your country of residence. DARE does not withhold taxes on your behalf unless
                 required to do so by law.
               </p>

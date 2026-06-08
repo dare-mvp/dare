@@ -2,6 +2,8 @@
 
 ## Executive summary
 
+Product alignment note: this report analyzes the historical prototype. Production DAREs are creator-authored and use the model in `docs/16-dare-resolution-model.md`: Skill-Based DAREs lock both participants' stakes, Task-Based DAREs lock only the Darer-funded reward, and resolution is `answer_key`, `witnessed`, or `evidence`.
+
 The attached `index.html` is a **single‑page app (SPA) prototype** that already encodes a fairly complete “money‑backed competition” product model: authenticated users browse a **DARE Feed**, issue challenges through a **five‑step “constitution” wizard**, accept/decline challenges via a modal, participate in a **live “Court”** experience (real‑time score/timer, quiz panel, vote panel, proof/dispute actions, chat), and manage funds via a **wallet with deposit/withdraw** modals and a **win/loss result overlay**. It also contains scaffolding for **tournaments (“Arena”)**, a **jury system** page (populated dynamically), notifications, and an admin risk view.
 
 From a backend perspective, the JavaScript is built around a **Supabase‑style data model** (tables referenced include `profiles`, `dares`, `transactions`, `notifications`, `jury_cases`, `jury_votes`, `dare_votes`, `dare_quiz_answers`, `court_chat`), with flows that imply **escrow ledgering**, **state transitions** on dares, and **event‑driven notifications**. Real‑time features are heavily implied (chat, votes, readiness, live counts), mapping naturally to broadcast/presence patterns like those supported by entity["company","Supabase","database platform"] Realtime (broadcast/presence/Postgres changes). citeturn0search1
@@ -22,14 +24,14 @@ The roadmap therefore must treat “payments + licensing + fraud controls + disp
 
 Based purely on the UI and the JS/state scaffolding, the prototype implements a **challenge economy**:
 
-- **DARE object**: a challenge with a title (“The Test”), type (algorithmic / witnessed / evidenced / honour), category, duration, stake, rules/constitution, and state.
-- **Two primary roles**: issuer (player A) and challenger/opponent (player B).
-- **Funds model**: wallet balance, escrow concept, deposits and withdrawals, and automatic payouts on outcomes (plus platform fee/rake implied by the stake calculator UI).
+- **DARE object**: a challenge with a title (“The Test”), type (answer_key / witnessed / evidence), category, duration, stake, rules/constitution, and state.
+- **Primary participant roles**: Darer/Issuer, Skill-Based Challenger, and Task-Based Performer.
+- **Funds model**: wallet balance, escrow concept, deposits and withdrawals, and automatic settlement payouts (plus platform fee/rake implied by the stake/reward calculator UI).
 - **Resolution model**: different DARE types imply different adjudication:
-  - algorithmic scoring (quiz/interactive outcomes),
+  - answer_key scoring (quiz/interactive outcomes),
   - witnessed voting,
-  - evidenced submission leading to jury decision,
-  - honour agreement.
+  - evidence submission leading to jury decision,
+  - jury/admin escalation for disputed outcomes.
 - **Integrity model**: trust score/tier presentation and admin “collusion pattern detected” messaging imply a reputation and fraud‑monitoring layer.
 
 ### Real‑time, multi‑party mechanics implied
@@ -80,7 +82,7 @@ The table below catalogs the interactive surface area present in `index.html`. �
 | Type selection cards | Create Step 1 | Choose resolution mechanism | Select type; gating on tier | Client: `challengeData.type`; DB: user tier/trust |
 | Category picker grid | Create Step 1 | Set category | Select category pill | Client: `challengeData.category` |
 | Definition fields | Create Step 2 | Enter test description, proof method | Text input; toggles | Client: title/description/proof_required |
-| Opponent targeting | Create Step 2 | Make dare open or targeted | Select opponent / open | Client: `challengeData.opponent` |
+| Target participant selection | Create Step 2 | Make dare open or targeted | Select target participant / open | Client: target participant state |
 | Duration selector | Create Step 2 | Court duration | Pick duration | Client: `challengeData.duration_seconds` |
 | Stake input + quick buttons | Create Step 3 | Set stake size | Enter amount; quick pick | Client: stake; DB: wallet balance check |
 | Stake calculator | Create Step 3 | Show fee + payout preview | Auto updates on stake | Client calc; server should compute canonical fee |
@@ -92,7 +94,7 @@ The table below catalogs the interactive surface area present in `index.html`. �
 | Court page | `#page-court` | Live match arena | Ready confirm; quiz answers; vote; chat; submit proof; dispute | RT: votes/chat/presence; DB: dare status, quiz answers |
 | Court header + timer | Court | Match state visibility | Start/stop via flow | Client: `courtTime`; server authoritative clock recommended |
 | Player panels | Court | Show A/B identity + score | Answer quiz; score increments | DB: `profiles`; Client: `courtScoreA/B` |
-| Quiz panel | Court (`#courtQuizPanel`) | Algorithmic scoring mechanism | Select option → mark correct/wrong | DB: `dare_quiz_answers` |
+| Quiz panel | Court (`#courtQuizPanel`) | Answer Key scoring mechanism | Select option → mark correct/wrong | DB: `dare_quiz_answers` |
 | Vote panel | Court (`#courtVoteSection`) | Witnessed/social resolution | Cast vote; see count | DB/RT: `dare_votes`; eligibility gating |
 | Proof panel | Court (`#courtProofPanel`) | Evinced resolution entry point | Submit proof; open dispute flow | DB: proof references; `jury_cases` |
 | Court details drawer | Court (`#courtDetailsExpanded`) | Shows constitution metadata | Toggle expand/collapse | DB: dare constitution |
@@ -136,9 +138,9 @@ sequenceDiagram
 
   U->>SPA: Navigate to Create
   SPA->>SPA: Step 1: select type + category
-  SPA->>SPA: Step 2: define test + proof method + duration + opponent targeting
+  SPA->>SPA: Step 2: define test + proof method + duration + target participant
   SPA->>SPA: Step 3: set stake; show fee/payout preview
-  SPA->>API: Validate stake vs wallet balance
+  SPA->>API: Validate stake/reward vs wallet balance
   API->>DB: Read wallet balance & limits
   DB-->>API: Balance + tier limits
   API-->>SPA: OK / insufficient funds / tier restriction
@@ -148,10 +150,10 @@ sequenceDiagram
   SPA->>SPA: Step 4: write rules (constitution)
   SPA->>SPA: Step 5: review
   U->>SPA: Issue DARE
-  SPA->>API: Create Dare + lock issuer stake (escrow hold)
-  API->>DB: Insert Dare (status=open/awaiting_opponent)
+  SPA->>API: Create DARE + lock issuer stake or Darer reward
+  API->>DB: Insert DARE (status=open/awaiting_participant)
   API->>WAL: Create ledger entry: escrow_hold (issuer)
-  API->>N: Notify targeted opponent (if any)
+  API->>N: Notify targeted participant (if any)
   API-->>SPA: Dare created + reference
   SPA-->>U: Confirmation + link in Feed
 ```
@@ -161,7 +163,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor O as User (Opponent)
+  actor O as User (Challenger or Performer)
   participant SPA as DARE SPA (Feed/Modal)
   participant API as Backend/API
   participant DB as Database
@@ -174,11 +176,11 @@ sequenceDiagram
   DB-->>API: Dare details
   API-->>SPA: Render accept modal
   O->>SPA: Accept
-  SPA->>API: Accept Dare + lock opponent stake
+  SPA->>API: Accept DARE
   API->>DB: Verify dare still open & eligibility
   API->>WAL: Ledger: escrow_hold (opponent)
   API->>DB: Update dare status=active (or scheduled)
-  API->>N: Notify issuer: opponent accepted
+  API->>N: Notify issuer: DARE accepted
   API-->>SPA: Success + route to Court/Evidence
 ```
 
@@ -190,7 +192,7 @@ This sequence includes quiz answering, voting, chat, timer, and resolution.
 sequenceDiagram
   autonumber
   actor A as Player A (Issuer)
-  actor B as Player B (Opponent)
+  actor B as Player B (Challenger or Performer)
   actor S as Spectators
   participant SPA as Court UI
   participant RT as Realtime Channel
@@ -233,7 +235,7 @@ sequenceDiagram
     API->>RT: Broadcast vote_tally
   end
 
-  API->>API: Determine winner (algorithmic score or vote)
+  API->>API: Determine winner (answer_key score or vote)
   API->>DB: Update dare status=completed + winner_id
   API->>WAL: Release escrow + payout winner - fee
   API->>RT: Broadcast result_final
@@ -279,7 +281,7 @@ sequenceDiagram
   API->>DB: Update jury_case status=closed + verdict
   API->>DB: Update dare status=completed + winner (if overturned)
   API->>WAL: If held payout, release according to verdict
-  API->>RT: Notify both players of outcome + reasons
+  API->>RT: Notify required participants of outcome + reasons
   SPA-->>L: Show verdict and trust impact
 ```
 
@@ -524,7 +526,7 @@ erDiagram
 - `dare_created` → optional opponent notification
 - `dare_accepted` → escrow hold creation (both sides) → dare becomes active/scheduled
 - `court_started` → start time anchored to server time
-- `answer_submitted` → score update (if algorithmic)
+- `answer_submitted` → score update (if answer_key)
 - `vote_cast` → vote tally update (if witnessed)
 - `dare_completed` → payouts + trust score updates
 - `dispute_filed` → jury case open
@@ -554,7 +556,7 @@ Key security constraints implied by Paystack documentation and typical escrow pl
   - only jurors see jury packets,
   - only admins see fraud flags,
   - only the wallet owner can see transaction history.
-- **Anti‑tamper for evidence**: if you later implement evidence recording, you need server‑stamped sessions and storage checksums; object storage should be private with signed URLs and short TTL (R2 supports S3‑compatible patterns and emphasizes strong security properties like non‑discoverable buckets/randomized URLs). citeturn4search4turn4search2
+- **Anti‑tamper for evidence**: evidence recording needs server-stamped sessions and storage checksums; object storage should be private with signed URLs and short TTL (R2 supports S3-compatible patterns and emphasizes strong security properties like non-discoverable buckets/randomized URLs). citeturn4search4turn4search2
 
 ---
 
@@ -642,7 +644,7 @@ DARE’s economics (rake + escrow + peer competition) creates predictable attack
 - Graph‑based collusion detection (shared devices, IP clusters, repeated matchups, abnormal win‑rates).
 - Spectator eligibility rules (account age, prior participation, trust score thresholds) and “follow‑graph concentration” checks.
 - Jury selection constraints (no prior relationship; randomized assignment; rate limits; delayed visibility of peer votes).
-- Strong evidence capture controls (device attestation, server‑stamped recording sessions, watermarking and integrity checks) before you enable real evidence adjudication.
+- Strong evidence capture controls (device attestation, server-stamped recording sessions, watermarking, and integrity checks) for real Evidence adjudication before launch.
 
 ---
 
@@ -650,10 +652,11 @@ DARE’s economics (rake + escrow + peer competition) creates predictable attack
 
 ### MVP framing
 
-Your prototype includes multiple challenge types (algorithmic/witnessed/evidenced/honour) and tournaments. A risk‑optimized MVP should ship **one adjudication type** first, backed by strong payments + dispute + fraud controls. Given Paystack restrictions, licensing complexity, and evidence integrity challenges, the most practical MVP is often:
+Your prototype includes multiple challenge types (answer_key/witnessed/evidence) and tournaments. A risk-optimized MVP should ship the three approved resolution modes first, backed by strong payments, dispute handling, and fraud controls. Given Paystack restrictions, licensing complexity, and evidence integrity challenges, each mode needs conservative limits and auditability:
 
-- **Evidenced (submission + jury)** *or* **Algorithmic (platform‑scored)**  
-  depending on which you can operationalize with the least regulatory ambiguity and least fraud surface.
+- **Answer Key** for creator-authored objective prompts with committed answers.
+- **Witnessed** for live audience/witness signals.
+- **Evidence** for proof submission with jury/admin review.
 
 ### Roadmap table
 
@@ -662,7 +665,7 @@ Your prototype includes multiple challenge types (algorithmic/witnessed/evidence
 | Compliance & payments readiness | Paystack approval; jurisdiction policy; ToS/Responsible Gaming; KYC/AML tier design | Legal counsel; Paystack compliance review | Medium | Very high | Approval obtained; payment flows accepted; regulator stance clarified |
 | Secure wallet + ledger foundation | Double‑entry ledger; deposit verification; withdrawal request queue; audit trails | Paystack server integration; webhook validation | High | High | <0.1% ledger inconsistencies; webhook idempotency proven |
 | DARE core (create + accept + escrow) | Create/accept APIs; dare state machine; escrow holds on accept | Wallet ledger | High | High | Create→accept conversion; escrow locked correctly 100% |
-| Resolution engine v1 | Choose one: algorithmic scoring or evidence+jury | Product decision; storage if evidence | High | High | Dispute rate; resolution time; user satisfaction |
+| Resolution engine v1 | Support answer_key, witnessed, and evidence modes | Product decision; storage if evidence | High | High | Dispute rate; resolution time; user satisfaction |
 | Jury + dispute hardening | Jury assignment; blind packets; vote tally; escalation | Identity/KYC tiers; moderation tooling | Medium | High | Time to verdict; juror participation completion rate |
 | Real‑time Court layer v1 | Chat; presence; vote/score broadcast; reconnect handling | Realtime infra | Medium | Medium | Latency p95 under target; no desync issues |
 | Fraud & risk instrumentation | Collusion rules; multi‑account detection; velocity limits; admin console | Analytics + ledger | Medium | High | Reduced suspicious activity; manual review throughput |
@@ -699,7 +702,7 @@ Your prototype includes multiple challenge types (algorithmic/witnessed/evidence
   - “Accounts created <7 days cannot vote” (or similar)
 
 **Evidence capture**
-- If the evidenced model is core, the prototype needs a dedicated flow for:
+- If the evidence model is core, the prototype needs a dedicated flow for:
   - in‑app capture
   - retake rules
   - upload progress

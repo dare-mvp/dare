@@ -20,6 +20,7 @@ export default function KycStatusScreen() {
   return (
     <AuthFrame
       eyebrow="KYC status"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
       title={getKycTitle(kycStatus)}
       subtitle={getKycSubtitle(kycStatus)}
     >

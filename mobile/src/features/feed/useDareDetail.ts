@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
+import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
 import { getFeaturedDareById } from '../../mocks/home';
-import { DareFeedItem } from './components/DareCard';
-import { mapPublicDareFeedRow, PublicDareFeedRow } from './publicDareFeed';
+import type { DareFeedItem } from './components/DareCard';
+import { mapPublicDareFeedRow, type PublicDareFeedRow } from './publicDareFeed';
 
 type DetailSource = 'mock' | 'server';
 
@@ -20,9 +21,12 @@ const detailColumns = [
   'id',
   'title',
   'category',
+  'dare_type',
+  'funding_model',
   'resolution_type',
   'status',
   'stake_amount',
+  'reward_amount',
   'created_at',
   'issuer_username',
   'issuer_trust_score',
@@ -40,7 +44,10 @@ type ParticipantDareRow = {
   created_at: string;
   id: string;
   issuer_id: string;
+  dare_type?: 'skill' | 'task';
+  funding_model?: 'two_sided_stake' | 'darer_reward';
   resolution_type: string;
+  reward_amount?: number;
   stake_amount: number;
   status: string;
   title: string;
@@ -54,7 +61,7 @@ type ParticipantCourtRow = {
 
 export function useDareDetail(id?: string): DareDetailState {
   const [dare, setDare] = useState<DareFeedItem | null>(() => getInitialDare(id));
-  const [source, setSource] = useState<DetailSource>(() => (isUuid(id) ? 'server' : 'mock'));
+  const [source, setSource] = useState<DetailSource>(() => (supabaseClient || isUuid(id) ? 'server' : 'mock'));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(id && isUuid(id) && supabaseClient));
 
@@ -67,10 +74,18 @@ export function useDareDetail(id?: string): DareDetailState {
       return;
     }
 
-    if (!isUuid(id)) {
+    if (!isUuid(id) && !supabaseClient) {
       setDare(getFeaturedDareById(id) ?? null);
       setSource('mock');
       setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!isUuid(id)) {
+      setDare(null);
+      setSource(supabaseClient ? 'server' : 'mock');
+      setError('This DARE is not available right now.');
       setLoading(false);
       return;
     }
@@ -140,12 +155,8 @@ export function useDareDetail(id?: string): DareDetailState {
 }
 
 function getInitialDare(id?: string) {
-  if (!id || isUuid(id)) return null;
+  if (!id || isUuid(id) || supabaseClient) return null;
   return getFeaturedDareById(id) ?? null;
-}
-
-function isUuid(value?: string) {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value));
 }
 
 async function fetchParticipantDare(id: string) {
@@ -155,7 +166,7 @@ async function fetchParticipantDare(id: string) {
 
   const { data: dare, error: dareError } = await supabaseClient
     .from('dares')
-    .select('id,title,category,resolution_type,status,stake_amount,created_at,issuer_id,challenger_id')
+    .select('id,title,category,dare_type,funding_model,resolution_type,status,stake_amount,reward_amount,created_at,issuer_id,challenger_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -182,6 +193,8 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
     ? 'active'
     : row.status === 'open'
     ? 'open'
+    : row.status === 'targeted_pending'
+    ? 'live'
     : row.status === 'ready_check'
     ? 'live'
     : 'completed';
@@ -191,6 +204,8 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
     category: formatLabel(row.category),
     createdAgo: row.created_at ? 'Created' : '',
     id: row.id,
+    dareType: row.dare_type ?? 'skill',
+    fundingModel: row.funding_model ?? (row.dare_type === 'task' ? 'darer_reward' : 'two_sided_stake'),
     playerA: {
       accent: 'ember',
       name: 'Issuer',
@@ -206,6 +221,7 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
     resolution: formatLabel(row.resolution_type),
     scoreA: court?.score_a ?? undefined,
     scoreB: court?.score_b ?? undefined,
+    rewardKobo: row.reward_amount ?? 0,
     stakeKobo: row.stake_amount,
     status,
     title: row.title,
@@ -213,5 +229,8 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
 }
 
 function formatLabel(value: string) {
+  if (value === 'answer_key') return 'Answer Key';
+  if (value === 'witnessed') return 'Witnessed';
+  if (value === 'evidence') return 'Evidence';
   return value.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

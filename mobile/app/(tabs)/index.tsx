@@ -17,7 +17,9 @@ import { getCategoryVisual } from '../../src/features/feed/categoryVisuals';
 import { DareCard } from '../../src/features/feed/components/DareCard';
 import { DareFeedItem } from '../../src/features/feed/components/DareCard';
 import { LivePulsePanel } from '../../src/features/feed/components/LivePulsePanel';
+import { getLivePulseStats } from '../../src/features/feed/livePulseStats';
 import { usePublicDareFeed } from '../../src/features/feed/usePublicDareFeed';
+import { formatRelativeTime } from '../../src/lib/format/time';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
@@ -46,12 +48,17 @@ export default function FeedScreen() {
     [feed.items, selectedFilter],
   );
   const leaders = useMemo(() => getTopPlayers(feed.items), [feed.items]);
+  const pulseStats = useMemo(() => getLivePulseStats(feed.items), [feed.items]);
+  const issueGate = getIssueGate(data);
+  const syncLabel = getSyncLabel(loading, feed.loading, feed.lastSyncedAt);
 
   return (
     <Screen>
       <TopBar
         balanceLabel={formatNgnFromKobo(data.wallet.availableKobo)}
+        createAccessibilityLabel={issueGate.accessibilityLabel}
         displayInitial={data.profile.avatarInitial}
+        onCreatePress={() => router.push(issueGate.route)}
         subtitle="Challenge Everything"
         title="DARE Feed"
       />
@@ -59,16 +66,20 @@ export default function FeedScreen() {
         data={filteredItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
+        onRefresh={() => {
+          void feed.refresh();
+        }}
+        refreshing={feed.loading}
         ListEmptyComponent={
           <EmptyState
-            body="There are no public DAREs available right now."
-            title="No DAREs yet"
+            body={feed.loading ? 'Fetching live public DAREs.' : getEmptyFeedBody(selectedFilter)}
+            title={feed.loading ? 'Syncing feed' : 'No DAREs yet'}
           />
         }
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.refreshRow}>
-              <Text style={styles.lastUpdated}>{loading || feed.loading ? 'Syncing account' : 'Updated just now'}</Text>
+              <Text style={styles.lastUpdated}>{syncLabel}</Text>
               <StatusBadge label="BETA" tone="warning" />
             </View>
 
@@ -116,7 +127,7 @@ export default function FeedScreen() {
               ))}
             </ScrollView>
 
-            <LivePulsePanel />
+            <LivePulsePanel loading={feed.loading} stats={pulseStats} />
 
             <View style={styles.cta}>
               <View style={styles.ctaIcon}>
@@ -124,21 +135,21 @@ export default function FeedScreen() {
               </View>
               <View style={styles.ctaCopy}>
                 <Text style={styles.ctaTitle}>Got something to prove?</Text>
-                <Text style={styles.ctaText}>Issue a DARE and set the stakes.</Text>
+                <Text style={styles.ctaText}>{issueGate.body}</Text>
               </View>
               <ActionButton
-                label="Issue"
-                accessibilityLabel="Issue a DARE"
-                disabled={!data.capabilities.canCreateDare}
+                label={issueGate.label}
+                accessibilityLabel={issueGate.accessibilityLabel}
+                disabled={loading || Boolean(error)}
                 icon={<PlusCircle color={colors.text} size={17} />}
-                onPress={() => router.push('/(tabs)/create')}
+                onPress={() => router.push(issueGate.route)}
               />
             </View>
 
             <View style={styles.leaderboard}>
               <View style={styles.widgetHeader}>
-                <Text style={styles.widgetTitle}>Top Players</Text>
-                <StatusBadge label="WEEK" tone="neutral" />
+                <Text style={styles.widgetTitle}>Feed Players</Text>
+                <StatusBadge label="TRUST" tone="neutral" />
               </View>
               {leaders.map((leader) => (
                 <View key={leader.rank} style={styles.leaderRow}>
@@ -149,6 +160,9 @@ export default function FeedScreen() {
                   <Text style={styles.leaderScore}>{leader.score}</Text>
                 </View>
               ))}
+              {leaders.length === 0 ? (
+                <Text style={styles.leaderEmpty}>Top players appear after public DARE activity.</Text>
+              ) : null}
             </View>
           </View>
         }
@@ -158,6 +172,54 @@ export default function FeedScreen() {
       />
     </Screen>
   );
+}
+
+function getSyncLabel(accountLoading: boolean, feedLoading: boolean, lastSyncedAt: string | null) {
+  if (accountLoading) return 'Syncing account';
+  if (feedLoading) return 'Syncing feed';
+  if (!lastSyncedAt) return 'Not synced yet';
+  return `Updated ${formatRelativeTime(lastSyncedAt).toLowerCase()}`;
+}
+
+function getEmptyFeedBody(filter: FeedFilter) {
+  if (filter === 'All') return 'There are no public DAREs available right now.';
+  return `There are no ${filter.toString().toLowerCase()} DAREs available right now.`;
+}
+
+function getIssueGate(data: ReturnType<typeof useMe>['data']) {
+  if (data.capabilities.canCreateDare) {
+    return {
+      accessibilityLabel: 'Issue a DARE',
+      body: 'Issue a DARE and set the stakes.',
+      label: 'Issue',
+      route: '/(tabs)/create' as const,
+    };
+  }
+
+  if (data.profile.kycStatus === 'pending') {
+    return {
+      accessibilityLabel: 'Check KYC status',
+      body: 'KYC review must finish before issuing money-backed DAREs.',
+      label: 'KYC status',
+      route: '/kyc-status' as const,
+    };
+  }
+
+  if (data.profile.kycStatus === 'not_started') {
+    return {
+      accessibilityLabel: 'Start KYC verification',
+      body: 'Complete KYC before issuing money-backed DAREs.',
+      label: 'Verify',
+      route: '/kyc-intro' as const,
+    };
+  }
+
+  return {
+    accessibilityLabel: 'Open account controls',
+    body: 'Account controls must be cleared before issuing DAREs.',
+    label: 'Review',
+    route: '/(tabs)/profile' as const,
+  };
 }
 
 function LiveNowIcon() {
@@ -311,5 +373,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displaySemi,
     fontSize: 14,
     fontWeight: '900',
+  },
+  leaderEmpty: {
+    color: colors.textMuted,
+    fontFamily: fonts.bodyRegular,
+    fontSize: 12,
+    lineHeight: 17,
+    padding: spacing[14],
+    textAlign: 'center',
   },
 });

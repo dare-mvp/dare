@@ -9,7 +9,8 @@ import { Screen } from '../../src/components/ui/Screen';
 import { TopBar } from '../../src/components/ui/TopBar';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtStatusPanel } from '../../src/features/court/components/CourtStatusPanel';
-import { QuizPanel } from '../../src/features/court/components/QuizPanel';
+import { AnswerKeyPanel } from '../../src/features/court/components/AnswerKeyPanel';
+import { ResolutionModePanel } from '../../src/features/court/components/ResolutionModePanel';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { useCourtQuestion } from '../../src/features/court/useCourtQuestion';
 import { formatNgnFromKobo } from '../../src/features/me/format';
@@ -21,8 +22,9 @@ export default function CourtScreen() {
   const { data, error, loading } = useMe();
   const court = useActiveCourtSession();
   const session = court.session;
-  const courtQuestion = useCourtQuestion(session?.dareId);
+  const courtQuestion = useCourtQuestion(session?.dareId, session?.resolutionType);
   const canEnterCourt = data.capabilities.canAcceptDare;
+  const isAnswerKey = session?.resolutionType !== 'witnessed' && session?.resolutionType !== 'evidence';
 
   return (
     <Screen>
@@ -89,11 +91,15 @@ export default function CourtScreen() {
             {court.source === 'server' ? (
               <InlineAlert
                 tone={courtQuestion.error ? 'danger' : 'info'}
-                title={courtQuestion.error ? 'Question unavailable' : `Round ${courtQuestion.roundIndex + 1} of ${courtQuestion.totalRounds}`}
-                message={courtQuestion.error ?? 'Court question prompt and options are loaded from the server without exposing the answer key.'}
+                title={courtQuestion.error ? 'Resolution unavailable' : formatResolutionTitle(session.resolutionType, courtQuestion)}
+                message={courtQuestion.error ?? formatResolutionMessage(session.resolutionType)}
               />
             ) : null}
-            <QuizPanel question={courtQuestion.question} />
+            {session.resolutionType === 'answer_key' ? (
+              <AnswerKeyPanel question={courtQuestion.question} />
+            ) : (
+              <ResolutionModePanel resolutionType={session.resolutionType} />
+            )}
           </>
         ) : null}
 
@@ -112,10 +118,10 @@ export default function CourtScreen() {
           </Text>
           <View style={styles.actionRow}>
             <ActionButton
-              accessibilityLabel="Submit current answer"
+              accessibilityLabel={isAnswerKey ? 'Submit current answer' : 'Enter court play'}
               disabled={!canEnterCourt}
               icon={<Send color={colors.text} size={17} />}
-              label="Submit answer"
+              label={isAnswerKey ? 'Submit answer' : 'Enter court'}
               onPress={() => router.push('/court/play')}
             />
             <ActionButton
@@ -153,6 +159,34 @@ export default function CourtScreen() {
       </ScrollView>
     </Screen>
   );
+}
+
+function formatResolutionTitle(
+  resolutionType: NonNullable<ReturnType<typeof useActiveCourtSession>['session']>['resolutionType'],
+  courtQuestion: ReturnType<typeof useCourtQuestion>,
+) {
+  if (resolutionType === 'answer_key') {
+    return courtQuestion.totalRounds > 0
+      ? `Answer prompt ${courtQuestion.roundIndex + 1} of ${courtQuestion.totalRounds}`
+      : 'Answer key resolution';
+  }
+
+  if (resolutionType === 'witnessed') return 'Witnessed resolution';
+  return 'Evidence resolution';
+}
+
+function formatResolutionMessage(
+  resolutionType: NonNullable<ReturnType<typeof useActiveCourtSession>['session']>['resolutionType'],
+) {
+  if (resolutionType === 'answer_key') {
+    return 'Creator-authored prompt is loaded without exposing the committed answer key.';
+  }
+
+  if (resolutionType === 'witnessed') {
+    return 'Complete the DARE under witnessed session rules.';
+  }
+
+  return 'Complete the DARE and preserve evidence under the agreed rules.';
 }
 
 const styles = StyleSheet.create({

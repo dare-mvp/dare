@@ -11,14 +11,14 @@ import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFr
 import { useDareDetail } from '../../../src/features/feed/useDareDetail';
 import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
 
-const platformFeeRate = 0.05;
-
 export default function AcceptReceiptScreen() {
   const router = useRouter();
-  const { courtSessionId, id, reference, stakeAmount, status } = useLocalSearchParams<{
+  const { courtSessionId, dareType, id, reference, rewardAmount, stakeAmount, status } = useLocalSearchParams<{
     courtSessionId?: string;
+    dareType?: string;
     id: string;
     reference?: string;
+    rewardAmount?: string;
     stakeAmount?: string;
     status?: string;
   }>();
@@ -50,30 +50,41 @@ export default function AcceptReceiptScreen() {
     );
   }
 
-  const stakeKobo = stakeAmount ? Number.parseInt(stakeAmount, 10) : dare.stakeKobo;
-  const platformFeeKobo = Math.round(stakeKobo * platformFeeRate);
-  const totalKobo = stakeKobo + platformFeeKobo;
+  const isTask = dareType ? dareType === 'task' : dare.dareType === 'task';
+  const parsedStakeKobo = stakeAmount ? Number.parseInt(stakeAmount, 10) : dare.stakeKobo;
+  const parsedRewardKobo = rewardAmount ? Number.parseInt(rewardAmount, 10) : dare.rewardKobo ?? 0;
+  const stakeKobo = Number.isFinite(parsedStakeKobo) ? Math.max(0, parsedStakeKobo) : dare.stakeKobo;
+  const rewardKobo = Number.isFinite(parsedRewardKobo) ? Math.max(0, parsedRewardKobo) : dare.rewardKobo ?? 0;
 
   return (
     <DareFlowFrame
       eyebrow="Accept receipt"
       onBack={() => router.back()}
       title="Acceptance pending."
-      subtitle="Your slot is reserved after escrow and eligibility checks are confirmed."
+      subtitle={isTask ? 'Your slot is reserved. The Darer-funded reward is already in escrow.' : 'Your slot is reserved after challenger escrow and eligibility checks are confirmed.'}
     >
       <View style={styles.hero}>
         <CheckCircle2 color={colors.warning} size={32} />
         <StatusBadge label={(status ?? 'PENDING').toUpperCase()} tone="warning" />
         <Text style={styles.heroTitle}>Acceptance submitted</Text>
-        <Text style={styles.heroText}>Ready-up opens once the DARE acceptance is confirmed.</Text>
+        <Text style={styles.heroText}>{isTask ? 'Ready-up opens once the task acceptance is confirmed.' : 'Ready-up opens once the DARE acceptance is confirmed.'}</Text>
       </View>
 
       <View style={styles.receipt}>
         <Text style={styles.receiptTitle}>{dare.title}</Text>
         <ReceiptLine label="Issuer" value={dare.playerA.name} />
-        <ReceiptMoneyLine label="Stake" value={stakeKobo} />
-        <ReceiptMoneyLine label="Platform fee" value={platformFeeKobo} />
-        <ReceiptMoneyLine emphasis label="Escrow requested" value={totalKobo} />
+        <ReceiptLine label="DARE type" value={isTask ? 'TASK-BASED' : 'SKILL-BASED'} />
+        {isTask ? (
+          <>
+            <ReceiptMoneyLine label="Your stake" value={0} />
+            <ReceiptMoneyLine emphasis label="Darer reward escrow" value={rewardKobo} />
+          </>
+        ) : (
+          <>
+            <ReceiptMoneyLine label="Your stake" value={stakeKobo} />
+            <ReceiptMoneyLine emphasis label="Escrow requested" value={stakeKobo} />
+          </>
+        )}
         <ReceiptLine label="Reference" value={reference ?? `ACC-${dare.id.toUpperCase()}`} />
         {courtSessionId ? <ReceiptLine label="Court session" value={courtSessionId} /> : null}
       </View>

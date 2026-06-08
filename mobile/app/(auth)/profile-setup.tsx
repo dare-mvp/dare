@@ -13,9 +13,9 @@ import { updateMyProfile } from '../../src/lib/actions/endpoints';
 import { colors, spacing } from '../../src/theme/tokens';
 
 const playStyles = [
-  { label: 'Quiz', value: 'quiz' },
+  { label: 'Answer Key', value: 'answer_key' },
   { label: 'Evidence', value: 'evidence' },
-  { label: 'Jury', value: 'jury' },
+  { label: 'Witnessed', value: 'witnessed' },
 ];
 
 export default function ProfileSetupScreen() {
@@ -23,7 +23,7 @@ export default function ProfileSetupScreen() {
   const auth = useAuth();
   const [bio, setBio] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [playStyle, setPlayStyle] = useState('quiz');
+  const [playStyle, setPlayStyle] = useState('answer_key');
   const [submitting, setSubmitting] = useState(false);
   const [username, setUsername] = useState('');
 
@@ -64,6 +64,7 @@ export default function ProfileSetupScreen() {
   return (
     <AuthFrame
       eyebrow="Profile"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
       title="Shape your public DARE profile."
       subtitle="This is what other players see before they accept your challenges."
     >
@@ -82,7 +83,7 @@ export default function ProfileSetupScreen() {
           leftIcon={<ScrollText color={colors.textMuted} size={16} />}
           multiline
           onChangeText={setBio}
-          placeholder="Fast quizzes, clean rules, fair disputes."
+          placeholder="Sharp challenges, clean rules, fair disputes."
           value={bio}
         />
         <SegmentedControl

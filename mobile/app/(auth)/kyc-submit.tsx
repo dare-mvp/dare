@@ -48,6 +48,7 @@ export default function KycSubmitScreen() {
   return (
     <AuthFrame
       eyebrow="KYC submit"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/kyc-intro'))}
       title="Submit identity details."
       subtitle="Use the same legal details tied to your payment and withdrawal accounts."
     >

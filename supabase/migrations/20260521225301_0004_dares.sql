@@ -43,7 +43,7 @@ create table dares (
   constraint dares_category_valid
     check (category in ('knowledge','physical','verbal','sports','creative','other')),
   constraint dares_resolution_type_valid
-    check (resolution_type in ('algorithmic','witnessed','evidenced','honour')),
+    check (resolution_type in ('answer_key','witnessed','evidence')),
   constraint dares_status_valid check (status in (
     'draft','open','targeted_pending','accepted',
     'ready_check','active','awaiting_result','completed',

@@ -156,7 +156,7 @@ Controls:
 
 ### Payment Provider Policy
 
-The support research flags that payment providers may restrict gambling, gaming, or games of skill with entry fees and prizes. DARE must obtain provider approval before real-money launch.
+The support research flags that payment providers can restrict gambling, gaming, or games of skill with entry fees and prizes. DARE must obtain provider approval before real-money launch.
 
 Validation required:
 
@@ -172,12 +172,12 @@ DARE must validate how each launch jurisdiction classifies:
 
 - Skill competitions
 - Prize competitions
-- Peer-to-peer wagers
+- Paid peer-to-peer skill challenges and task rewards
 - Platform rake
 - Tournaments
 - Promotions
 
-Do not assume "skill-based" removes regulatory obligations.
+Skill-based classification does not remove regulatory obligations.
 
 ### KYC / AML
 

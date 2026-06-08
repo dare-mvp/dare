@@ -1,4 +1,4 @@
-import { requireAdminUser } from "../_shared/auth.ts";
+import { requireAuthenticatedUser } from "../_shared/auth.ts";
 import { parseActionEnvelope } from "../_shared/envelope.ts";
 import { ActionError } from "../_shared/errors.ts";
 import {
@@ -59,7 +59,7 @@ export async function completeDare(
   serviceClient: SupabaseActionClient,
 ): Promise<{ requestId: string; data: CompleteDareResponse }> {
   const validatedDareId = assertUuid(dareId, "dareId");
-  const authUser = await requireAdminUser(client);
+  const authUser = await requireAuthenticatedUser(client);
   const envelope = await parseActionEnvelope(request, {
     requireIdempotencyKey: true,
   });
@@ -114,7 +114,7 @@ export async function settleDare(
   serviceClient: SupabaseActionClient,
 ): Promise<{ requestId: string; data: SettleDareResponse }> {
   const validatedDareId = assertUuid(dareId, "dareId");
-  const authUser = await requireAdminUser(client);
+  const authUser = await requireAuthenticatedUser(client);
   const envelope = await parseActionEnvelope(request, {
     requireIdempotencyKey: true,
   });

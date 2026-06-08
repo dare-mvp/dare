@@ -2,7 +2,7 @@
 
 ## Strategic Position
 
-DARE should be positioned as a skill-based social challenge platform for African mobile-first markets. It sits between social entertainment, mobile money, trust infrastructure, and jobtech.
+DARE is positioned as a skill-based social challenge platform for African mobile-first markets. It sits between social entertainment, mobile money, trust infrastructure, and jobtech.
 
 The platform is strongest when it is not described as "sports betting for everything." A safer and more differentiated frame is:
 
@@ -67,7 +67,7 @@ Unlike betting apps, DARE is based on participant ability and peer-to-peer outco
 
 ### USSD-First Compatibility
 
-The mobile app is the rich experience, but USSD should be treated as a future access channel for low-data users.
+The mobile app is the rich experience. USSD is outside MVP and remains a future access channel for low-data users.
 
 Example USSD actions:
 
@@ -79,15 +79,15 @@ Example USSD actions:
 
 ### Ubuntu-Based Community Governance
 
-Community jury resolution is a strategic differentiator. It should be designed as a serious trust system, not a cosmetic feature.
+Community jury resolution is a strategic differentiator. It is designed as a serious trust system, not a cosmetic feature.
 
 ### Financial Rail Abstraction
 
-DARE should avoid hard-coding itself to one payment provider. The architecture should support provider abstraction for Paystack, bank transfer, mobile money, and future regional providers.
+DARE avoids hard-coding itself to one payment provider. The architecture supports provider abstraction for Paystack, bank transfer, mobile money, and future regional providers.
 
 ### Skill-Based Legitimacy
 
-The product should prioritize skill, evidence, and rule clarity. Legal classification must be validated by counsel before production launch in any market.
+The product prioritizes skill, evidence, and rule clarity. Legal classification must be validated by counsel before production launch in any market.
 
 ### Localized AI Engagement
 
@@ -110,7 +110,7 @@ The strategy documents mention Lagos as the most natural first market because of
 - Social betting products with copy-bet mechanics.
 - Local challenge/social apps.
 - Gig/task marketplaces.
-- Wallet and savings apps that may expand into social finance.
+- Wallet and savings apps with expansion paths into social finance.
 
 ## Positioning Risks
 
@@ -126,4 +126,3 @@ The strategy documents mention Lagos as the most natural first market because of
 - Confirm jurisdiction-specific gaming, lottery, promotion, and competition rules.
 - Validate whether DARE can operate as a skill competition facilitator.
 - Interview target users on trust, payout expectations, acceptable fees, and dispute expectations.
-

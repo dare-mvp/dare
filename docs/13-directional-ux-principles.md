@@ -6,7 +6,7 @@ DARE's primary markets — Nigeria and Kenya — are mobile-first populations wh
 
 This is not a flaw to work around. It is the reality to design for.
 
-Every screen, flow, and component in DARE — web and mobile — must be built on this principle: **the user should never need to read instructions to know what to do next.** The UI tells them by showing one clear action.
+Every screen, flow, and component in DARE - web and mobile - must be built on this principle: **the user never needs to read instructions to know what to do next.** The UI tells them by showing one clear action.
 
 ---
 
@@ -24,7 +24,7 @@ If a user can get stuck, confused, or land on a screen without knowing what to d
 Never show multiple competing CTAs at the same level of visual weight. One action is primary. Everything else is secondary or absent.
 
 **Wrong:** Three equal-weight buttons at the bottom of a screen.
-**Right:** One large primary button. One small secondary link below it if needed.
+**Right:** One large primary button. One small secondary link below it for cancel, back, or learn-more actions.
 
 ---
 
@@ -47,7 +47,7 @@ Never ask users to compose, copy, or remember content. Pre-fill it.
 - Share messages are pre-written and pre-loaded into the share sheet
 - DM links open Instagram with the exact message already typed
 - Referral links are embedded in buttons, not just displayed as text to copy
-- Form fields auto-complete where possible
+- Form fields auto-complete when the required platform data is available
 
 ---
 
@@ -63,7 +63,7 @@ Every action that requires leaving the app or website must be a single tap that 
 ---
 
 ### 5. The System Initiates Transitions
-Users should not have to figure out where to go after completing an action. The system moves them there.
+Users do not figure out where to go after completing an action. The system moves them there.
 
 - After form success → auto-scroll to the next step after a short delay
 - After task completion → visually confirm and reveal the next task
@@ -114,7 +114,7 @@ Error messages must tell the user what to do, not just what went wrong.
 When building any screen or flow for DARE:
 
 1. Ask: *"Can a user who does not read any text complete this action?"* If no — redesign.
-2. Ask: *"What happens after the user taps the primary button?"* If the answer is unclear — there is no next state defined. Build it.
+2. Ask: *"What happens after the user taps the primary button?"* If there is no defined next state, define and build that state before shipping the flow.
 3. Ask: *"Does this flow require copy-pasting, app-switching, or manual navigation?"* If yes — replace with a deep link or pre-filled action.
 4. Never ship a success or completion state without a visible next step.
 5. Never ship a form without a clear, prominent submit button that is always in view on mobile.

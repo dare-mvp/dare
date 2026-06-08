@@ -3,11 +3,11 @@ import { DareFeedItem } from '../features/feed/components/DareCard';
 export const featuredDares: DareFeedItem[] = [
   {
     id: 'dare-open-1',
-    title: 'Beat a 12-question Premier League quiz in court mode',
+    title: 'Win a Premier League debate with creator-set answer rules',
     category: 'Sports',
     stakeKobo: 250000,
     status: 'open',
-    resolution: 'Algorithmic',
+    resolution: 'Answer Key',
     createdAgo: '12 min ago',
     actionLabel: 'Accept this DARE',
     playerA: {
@@ -19,11 +19,11 @@ export const featuredDares: DareFeedItem[] = [
   },
   {
     id: 'dare-live-1',
-    title: 'Answer five Afrobeats history questions before timeout',
+    title: 'Settle an Afrobeats history challenge live in Court',
     category: 'Music',
     stakeKobo: 100000,
     status: 'live',
-    resolution: 'Court quiz',
+    resolution: 'Answer Key',
     createdAgo: '4 min ago',
     actionLabel: 'Players heading to court',
     playerA: {
@@ -41,11 +41,11 @@ export const featuredDares: DareFeedItem[] = [
   },
   {
     id: 'dare-disputed-1',
-    title: 'Resolve a contested fintech trivia result with jury review',
+    title: 'Resolve a contested fintech answer-key result with jury review',
     category: 'Finance',
     stakeKobo: 500000,
     status: 'disputed',
-    resolution: 'Jury',
+    resolution: 'Evidence',
     createdAgo: '1 hr ago',
     actionLabel: 'Jury reviewing',
     viewers: 18,

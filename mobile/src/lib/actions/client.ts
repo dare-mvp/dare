@@ -3,6 +3,23 @@ import { getActionUserMessage } from '../errors/userMessages';
 import { supabaseClient } from '../supabase/client';
 import { ActionError, ActionRequestOptions, ActionResult } from './types';
 
+const backendActionCodes: ActionError['code'][] = [
+  'ACCOUNT_RESTRICTED',
+  'ALREADY_PROCESSED',
+  'FORBIDDEN',
+  'IDEMPOTENCY_CONFLICT',
+  'INSUFFICIENT_FUNDS',
+  'INVALID_STATE',
+  'KYC_REQUIRED',
+  'LIMIT_EXCEEDED',
+  'METHOD_NOT_ALLOWED',
+  'NOT_FOUND',
+  'PROVIDER_UNAVAILABLE',
+  'RATE_LIMITED',
+  'UNAUTHENTICATED',
+  'VALIDATION_FAILED',
+];
+
 function mapStatusToCode(status: number): ActionError['code'] {
   if (status === 400) return 'BAD_REQUEST';
   if (status === 401) return 'UNAUTHENTICATED';
@@ -48,6 +65,23 @@ function unwrapSuccessEnvelope<T>(payload: unknown): T {
   return payload as T;
 }
 
+function getBackendError(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || !('error' in payload)) return null;
+  const error = (payload as { error?: unknown }).error;
+  if (!error || typeof error !== 'object') return null;
+
+  const code = (error as { code?: unknown }).code;
+  if (typeof code !== 'string' || !backendActionCodes.includes(code as ActionError['code'])) {
+    return null;
+  }
+
+  const retryable = (error as { retryable?: unknown }).retryable;
+  return {
+    code: code as ActionError['code'],
+    retryable: typeof retryable === 'boolean' ? retryable : undefined,
+  };
+}
+
 export async function callAction<T>(path: string, options: ActionRequestOptions = {}): Promise<ActionResult<T>> {
   let config: ReturnType<typeof assertBackendConfigured>;
   try {
@@ -84,13 +118,14 @@ export async function callAction<T>(path: string, options: ActionRequestOptions 
     const payload = await parseJsonSafely(response);
 
     if (!response.ok) {
-      const code = mapStatusToCode(response.status);
+      const backendError = getBackendError(payload);
+      const code = backendError?.code ?? mapStatusToCode(response.status);
       return {
         data: null,
         error: {
           code,
           message: getActionUserMessage(code),
-          retryable: response.status === 429 || response.status >= 500,
+          retryable: backendError?.retryable ?? (response.status === 429 || response.status >= 500),
           status: response.status,
         },
         ok: false,

@@ -14,6 +14,7 @@ export default function AgeGateScreen() {
   return (
     <AuthFrame
       eyebrow="Age gate"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       title="Confirm eligibility before stakes."
       subtitle="DARE is for adults only. Eligibility checks protect payments, disputes, and responsible gaming limits."
     >

@@ -54,7 +54,10 @@ function getAuthErrorMessage(error: unknown) {
   const status = typeof error === 'object' && error !== null && 'status' in error
     ? Number((error as { status?: unknown }).status)
     : undefined;
-  return getAuthUserMessage(Number.isFinite(status) ? status : undefined);
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : undefined;
+  return getAuthUserMessage(Number.isFinite(status) ? status : undefined, code);
 }
 
 function getAuthCallbackUrl() {

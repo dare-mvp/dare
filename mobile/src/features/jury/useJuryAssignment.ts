@@ -44,9 +44,9 @@ type JuryCaseRow = {
 export function useJuryAssignment(caseId?: string): JuryAssignmentState {
   const auth = useAuth();
   const [state, setState] = useState<JuryAssignmentState>(() => ({
-    assignment: createPreviewAssignment(),
+    assignment: auth.status === 'authenticated' || auth.status === 'loading' ? null : createPreviewAssignment(),
     error: null,
-    loading: false,
+    loading: auth.status === 'loading',
   }));
 
   useEffect(() => {
@@ -56,9 +56,9 @@ export function useJuryAssignment(caseId?: string): JuryAssignmentState {
       if (!supabaseClient || auth.status !== 'authenticated') {
         if (mounted) {
           setState({
-            assignment: createPreviewAssignment(),
+            assignment: auth.status === 'loading' ? null : createPreviewAssignment(),
             error: null,
-            loading: false,
+            loading: auth.status === 'loading',
           });
         }
         return;

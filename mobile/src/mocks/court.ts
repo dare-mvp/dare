@@ -1,8 +1,9 @@
 import { CourtSession } from '../features/court/types';
 
 export const activeCourtSession: CourtSession = {
-  challengeType: 'Algorithmic quiz - Issuer vs Challenger',
+  challengeType: 'Answer Key court - Issuer vs Challenger',
   connectionState: 'connected',
+  dareType: 'skill',
   heartbeatAgeSeconds: 4,
   phase: 'active',
   playerA: {
@@ -25,11 +26,15 @@ export const activeCourtSession: CourtSession = {
   potKobo: 500000,
   question: {
     id: 'q1',
-    options: ['Abuja', 'Port Harcourt', 'Lagos', 'Kano'],
-    prompt: 'Which Nigerian city is known as the Centre of Excellence?',
-    selectedOption: 'Lagos',
+    options: [],
+    prompt: 'Creator prompt: name the Nigerian city known as the Centre of Excellence.',
+    selectedOption: undefined,
   },
+  resolutionType: 'answer_key',
   spectators: 18,
   timeRemainingSeconds: 72,
-  title: 'Premier League quiz in court mode',
+  title: 'Premier League knowledge DARE in court mode',
+  viewerRole: 'participant_a',
+  votesA: 0,
+  votesB: 0,
 };

@@ -10,6 +10,7 @@ import { StatusBadge } from '../../../src/components/ui/StatusBadge';
 import { TrustBadge } from '../../../src/components/ui/TrustBadge';
 import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFrame';
 import { useDareDetail } from '../../../src/features/feed/useDareDetail';
+import { formatNgnFromKobo } from '../../../src/features/me/format';
 import { useMe } from '../../../src/features/me/useMe';
 import { acceptDare } from '../../../src/lib/actions/endpoints';
 import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
@@ -51,7 +52,10 @@ export default function AcceptDareScreen() {
     );
   }
 
-  const platformFeeKobo = Math.round(dare.stakeKobo * platformFeeRate);
+  const isTask = dare.dareType === 'task';
+  const rewardKobo = dare.rewardKobo ?? 0;
+  const challengerStakeKobo = isTask ? 0 : dare.stakeKobo;
+  const platformFeeKobo = Math.round(challengerStakeKobo * platformFeeRate);
   const isOpen = dare.status === 'open';
   const canAccept = isOpen && data.capabilities.canAcceptDare && !submitting;
 
@@ -60,7 +64,7 @@ export default function AcceptDareScreen() {
       eyebrow="Accept DARE"
       onBack={() => router.back()}
       title="Accept review."
-      subtitle="Accepting locks your stake and opens ready-up after confirmation."
+      subtitle={isTask ? 'Task-Based acceptance reserves your performer slot without locking a performer stake.' : 'Accepting locks your challenger stake and opens ready-up after confirmation.'}
     >
       {(source === 'mock' || data.source === 'mock') && !meError ? (
         <InlineAlert
@@ -112,11 +116,23 @@ export default function AcceptDareScreen() {
         </View>
       </View>
 
-      <EscrowBreakdown platformFeeKobo={platformFeeKobo} stakeKobo={dare.stakeKobo} />
+      <EscrowBreakdown
+        platformFeeKobo={platformFeeKobo}
+        stakeKobo={challengerStakeKobo}
+        stakeLabel={isTask ? 'Performer stake' : 'Challenger stake'}
+        title={isTask ? 'Task-Based acceptance' : 'Challenger escrow'}
+        totalKobo={isTask ? 0 : challengerStakeKobo + platformFeeKobo}
+        totalLabel={isTask ? 'Total to lock from you' : 'Total to lock'}
+      />
 
       <View style={styles.checkPanel}>
         <Text style={styles.panelTitle}>Acceptance checks</Text>
-        <CheckLine label="Escrow" value="Stake and fee reserved after confirmation" />
+        <CheckLine
+          label="Escrow"
+          value={isTask
+            ? `No performer stake is locked. The Darer reward is ${formatNgnFromKobo(rewardKobo)}.`
+            : 'Challenger stake and fee reserved after confirmation'}
+        />
         <CheckLine label="KYC" value="Tier and limits checked before ready-up" />
         <CheckLine label="Rules" value={`${dare.resolution} resolution with dispute window`} />
       </View>
@@ -170,9 +186,11 @@ export default function AcceptDareScreen() {
       pathname: `/dare/${currentDare.id}/accept-receipt`,
       params: {
         courtSessionId: result.data.courtSessionId,
-        reference: result.data.challengerEscrowHoldId,
-        stakeAmount: String(result.data.stakeAmount),
-        status: result.data.status,
+        dareType: result.data.dareType,
+        reference: result.data.challengerEscrowHoldId ?? result.data.courtSessionId,
+          rewardAmount: String(result.data.rewardAmount),
+          stakeAmount: String(result.data.stakeAmount),
+          status: result.data.status,
       },
     });
   }

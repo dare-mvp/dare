@@ -12,17 +12,24 @@ import { colors, fonts, radius, spacing, typography } from '../../src/theme/toke
 
 export default function CourtResultScreen() {
   const router = useRouter();
-  const { dareId, scoreA, scoreB, status } = useLocalSearchParams<{
+  const { claimState, dareId, scoreA, scoreB, status, winnerId } = useLocalSearchParams<{
+    claimState?: string;
     dareId?: string;
     scoreA?: string;
     scoreB?: string;
     status?: string;
+    winnerId?: string;
   }>();
   const court = useActiveCourtSession(dareId);
   const session = court.session ?? activeCourtSession;
   const nextScoreA = scoreA ? Number.parseInt(scoreA, 10) : session.playerA.score;
   const nextScoreB = scoreB ? Number.parseInt(scoreB, 10) : session.playerB.score;
-  const winner = nextScoreA >= nextScoreB ? session.playerA.name : session.playerB.name;
+  const serverCompleted = status === 'completed' || status === 'settled';
+  const resultTitle = serverCompleted
+    ? 'Server result recorded'
+    : claimState
+      ? formatClaimState(claimState)
+      : 'Awaiting final result';
 
   return (
     <CourtFlowFrame
@@ -34,7 +41,7 @@ export default function CourtResultScreen() {
       <View style={styles.hero}>
         <Trophy color={colors.warning} size={34} />
         <StatusBadge label={(status ?? 'RESULT').toUpperCase()} tone="success" />
-        <Text style={styles.title}>{winner} wins the court</Text>
+        <Text style={styles.title}>{resultTitle}</Text>
         <Text style={styles.body}>Score {nextScoreA} - {nextScoreB}</Text>
         <View style={styles.revealChip}>
           <Sparkles color={colors.success} size={14} />
@@ -43,8 +50,8 @@ export default function CourtResultScreen() {
       </View>
 
       <View style={styles.panel}>
-        <ResultLine label="Winner" value={winner} />
-        <ResultLine label="Opponent" value={session.playerB.name} />
+        <ResultLine label="Winner" value={winnerId ? 'Confirmed by server' : 'Pending server confirmation'} />
+        <ResultLine label="Resolution" value={formatResolution(session.resolutionType)} />
         <View style={styles.moneyLine}>
           <Text style={styles.label}>Pot</Text>
           <MoneyAmount amountKobo={session.potKobo} tone="locked" />
@@ -75,6 +82,19 @@ export default function CourtResultScreen() {
       </View>
     </CourtFlowFrame>
   );
+}
+
+function formatClaimState(value: string) {
+  if (value === 'agreed') return 'Claims agreed';
+  if (value === 'conflicted') return 'Claims conflict';
+  if (value === 'dispute_requested') return 'Dispute requested';
+  return 'Claim recorded';
+}
+
+function formatResolution(value: typeof activeCourtSession.resolutionType) {
+  if (value === 'answer_key') return 'Answer Key';
+  if (value === 'witnessed') return 'Witnessed';
+  return 'Evidence';
 }
 
 function ResultLine({ label, value }: { label: string; value: string }) {

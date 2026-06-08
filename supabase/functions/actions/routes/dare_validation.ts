@@ -16,16 +16,27 @@ const CATEGORIES = [
   "creative",
   "other",
 ] as const;
+const RESOLUTION_TYPES = [
+  "answer_key",
+  "witnessed",
+  "evidence",
+] as const;
+const DARE_TYPES = ["skill", "task"] as const;
 
 export type CreateDarePayload = {
   title: string;
   description?: string;
   category: typeof CATEGORIES[number];
+  dareType: typeof DARE_TYPES[number];
+  resolutionType: typeof RESOLUTION_TYPES[number];
   stakeAmount: number;
+  rewardAmount?: number;
   currency: typeof CURRENCIES[number];
   durationSeconds: number;
   targetUsername?: string | null;
   constitution: {
+    answerKey?: string | null;
+    answerKeyRules?: string | null;
     test: string;
     rules: string;
     proofMethod?: string | null;
@@ -44,6 +55,48 @@ export function validateCreateDarePayload(value: unknown): CreateDarePayload {
     "payload.targetUsername",
   );
 
+  const dareType = payload.dareType === undefined
+    ? "skill"
+    : assertOneOf(payload.dareType, DARE_TYPES, "payload.dareType");
+  const stakeAmount = assertInteger(payload.stakeAmount ?? 0, "payload.stakeAmount", {
+    min: 0,
+    max: 5_000_000,
+  });
+  const rewardAmount = payload.rewardAmount === undefined
+    ? 0
+    : assertInteger(payload.rewardAmount, "payload.rewardAmount", {
+      min: 0,
+      max: 5_000_000,
+    });
+
+  if (dareType === "skill" && stakeAmount < 1_000) {
+    throw validationError("payload.stakeAmount", "must be at least 1000 kobo for Skill-Based DAREs");
+  }
+
+  if (dareType === "task" && rewardAmount < 1_000) {
+    throw validationError("payload.rewardAmount", "must be at least 1000 kobo for Task-Based DAREs");
+  }
+
+  const resolutionType = payload.resolutionType === undefined
+    ? "answer_key"
+    : assertOneOf(
+      payload.resolutionType,
+      RESOLUTION_TYPES,
+      "payload.resolutionType",
+    );
+  const answerKey = nullableString(
+    constitution.answerKey,
+    "payload.constitution.answerKey",
+    1000,
+  );
+
+  if (resolutionType === "answer_key" && !answerKey) {
+    throw validationError(
+      "payload.constitution.answerKey",
+      "is required for Answer Key DAREs",
+    );
+  }
+
   return {
     title: assertString(payload.title, "payload.title", { min: 5, max: 140 }),
     description: assertOptionalString(
@@ -55,10 +108,10 @@ export function validateCreateDarePayload(value: unknown): CreateDarePayload {
       },
     ),
     category: assertOneOf(payload.category, CATEGORIES, "payload.category"),
-    stakeAmount: assertInteger(payload.stakeAmount, "payload.stakeAmount", {
-      min: 1_000,
-      max: 5_000_000,
-    }),
+    dareType,
+    resolutionType,
+    stakeAmount: dareType === "skill" ? stakeAmount : 0,
+    rewardAmount: dareType === "task" ? rewardAmount : 0,
     currency: assertOneOf(payload.currency, CURRENCIES, "payload.currency"),
     durationSeconds: assertInteger(
       payload.durationSeconds,
@@ -67,6 +120,12 @@ export function validateCreateDarePayload(value: unknown): CreateDarePayload {
     ),
     targetUsername,
     constitution: {
+      answerKey,
+      answerKeyRules: nullableString(
+        constitution.answerKeyRules,
+        "payload.constitution.answerKeyRules",
+        1000,
+      ),
       test: assertString(constitution.test, "payload.constitution.test", {
         min: 5,
         max: 1000,

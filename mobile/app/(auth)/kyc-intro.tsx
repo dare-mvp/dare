@@ -13,6 +13,7 @@ export default function KycIntroScreen() {
   return (
     <AuthFrame
       eyebrow="KYC"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/profile-setup'))}
       title="Verify before higher stakes."
       subtitle="Identity checks protect withdrawals, court ready-up, and responsible gaming limits."
     >

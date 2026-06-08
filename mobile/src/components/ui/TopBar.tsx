@@ -7,13 +7,23 @@ import { colors, fonts, radius, spacing, typography } from '../../theme/tokens';
 
 type TopBarProps = {
   balanceLabel: string;
+  createAccessibilityLabel?: string;
   displayInitial: string;
+  onCreatePress?: () => void;
   subtitle: string;
   title: string;
 };
 
-export function TopBar({ balanceLabel, displayInitial, subtitle, title }: TopBarProps) {
+export function TopBar({
+  balanceLabel,
+  createAccessibilityLabel = 'Issue a DARE',
+  displayInitial,
+  onCreatePress,
+  subtitle,
+  title,
+}: TopBarProps) {
   const router = useRouter();
+  const handleCreatePress = onCreatePress ?? (() => router.push('/(tabs)/create'));
 
   return (
     <View style={styles.container}>
@@ -36,9 +46,9 @@ export function TopBar({ balanceLabel, displayInitial, subtitle, title }: TopBar
             <View style={styles.dot} />
           </Pressable>
           <Pressable
-            accessibilityLabel="Issue a DARE"
+            accessibilityLabel={createAccessibilityLabel}
             accessibilityRole="button"
-            onPress={() => router.push('/(tabs)/create')}
+            onPress={handleCreatePress}
             style={styles.iconButton}
           >
             <Plus color={colors.textMuted} size={17} />

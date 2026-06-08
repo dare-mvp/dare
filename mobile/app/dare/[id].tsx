@@ -32,9 +32,13 @@ export default function DareDetailScreen() {
     );
   }
 
-  const platformFeeKobo = Math.round(dare.stakeKobo * platformFeeRate);
-  const escrowRequiredKobo = dare.stakeKobo + platformFeeKobo;
-  const projectedPotKobo = dare.stakeKobo * 2;
+  const isTask = dare.dareType === 'task';
+  const fundingModel = formatFundingModel(dare.fundingModel, isTask);
+  const rewardKobo = dare.rewardKobo ?? 0;
+  const acceptStakeKobo = isTask ? 0 : dare.stakeKobo;
+  const platformFeeKobo = Math.round(acceptStakeKobo * platformFeeRate);
+  const escrowRequiredKobo = acceptStakeKobo + platformFeeKobo;
+  const projectedPotKobo = isTask ? rewardKobo : dare.stakeKobo * 2;
   const canAccept = dare.status === 'open' && data.capabilities.canAcceptDare;
 
   return (
@@ -74,11 +78,11 @@ export default function DareDetailScreen() {
           <Text style={styles.title}>{dare.title}</Text>
           <View style={styles.potRow}>
             <View>
-              <Text style={styles.label}>Stake</Text>
-              <MoneyAmount amountKobo={dare.stakeKobo} tone="locked" />
+              <Text style={styles.label}>{isTask ? 'Reward' : 'Stake'}</Text>
+              <MoneyAmount amountKobo={isTask ? rewardKobo : dare.stakeKobo} tone="locked" />
             </View>
             <View style={styles.rightText}>
-              <Text style={styles.label}>Projected pot</Text>
+              <Text style={styles.label}>{isTask ? 'Performer stake' : 'Projected pot'}</Text>
               <MoneyAmount amountKobo={projectedPotKobo} tone="pending" />
             </View>
           </View>
@@ -97,28 +101,42 @@ export default function DareDetailScreen() {
           <PlayerBlock
             alignRight
             accentColor={dare.playerB ? colors.info : colors.surfaceElevated}
-            meta={dare.playerB ? `${dare.playerB.tier} - ${dare.playerB.trustScore} pts` : 'Awaiting challenger'}
+            meta={dare.playerB ? `${dare.playerB.tier} - ${dare.playerB.trustScore} pts` : isTask ? 'Awaiting performer' : 'Awaiting challenger'}
             name={dare.playerB?.name ?? 'You'}
-            role={dare.playerB ? 'Challenger' : 'Your slot'}
+            role={dare.playerB ? (isTask ? 'Performer' : 'Challenger') : 'Your slot'}
           />
         </View>
 
         <View style={styles.section}>
           <SectionTitle icon={<ShieldCheck color={colors.primary} size={18} />} title="Constitution" />
+          <DetailRow label="DARE type" value={isTask ? 'Task-Based' : 'Skill-Based'} />
+          <DetailRow label="Funding" value={fundingModel} />
           <DetailRow label="Resolution" value={dare.resolution} />
           <DetailRow label="Created" value={dare.createdAgo} />
           <DetailRow
             label="Rules"
-            value="Both players enter court mode. The challenge is scored automatically. Settlement remains pending until confirmation."
+            value={isTask
+              ? 'The performer completes the task for the Darer-funded reward. No performer stake is locked.'
+              : 'Both players enter court mode with matched stakes. Settlement remains pending until confirmation.'}
           />
           <DetailRow label="Dispute window" value="A dispute may be opened after the result if either player files a valid dispute." />
         </View>
 
         <View style={styles.section}>
           <SectionTitle icon={<LockKeyhole color={colors.warning} size={18} />} title="Escrow review" />
-          <MoneyLine label="Your stake" value={dare.stakeKobo} />
-          <MoneyLine label="Platform fee estimate" value={platformFeeKobo} />
-          <MoneyLine emphasis label="Escrow required" value={escrowRequiredKobo} />
+          {isTask ? (
+            <>
+              <MoneyLine label="Darer reward" value={rewardKobo} />
+              <MoneyLine label="Your performer stake" value={0} />
+              <MoneyLine emphasis label="Escrow required from you" value={0} />
+            </>
+          ) : (
+            <>
+              <MoneyLine label="Your stake" value={dare.stakeKobo} />
+              <MoneyLine label="Platform fee estimate" value={platformFeeKobo} />
+              <MoneyLine emphasis label="Escrow required" value={escrowRequiredKobo} />
+            </>
+          )}
         </View>
 
         <InlineAlert
@@ -129,8 +147,10 @@ export default function DareDetailScreen() {
 
         <InlineAlert
           tone="info"
-          title="KYC and limits checked before ready-up"
-          message="If this stake exceeds your tier or responsible gaming limit, you will need to lower the stake or update your account before ready-up."
+          title={isTask ? 'Task-Based acceptance' : 'KYC and limits checked before ready-up'}
+          message={isTask
+            ? 'Task-Based DAREs do not lock performer stake. KYC and account eligibility are still checked before ready-up.'
+            : 'If this stake exceeds your tier or responsible gaming limit, you will need to lower the stake or update your account before ready-up.'}
         />
 
         <View style={styles.actions}>
@@ -149,6 +169,15 @@ export default function DareDetailScreen() {
       </ScrollView>
     </Screen>
   );
+}
+
+function formatFundingModel(
+  fundingModel: NonNullable<ReturnType<typeof useDareDetail>['dare']>['fundingModel'],
+  isTask: boolean,
+) {
+  if (fundingModel === 'darer_reward') return 'Darer Reward';
+  if (fundingModel === 'two_sided_stake') return 'Two-Sided Stake';
+  return isTask ? 'Darer Reward' : 'Two-Sided Stake';
 }
 
 function DetailHeader({ onBack, title }: { onBack: () => void; title: string }) {

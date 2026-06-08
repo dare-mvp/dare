@@ -21,11 +21,11 @@ export function useJurySummary(): JurySummaryState {
   const auth = useAuth();
   const { data } = useMe();
   const [state, setState] = useState<JurySummaryState>(() => ({
-    ...jurySummary,
-    categories: data.profile.juryCategories,
+    ...(auth.status === 'authenticated' || auth.status === 'loading' ? emptyJurySummary : jurySummary),
+    categories: auth.status === 'authenticated' || auth.status === 'loading' ? [] : data.profile.juryCategories,
     error: null,
-    loading: false,
-    source: 'mock',
+    loading: auth.status === 'loading',
+    source: auth.status === 'authenticated' || auth.status === 'loading' ? 'server' : 'mock',
   }));
 
   useEffect(() => {
@@ -63,12 +63,12 @@ export function useJurySummary(): JurySummaryState {
       const error = activeResult.error || completedResult.error ? getLoadUserMessage('jury activity') : null;
       if (error) {
         setState({
-          ...jurySummary,
+          ...emptyJurySummary,
           categories: data.profile.juryCategories,
           eligibility: data.capabilities.canJury ? 'Eligible' : 'Locked',
           error,
           loading: false,
-          source: 'mock',
+          source: 'server',
         });
         return;
       }
@@ -95,3 +95,11 @@ export function useJurySummary(): JurySummaryState {
 
   return state;
 }
+
+const emptyJurySummary = {
+  activeAssignments: 0,
+  categories: [],
+  completedVotes: 0,
+  eligibility: 'Locked',
+  trustEarned: 0,
+};

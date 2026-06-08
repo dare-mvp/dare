@@ -4,7 +4,7 @@
 
 This document converts `UI_UX Research for Gamified P2P App.md` into a buildable mobile UI/UX plan for the first DARE mobile app.
 
-The research document remains the product inspiration layer. This spec is the implementation layer: it defines what to build first, which screens exist, how they behave, which backend contracts they call, and which research ideas are deferred.
+The research document remains the product inspiration layer. This spec is the implementation layer: it defines what to build first, which screens exist, how they behave, which backend contracts they call, and which research ideas are outside MVP.
 
 ## Product Principle
 
@@ -40,9 +40,10 @@ Full specification: [`docs/13-directional-ux-principles.md`](13-directional-ux-p
 - Authentication, age gate, profile setup, and KYC status.
 - Wallet with deposit, withdrawal request, balances, escrow, pending withdrawals, and transaction history.
 - Feed for open and live DAREs.
-- Create Algorithmic DARE flow.
+- Create creator-authored DARE flow.
+- Skill-Based and Task-Based DARE funding models.
 - Accept DARE flow with escrow and fee transparency.
-- Court ready-up, countdown, quiz play, heartbeat/reconnect, result, and settlement status.
+- Court ready-up, countdown, live challenge/proof flow, heartbeat/reconnect, result, and settlement status.
 - Notifications.
 - Responsible gaming limits, cooling-off, and self-exclusion.
 - Dispute filing and evidence upload.
@@ -53,7 +54,7 @@ Full specification: [`docs/13-directional-ux-principles.md`](13-directional-ux-p
 
 - Production USSD gateway.
 - Physical DAREs and what3words challenge boundaries.
-- Copy betting / replicate wager economy.
+- Replicate DARE economy.
 - Spectator prediction-market mechanics.
 - Token-staked jury selection.
 - Full public spectator economy.
@@ -83,13 +84,13 @@ Secondary surfaces:
 - Settings
 - Support
 
-Admin and risk operations should remain outside the consumer app for MVP.
+Admin and risk operations remain outside the consumer app for MVP.
 
 ## Visual System
 
 ### Design Direction
 
-The visual language should feel like a regulated fintech product with competitive game energy, not like a generic betting site.
+The visual language is a regulated fintech product with competitive game energy, not a generic betting site.
 
 Use:
 
@@ -282,8 +283,9 @@ DARE card must show:
 
 - title
 - category
-- stake
-- expected winner payout when applicable
+- DARE type: Skill-Based or Task-Based
+- stake or reward
+- expected settlement payout when applicable
 - issuer trust score
 - status
 - time remaining or created time
@@ -309,6 +311,7 @@ States:
 Acceptance criteria:
 
 - No DARE card allows accepting without showing stake and fee implications.
+- Task-Based DARE cards clearly show that the Darer funds the reward and the performer does not stake.
 - Feed does not show restricted users actions they cannot complete.
 - Stale feed clearly says when data was last updated.
 
@@ -328,10 +331,11 @@ Required sections:
 
 - immutable constitution summary
 - issuer profile/trust
-- stake and currency
+- DARE type
+- stake or reward and currency
 - platform fee
 - amount to be locked
-- expected winner payout
+- expected settlement payout
 - dispute window summary
 - accept button
 
@@ -354,6 +358,7 @@ States:
 Acceptance criteria:
 
 - User must see the exact escrow amount before accepting.
+- Task-Based accept flow must show `Your stake: NGN 0` and the reward escrow funded by the Darer.
 - Accept button is disabled until current capability checks are loaded.
 - Replayed accept idempotency returns the original receipt.
 
@@ -365,22 +370,25 @@ Route:
 
 Flow:
 
-1. Type and category
+1. DARE type, category, and resolution
 2. Challenge definition
 3. Proof and duration
-4. Stake and payout
+4. Stake/reward and payout
 5. Rules and edge cases
 6. Review and create
 
 MVP restriction:
 
-- Algorithmic DARE only.
-- Physical/evidence categories can appear as disabled future categories only if product wants to signal roadmap.
+- Platform-authored challenge DAREs are not the production direction.
+- MVP supports creator-authored Court DAREs.
+- MVP supports Skill-Based DAREs where both participants stake and Task-Based DAREs where only the Darer funds the reward.
+- Objective knowledge-style DAREs can use a committed answer key.
+- Subjective/live tasks require witnessed/evidence/jury review paths.
 
 Required behavior:
 
 - Validate each step before advancing.
-- Keep a sticky escrow/payout preview from stake step onward.
+- Keep a sticky escrow/payout preview from stake/reward step onward.
 - Preserve draft locally until submitted or discarded.
 - Warn before abandoning a non-empty draft.
 - Require idempotency key on final create.
@@ -405,6 +413,7 @@ States:
 Acceptance criteria:
 
 - User cannot create with invalid category, zero stake, missing rules, or insufficient balance.
+- Task-Based DARE creation cannot proceed with a zero reward or unclear completion rule.
 - Review screen repeats all money values and rules before submit.
 - Server errors map to typed messages, not generic failure text.
 
@@ -421,13 +430,13 @@ Routes:
 
 Purpose:
 
-- Provide the active challenge arena with server-authoritative timing and scoring.
+- Provide the active challenge arena with server-authoritative timing, presence, proof, and result capture.
 
 Persistent elements:
 
 - DARE title
 - server timer
-- player A/B score cards
+- participant A/B cards
 - connection status
 - constitution drawer
 - current required action
@@ -436,19 +445,19 @@ Backend:
 
 - `GET /court state`
 - `POST /dares/{id}/ready`
-- `POST /dares/{id}/answers`
+- answer-key, witness, evidence, or result-claim action routes per [`16-dare-resolution-model.md`](16-dare-resolution-model.md)
 - `POST /court/{dareId}/heartbeat`
-- realtime `court_started`, `score_updated`, `court_completed`
+- realtime `court_started`, `court_event_created`, `witness_vote_cast`, `court_completed`
 
 States:
 
 - no active DARE
-- waiting for opponent
+- waiting for participant
 - ready check
 - countdown
-- active question
-- answer submitted
-- answer locked
+- active challenge
+- answer/proof submitted
+- answer/proof locked
 - reconnecting
 - heartbeat stale
 - completed
@@ -458,16 +467,16 @@ States:
 
 Interaction rules:
 
-- Timer and answer controls must stay visible.
+- Timer and current required action must stay visible.
 - Chat, spectator sentiment, and secondary content must never block the player action.
-- Client may animate answer selection, but server result is final.
+- Client animates local selection/proof capture, but server result or verdict is final.
 - If realtime disconnects, app falls back to polling and shows `Reconnecting`.
 - If heartbeat fails repeatedly, show an explicit risk of forfeit.
 
 Acceptance criteria:
 
-- User can ready up, play rounds, and reach result without leaving the Court.
-- App never computes or trusts final score locally.
+- User can ready up, complete the creator-authored Court flow, and reach result/dispute status without leaving the Court.
+- App never computes or trusts final winner locally.
 - Reconnect banner appears within one failed heartbeat interval.
 
 ### 6. Wallet
@@ -742,7 +751,7 @@ Acceptance criteria:
 
 Deliverables:
 
-- Confirm MVP excludes USSD, what3words, copy betting, and physical DAREs.
+- Confirm MVP excludes USSD, what3words, Replicate DARE, and physical DAREs.
 - Confirm mobile platform stack.
 - Confirm design token names and accessibility floor.
 - Confirm first-market regulatory copy for KYC and responsible gaming.
@@ -800,8 +809,9 @@ Deliverables:
 
 Exit criteria:
 
-- User can create an Algorithmic DARE with escrow preview.
+- User can create a creator-authored DARE with escrow preview.
 - Another eligible user can accept after seeing exact escrow and payout terms.
+- Task-Based acceptance does not require performer escrow and still shows reward, fees, proof requirements, and dispute rules.
 - Insufficient funds, KYC, limit, and invalid-state errors are handled with clear UI.
 
 ### Phase 4: Court And Result Loop
@@ -811,14 +821,16 @@ Deliverables:
 - Court active-state routing.
 - Ready-up flow.
 - Countdown.
-- Quiz answer UI.
+- Creator-authored challenge/proof UI.
+- Answer-key result capture where applicable.
+- Witness/audience signal capture where applicable.
 - Heartbeat and reconnect banner.
 - Result and settlement status.
 
 Exit criteria:
 
-- Two participants can ready up and complete a server-scored DARE.
-- Client never computes final score or winner.
+- Two participants can ready up and complete a creator-authored DARE.
+- Client never computes final winner or settlement.
 - Reconnect and stale heartbeat states are visible.
 
 ### Phase 5: Disputes, Evidence, Jury, Notifications
@@ -901,6 +913,8 @@ Track these product events without logging secrets or sensitive document data:
 - `dare_accepted`
 - `court_ready_submitted`
 - `court_answer_submitted`
+- `court_proof_submitted`
+- `court_witness_vote_submitted`
 - `court_reconnect_shown`
 - `court_completed_seen`
 - `settlement_seen`
@@ -927,6 +941,7 @@ Never include:
 
 - Money formatting.
 - Escrow breakdown calculations for display only.
+- Skill-Based versus Task-Based escrow display rules.
 - Error mapping.
 - Idempotency key generation.
 - DARE create validation.
@@ -987,4 +1002,3 @@ A screen is done only when:
 - It works at small mobile widths.
 - It has tests for core interaction logic.
 - It has reviewed copy for money, KYC, and irreversible actions.
-

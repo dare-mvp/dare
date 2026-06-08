@@ -5,22 +5,22 @@ import { NavMenu } from '@/components/marketing/nav-menu';
 
 export const metadata: Metadata = {
   title: {
-    default: 'DARE - Challenge. Wager. Win.',
+    default: 'DARE - Skill Challenges and Task Rewards',
     template: '%s | DARE',
   },
   description:
-    'DARE is a hyper-local P2P social wagering platform. Challenge friends, wager on your skills, and win.',
+    'DARE is a hyper-local platform for user-authored Skill-Based DAREs and Task-Based rewards with escrow-backed, proof-led settlement.',
   openGraph: {
-    title: 'DARE - Challenge. Wager. Win.',
+    title: 'DARE - Skill Challenges and Task Rewards',
     description:
-      'DARE is a hyper-local P2P social wagering platform. Challenge friends, wager on your skills, and win.',
+      'Create user-authored Skill-Based and Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'DARE - Challenge. Wager. Win.',
-    description: 'DARE is a hyper-local P2P social wagering platform.',
+    title: 'DARE - Skill Challenges and Task Rewards',
+    description: 'User-authored Skill-Based DAREs and Task-Based rewards with escrow-backed settlement.',
     images: ['/og-image.png'],
   },
 };
@@ -43,18 +43,18 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <a
+            <Link
               href="/#waitlist"
               className="inline-flex h-9 items-center rounded-lg bg-brand-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Download APK
-            </a>
-            <a
+            </Link>
+            <Link
               href="/#waitlist"
               className="inline-flex h-9 items-center rounded-lg border border-white/15 bg-white/5 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-white/10"
             >
               iOS TestFlight
-            </a>
+            </Link>
           </div>
         </div>
       </header>
