@@ -82,6 +82,9 @@ export const createScreenStyles = StyleSheet.create({
   rulesInput: {
     minHeight: 110,
   },
+  descriptionInput: {
+    minHeight: 120,
+  },
 });
 
 export function getCreateGate(data: ReturnType<typeof useMe>['data']) {

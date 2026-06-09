@@ -73,7 +73,7 @@ export function matchesFeedFilter(item: DareFeedItem, filter: FeedFilter) {
   if (filter === 'All') return true;
   if (filter === 'Live Now') return item.status === 'live' || item.status === 'active';
   if (filter === 'Open') return item.status === 'open';
-  if (filter === 'Upcoming') return item.status === 'open';
+  if (filter === 'Upcoming') return item.status === 'open' || item.status === 'live';
   if (filter === 'History') return item.status === 'completed' || item.status === 'disputed';
   return item.category.toLowerCase() === filter.toLowerCase();
 }

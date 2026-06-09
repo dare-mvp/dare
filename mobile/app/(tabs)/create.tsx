@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FileText, ScrollText, ShieldCheck, UserRound } from 'lucide-react-native';
+import { FileText, ListChecks, ScrollText, ShieldCheck, UserRound } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
@@ -40,6 +40,7 @@ export default function CreateScreen() {
   const visibleErrors = {
     answerKey: draft.answerKey ? validation.errors.answerKey : undefined,
     answerKeyRules: draft.answerKeyRules ? validation.errors.answerKeyRules : undefined,
+    description: draft.description ? validation.errors.description : undefined,
     opponent: draft.opponent ? validation.errors.opponent : undefined,
     rewardNaira: draft.rewardNaira ? validation.errors.rewardNaira ?? stakeAvailabilityError ?? undefined : undefined,
     rules: draft.rules ? validation.errors.rules : undefined,
@@ -136,6 +137,19 @@ export default function CreateScreen() {
             onChangeText={(value) => updateDraft('title', value)}
             placeholder="e.g. Beat my fintech trivia score"
             value={draft.title}
+          />
+          <TextField
+            error={visibleErrors.description}
+            label={draft.dareType === 'task' ? 'Task description' : 'DARE description'}
+            leftIcon={<ListChecks color={colors.textMuted} size={16} />}
+            multiline
+            onChangeText={(value) => updateDraft('description', value)}
+            placeholder={draft.dareType === 'task'
+              ? 'finish the exact task the performer must complete.'
+              : 'Describe the challenge both players are agreeing to.'}
+            style={styles.descriptionInput}
+            textAlignVertical="top"
+            value={draft.description}
           />
           <TextField
             error={visibleErrors.rules}

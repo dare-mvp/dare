@@ -53,6 +53,33 @@ export type CourtJuryCaseSummary = {
   votesNeeded: number;
 };
 
+export type CourtLivePresenceState = 'live' | 'waiting' | 'reconnecting';
+
+export type CourtLiveParticipant = {
+  isYou?: boolean;
+  label: string;
+  role: 'issuer' | 'challenger' | 'performer';
+  state: CourtLivePresenceState;
+};
+
+export type CourtLiveRoom = {
+  audienceCount: number;
+  audienceState: 'watching' | 'waiting' | 'closed';
+  canEnter: boolean;
+  participants: [CourtLiveParticipant, CourtLiveParticipant];
+  providerLabel: string;
+  recording: {
+    active: boolean;
+    label: string;
+    required: boolean;
+  };
+  requirementLabel: string;
+  requirementMet: boolean;
+  roomId: string | null;
+  status: 'initializing' | 'live' | 'reconnecting' | 'closed';
+  viewerJoined: boolean;
+};
+
 export type CourtSession = {
   challengeType: string;
   connectionState: 'connected' | 'reconnecting' | 'offline';
@@ -61,6 +88,7 @@ export type CourtSession = {
   evidence: CourtEvidenceSummary;
   heartbeatAgeSeconds: number;
   juryCase: CourtJuryCaseSummary | null;
+  liveRoom: CourtLiveRoom;
   phase: 'ready' | 'countdown' | 'active' | 'awaiting_result' | 'disputed' | 'settlement_pending' | 'settled';
   playerA: CourtPlayer;
   playerB: CourtPlayer;

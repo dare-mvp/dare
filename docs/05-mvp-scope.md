@@ -58,7 +58,7 @@ The old platform-authored challenge model is not the product direction. See [`16
 - Escrow hold for the Darer's reward on Task-Based DAREs
 - Ready-up flow
 - Server-authoritative match start
-- Live Court with timer, presence, proof, and result capture
+- Live Court with LiveKit Cloud video, timer, presence, proof, recording, and result capture
 - Result screen
 - Settlement
 - Notifications
@@ -107,7 +107,9 @@ As a verified performer, I can accept a Task-Based DARE without staking my own f
 
 ### Play
 
-As a player, I can enter the Court, ready up, perform or answer according to the creator-authored constitution, and see the server-confirmed result path.
+As a player, I can enter the LiveKit-powered Court, ready up, perform or answer according to the creator-authored constitution, and see the server-confirmed result path.
+
+As an eligible spectator, I can watch a live Court without being able to alter escrow, settlement, or participant-only result claims.
 
 ### Settle
 
@@ -163,7 +165,7 @@ As an admin, I can inspect disputed DAREs, ledger events, and user history.
 4. Mobile app shell and auth.
 5. Wallet deposit and transaction history.
 6. DARE create/accept/escrow.
-7. Court presence, proof, answer-key/witnessed result capture.
+7. LiveKit Cloud Court video, presence, proof, answer-key/witnessed result capture.
 8. Settlement and notifications.
 9. Dispute queue and admin review.
 10. Closed beta with capped stakes.

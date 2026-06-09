@@ -13,6 +13,7 @@ type AuthOperationResult =
       message?: string;
       needsEmailConfirmation?: boolean;
       ok: true;
+      passwordRecovery?: boolean;
     }
   | {
       message: string;
@@ -22,6 +23,7 @@ type AuthOperationResult =
 type AuthContextValue = {
   completeEmailConfirmation: (url: string) => Promise<AuthOperationResult>;
   isBackendConfigured: boolean;
+  requestPasswordReset: (email: string) => Promise<AuthOperationResult>;
   session: Session | null;
   signInWithPassword: (email: string, password: string) => Promise<AuthOperationResult>;
   signOut: () => Promise<AuthOperationResult>;
@@ -31,12 +33,14 @@ type AuthContextValue = {
     password: string;
   }) => Promise<AuthOperationResult>;
   status: AuthStatus;
+  updatePassword: (password: string) => Promise<AuthOperationResult>;
   user: User | null;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_REQUEST_TIMEOUT_MS = 20000;
 const AUTH_CALLBACK_PATH = '/auth/callback';
+const PASSWORD_RECOVERY_FLOW = 'password-recovery';
 
 function authRequestTimeout() {
   return new Promise<never>((_, reject) => {
@@ -60,8 +64,35 @@ function getAuthErrorMessage(error: unknown) {
   return getAuthUserMessage(Number.isFinite(status) ? status : undefined, code);
 }
 
+function getPasswordResetErrorMessage(error: unknown) {
+  const status = typeof error === 'object' && error !== null && 'status' in error
+    ? Number((error as { status?: unknown }).status)
+    : undefined;
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : undefined;
+
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit' || status === 429) {
+    return 'Too many reset attempts. Wait a few minutes and try again.';
+  }
+
+  if (status && status >= 500) {
+    return 'Password reset email could not be sent right now. Try again later.';
+  }
+
+  return getAuthUserMessage(Number.isFinite(status) ? status : undefined, code);
+}
+
 function getAuthCallbackUrl() {
   return Linking.createURL(AUTH_CALLBACK_PATH);
+}
+
+function getPasswordRecoveryCallbackUrl() {
+  return Linking.createURL(AUTH_CALLBACK_PATH, {
+    queryParams: {
+      flow: PASSWORD_RECOVERY_FLOW,
+    },
+  });
 }
 
 function getAuthUrlParams(url: string) {
@@ -127,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const params = getAuthUrlParams(url);
+        const isPasswordRecovery = params.get('flow') === PASSWORD_RECOVERY_FLOW || params.get('type') === 'recovery';
         const hasError = params.has('error') || params.has('error_code');
         if (hasError) {
           return { message: getAuthUserMessage(), ok: false };
@@ -139,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           setSession(data.session);
           setStatus(data.session ? 'authenticated' : 'unauthenticated');
-          return data.session ? { ok: true } : { message: getAuthUserMessage(), ok: false };
+          return data.session ? { ok: true, passwordRecovery: isPasswordRecovery } : { message: getAuthUserMessage(), ok: false };
         }
 
         const accessToken = params.get('access_token');
@@ -154,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           setSession(data.session);
           setStatus(data.session ? 'authenticated' : 'unauthenticated');
-          return data.session ? { ok: true } : { message: getAuthUserMessage(), ok: false };
+          return data.session ? { ok: true, passwordRecovery: isPasswordRecovery } : { message: getAuthUserMessage(), ok: false };
         }
 
         return { message: 'This confirmation link is invalid or expired.', ok: false };
@@ -163,6 +195,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     isBackendConfigured: backendConfig.isConfigured,
+    requestPasswordReset: async (email) => {
+      if (!supabaseClient) {
+        return { message: 'Password reset is not available right now.', ok: false };
+      }
+
+      try {
+        const { error } = await withAuthTimeout(supabaseClient.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: getPasswordRecoveryCallbackUrl(),
+        }));
+
+        if (error) return { message: getPasswordResetErrorMessage(error), ok: false };
+        return {
+          message: 'If that email has a DARE account, a reset link has been sent.',
+          ok: true,
+        };
+      } catch (error) {
+        return { message: getPasswordResetErrorMessage(error), ok: false };
+      }
+    },
     session,
     signInWithPassword: async (email, password) => {
       if (!supabaseClient) {
@@ -188,10 +239,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const { error } = await withAuthTimeout(supabaseClient.auth.signOut());
-        return error ? { message: getAuthErrorMessage(error), ok: false } : { ok: true };
+        const { error } = await withAuthTimeout(supabaseClient.auth.signOut({ scope: 'global' }));
+        if (error) {
+          const { error: localError } = await withAuthTimeout(supabaseClient.auth.signOut({ scope: 'local' }));
+          if (localError) return { message: getAuthErrorMessage(localError), ok: false };
+        }
+
+        setSession(null);
+        setStatus('unauthenticated');
+        return { ok: true };
       } catch (error) {
-        return { message: getAuthErrorMessage(error), ok: false };
+        try {
+          const { error: localError } = await withAuthTimeout(supabaseClient.auth.signOut({ scope: 'local' }));
+          if (localError) return { message: getAuthErrorMessage(localError), ok: false };
+          setSession(null);
+          setStatus('unauthenticated');
+          return { ok: true };
+        } catch {
+          return { message: getAuthErrorMessage(error), ok: false };
+        }
       }
     },
     signUpWithPassword: async ({ displayName, email, password }) => {
@@ -231,6 +297,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     status,
+    updatePassword: async (password) => {
+      if (!supabaseClient) {
+        return { message: 'Password update is not available right now.', ok: false };
+      }
+
+      try {
+        const { error } = await withAuthTimeout(supabaseClient.auth.updateUser({ password }));
+        return error ? { message: getAuthErrorMessage(error), ok: false } : { ok: true };
+      } catch (error) {
+        return { message: getAuthErrorMessage(error), ok: false };
+      }
+    },
     user: session?.user ?? null,
   }), [session, status]);
 

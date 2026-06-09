@@ -1,4 +1,5 @@
 import { CreditCard, Landmark, Medal } from 'lucide-react-native';
+import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MoneyAmount } from '../../../components/ui/MoneyAmount';
@@ -6,10 +7,22 @@ import { colors, fonts, radius, spacing, typography } from '../../../theme/token
 import { WalletSummary } from '../types';
 
 type WalletHeroProps = {
+  canDeposit?: boolean;
+  canWithdraw?: boolean;
+  onCoinsPress: () => void;
+  onDepositPress: () => void;
+  onWithdrawPress: () => void;
   summary: WalletSummary;
 };
 
-export function WalletHero({ summary }: WalletHeroProps) {
+export function WalletHero({
+  canDeposit = true,
+  canWithdraw = true,
+  onCoinsPress,
+  onDepositPress,
+  onWithdrawPress,
+  summary,
+}: WalletHeroProps) {
   return (
     <View style={styles.hero}>
       <View style={styles.top}>
@@ -29,17 +42,44 @@ export function WalletHero({ summary }: WalletHeroProps) {
       </Text>
 
       <View style={styles.actions}>
-        <WalletAction icon={<CreditCard color={colors.textSoft} size={18} />} label="Deposit" />
-        <WalletAction icon={<Landmark color={colors.textSoft} size={18} />} label="Withdraw" />
-        <WalletAction icon={<Medal color={colors.warning} size={18} />} label="Coins" />
+        <WalletAction
+          disabled={!canDeposit}
+          icon={<CreditCard color={colors.textSoft} size={18} />}
+          label="Deposit"
+          onPress={onDepositPress}
+        />
+        <WalletAction
+          disabled={!canWithdraw}
+          icon={<Landmark color={colors.textSoft} size={18} />}
+          label="Withdraw"
+          onPress={onWithdrawPress}
+        />
+        <WalletAction icon={<Medal color={colors.warning} size={18} />} label="Coins" onPress={onCoinsPress} />
       </View>
     </View>
   );
 }
 
-function WalletAction({ icon, label }: { icon: React.ReactNode; label: string }) {
+function WalletAction({
+  disabled = false,
+  icon,
+  label,
+  onPress,
+}: {
+  disabled?: boolean;
+  icon: ReactNode;
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: true }} disabled style={styles.action}>
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, disabled && styles.actionDisabled, pressed && !disabled && styles.actionPressed]}
+    >
       {icon}
       <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
@@ -113,7 +153,13 @@ const styles = StyleSheet.create({
     gap: spacing[6],
     minHeight: 62,
     justifyContent: 'center',
-    opacity: 0.72,
+  },
+  actionDisabled: {
+    opacity: 0.46,
+  },
+  actionPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.98 }],
   },
   actionLabel: {
     color: colors.textSoft,

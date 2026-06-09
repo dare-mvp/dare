@@ -6,8 +6,13 @@ import { CountdownTimer } from '../../src/components/ui/CountdownTimer';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
+import { CourtLiveRoomPanel } from '../../src/features/court/components/CourtLiveRoomPanel';
 import { CourtPhaseCard } from '../../src/features/court/components/CourtPhaseCard';
+import { canUseNativeLiveKit } from '../../src/features/court/liveKitRuntime';
+import { withCourtLiveRoom } from '../../src/features/court/liveRoom';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
+import { useLiveCourtPresence } from '../../src/features/court/useLiveCourtPresence';
+import { isUuid } from '../../src/lib/ids';
 
 export default function CourtCountdownScreen() {
   const router = useRouter();
@@ -17,11 +22,19 @@ export default function CourtCountdownScreen() {
   }>();
   const court = useActiveCourtSession(dareId);
   const [secondsRemaining, setSecondsRemaining] = useState(5);
-  const session = court.session
-    ? { ...court.session, phase: 'countdown' as const, timeRemainingSeconds: secondsRemaining }
+  const baseSession = court.session
+    ? withCourtLiveRoom({ ...court.session, phase: 'countdown' as const, timeRemainingSeconds: secondsRemaining })
     : null;
+  const resolvedDareId = isUuid(dareId) ? dareId : baseSession?.dareId;
+  const livePresence = useLiveCourtPresence({
+    dareId: resolvedDareId,
+    enabled: court.source === 'server' && Boolean(baseSession),
+    nativeVideoEnabled: canUseNativeLiveKit(),
+    phase: baseSession?.phase,
+    viewerRole: baseSession?.viewerRole,
+  });
+  const session = baseSession ? withCourtLiveRoom(baseSession, livePresence.liveState) : null;
   const hasSession = Boolean(session);
-  const resolvedDareId = dareId ?? session?.dareId;
 
   useEffect(() => {
     if (!hasSession) return;
@@ -70,6 +83,14 @@ export default function CourtCountdownScreen() {
         />
       ) : null}
 
+      {livePresence.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Live Court unavailable"
+          message={livePresence.error}
+        />
+      ) : null}
+
       {session ? (
         <>
           <CourtPhaseCard
@@ -80,6 +101,11 @@ export default function CourtCountdownScreen() {
           >
             <CountdownTimer label="Starting in" secondsRemaining={session.timeRemainingSeconds} />
           </CourtPhaseCard>
+          <CourtLiveRoomPanel
+            liveRoom={session.liveRoom}
+            liveState={livePresence.liveState}
+            onConnectionStatus={livePresence.recordConnectionStatus}
+          />
           <CourtArena session={session} />
         </>
       ) : (

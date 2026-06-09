@@ -1,16 +1,21 @@
 import { useRouter } from 'expo-router';
-import { Bell, LockKeyhole, Smartphone } from 'lucide-react-native';
+import { Bell, LockKeyhole, LogOut, Smartphone } from 'lucide-react-native';
+import { useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
+import { useAuth } from '../../src/features/auth/AuthProvider';
 import { useMe } from '../../src/features/me/useMe';
 import { ProfileFlowFrame } from '../../src/features/profile/components/ProfileFlowFrame';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const auth = useAuth();
   const { data, error, loading } = useMe();
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const settings = getSettings(data.capabilities);
 
   return (
@@ -33,6 +38,14 @@ export default function SettingsScreen() {
           tone="danger"
           title="Settings sync failed"
           message={error}
+        />
+      ) : null}
+
+      {signOutError ? (
+        <InlineAlert
+          tone="danger"
+          title="Sign out failed"
+          message={signOutError}
         />
       ) : null}
 
@@ -65,8 +78,32 @@ export default function SettingsScreen() {
         onPress={() => router.push('/profile/support')}
         variant="secondary"
       />
+      <ActionButton
+        accessibilityLabel="Sign out"
+        disabled={signingOut}
+        icon={<LogOut color={colors.text} size={17} />}
+        label={signingOut ? 'Signing out' : 'Sign out'}
+        onPress={() => {
+          void handleSignOut();
+        }}
+        variant="danger"
+      />
     </ProfileFlowFrame>
   );
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    setSignOutError(null);
+    const result = await auth.signOut();
+    setSigningOut(false);
+
+    if (!result.ok) {
+      setSignOutError(result.message);
+      return;
+    }
+
+    router.replace('/sign-in');
+  }
 }
 
 function getSettings(capabilities: {

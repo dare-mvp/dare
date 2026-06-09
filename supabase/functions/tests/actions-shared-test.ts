@@ -3,6 +3,12 @@ import { assert, assertEquals, assertRejects } from "@std/assert";
 import { ActionError } from "../actions/_shared/errors.ts";
 import { parseActionEnvelope } from "../actions/_shared/envelope.ts";
 import {
+  type LiveKitGateway,
+  type LiveKitRoomAccess,
+  type LiveKitRoomParams,
+  type LiveKitTokenParams,
+} from "../actions/_shared/livekit.ts";
+import {
   corsPreflightResponse,
   isAllowedCorsRequest,
   withCorsHeaders,
@@ -400,6 +406,7 @@ Deno.test("PATCH /profiles/me/jury rejects ineligible opt-in", async () => {
   state.profile.jury_opt_in = false;
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
     createServiceClient: () => fakeClient(state),
   });
 
@@ -430,6 +437,7 @@ Deno.test("PATCH /profiles/me/jury updates eligible jury preferences", async () 
   state.profile.jury_opt_in = false;
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
     createServiceClient: () => fakeClient(state),
   });
 
@@ -471,6 +479,7 @@ Deno.test("PATCH /notifications/{id}/read marks own notification read", async ()
   });
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
     createServiceClient: () => fakeClient(state),
   });
 
@@ -526,6 +535,7 @@ Deno.test("POST /notifications/read-all marks unread notifications", async () =>
   );
   const testHandler = createHandler({
     createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
     createServiceClient: () => fakeClient(state),
   });
 
@@ -1468,6 +1478,31 @@ Deno.test("accept quote distinguishes Skill stake from Task performer no-stake",
   assertEquals(taskQuote.fundingModel, "darer_reward");
 });
 
+Deno.test("accept quote blocks active Court commitments", () => {
+  const challengerId = "123e4567-e89b-12d3-a456-426614174000";
+  const quote = buildAcceptQuote(
+    {
+      challenger_id: null,
+      currency: "NGN",
+      dare_type: "skill",
+      funding_model: "two_sided_stake",
+      id: "623e4567-e89b-12d3-a456-426614174000",
+      issuer_id: "723e4567-e89b-12d3-a456-426614174000",
+      platform_fee: 5000,
+      resolution_type: "witnessed",
+      reward_amount: 0,
+      stake_amount: 50000,
+      status: "open",
+      winner_payout: 95000,
+    } satisfies AcceptQuoteDareRow,
+    challengerId,
+    true,
+  );
+
+  assertEquals(quote.canAccept, false);
+  assertEquals(quote.reasonCode, "ACTIVE_COURT_COMMITMENT");
+});
+
 Deno.test("POST /dares/{id}/accept-quote binds current backend quote", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
@@ -1963,6 +1998,150 @@ Deno.test("POST /court/{dareId}/heartbeat is rate limited", async () => {
   const body = await response.json();
   assertEquals(body.ok, false);
   assertEquals(body.error.code, "RATE_LIMITED");
+});
+
+Deno.test("live Court routes create room presence and require both player video consent", async () => {
+  const state = createFakeState();
+  const challengerId = "723e4567-e89b-12d3-a456-426614174000";
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: challengerId,
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  const initial = await testHandler(
+    new Request(
+      `http://localhost/functions/v1/actions/court/${dareId}/live-room`,
+      { method: "GET" },
+    ),
+  );
+  assertEquals(initial.status, 200);
+  const initialBody = await initial.json();
+  assertEquals(initialBody.data.liveCourtRoomId, null);
+  assertEquals(initialBody.data.liveRequirementMet, false);
+
+  const issuerEnter = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "live-court-enter-issuer",
+        payload: {
+          audioEnabled: true,
+          recordingConsent: true,
+          videoEnabled: true,
+        },
+      },
+      `http://localhost/functions/v1/actions/court/${dareId}/live-room/enter`,
+    ),
+  );
+  assertEquals(issuerEnter.status, 200);
+  const issuerBody = await issuerEnter.json();
+  assertEquals(issuerBody.data.viewerJoined, true);
+  assertEquals(issuerBody.data.issuerLive, false);
+  assertEquals(issuerBody.data.challengerLive, false);
+  assertEquals(issuerBody.data.liveRequirementMet, false);
+  assertEquals(issuerBody.data.provider, "livekit");
+  assertEquals(issuerBody.data.providerUrl, "wss://livekit.test");
+  assertEquals(issuerBody.data.providerToken, "token:participant_a");
+  assertEquals(
+    (state.idempotencyRecords[0].response_body as Record<string, unknown>)
+      .providerToken,
+    null,
+  );
+
+  state.user.id = challengerId;
+  const challengerEnter = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "live-court-enter-challenger",
+        payload: {
+          audioEnabled: true,
+          recordingConsent: true,
+          videoEnabled: true,
+        },
+      },
+      `http://localhost/functions/v1/actions/court/${dareId}/live-room/enter`,
+    ),
+  );
+  assertEquals(challengerEnter.status, 200);
+  const challengerBody = await challengerEnter.json();
+  assertEquals(challengerBody.data.participantCount, 0);
+  assertEquals(challengerBody.data.liveRequirementMet, false);
+  assertEquals(challengerBody.data.providerToken, "token:participant_b");
+  assertEquals(state.auditLogs.length, 2);
+  assertEquals(state.auditLogs[0].action, "live_court.entered");
+  assertEquals(state.liveKitRoomsCreated, 2);
+});
+
+Deno.test("live Court presence does not trust client-declared leave state", async () => {
+  const state = createFakeState();
+  const challengerId = "723e4567-e89b-12d3-a456-426614174000";
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  state.dares.push({
+    id: dareId,
+    issuer_id: state.user.id,
+    challenger_id: challengerId,
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: "d23e4567-e89b-12d3-a456-426614174000",
+    dare_id: dareId,
+    phase: "active",
+  });
+  const testHandler = createHandler({
+    createClient: () => fakeClient(state),
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
+    createServiceClient: () => fakeClient(state),
+  });
+
+  await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        idempotencyKey: "live-court-enter-before-left",
+        payload: {
+          audioEnabled: true,
+          recordingConsent: true,
+          videoEnabled: true,
+        },
+      },
+      `http://localhost/functions/v1/actions/court/${dareId}/live-room/enter`,
+    ),
+  );
+
+  const left = await testHandler(
+    jsonRequest(
+      {
+        requestId,
+        payload: {
+          audioEnabled: true,
+          connectionStatus: "left",
+          recordingConsent: true,
+          videoEnabled: true,
+        },
+      },
+      `http://localhost/functions/v1/actions/court/${dareId}/live-room/presence`,
+    ),
+  );
+
+  assertEquals(left.status, 200);
+  const leftBody = await left.json();
+  assertEquals(leftBody.data.viewerJoined, true);
+  assertEquals(leftBody.data.liveRequirementMet, false);
+  assertEquals(leftBody.data.providerToken, "token:participant_a");
 });
 
 Deno.test("POST /court/{dareId}/messages stores participant message once", async () => {
@@ -3784,6 +3963,9 @@ function createFakeState() {
     dareConstitutions: [] as Record<string, unknown>[],
     escrowHolds: [] as Record<string, unknown>[],
     courtSessions: [] as Record<string, unknown>[],
+    liveCourtRooms: [] as Record<string, unknown>[],
+    liveCourtParticipants: [] as Record<string, unknown>[],
+    liveKitRoomsCreated: 0,
     courtChatMessages: [] as Record<string, unknown>[],
     evidenceObjects: [] as Record<string, unknown>[],
     juryCases: [] as Record<string, unknown>[],
@@ -3916,6 +4098,12 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
         return fakeSelfExcludeRpc(state, args) as Promise<QueryResponse<T>>;
       }
 
+      if (functionName === "has_active_court_commitment") {
+        return fakeHasActiveCourtCommitmentRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
       if (functionName === "create_evidence_upload_action") {
         return fakeCreateEvidenceUploadRpc(state, args) as Promise<
           QueryResponse<T>
@@ -3950,6 +4138,22 @@ function fakeClient(state = createFakeState()): SupabaseActionClient {
 
       if (functionName === "record_court_heartbeat_action") {
         return fakeCourtHeartbeatRpc(state, args) as Promise<QueryResponse<T>>;
+      }
+
+      if (functionName === "get_live_court_state_action") {
+        return fakeGetLiveCourtStateRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
+      }
+
+      if (functionName === "enter_live_court_action") {
+        return fakeEnterLiveCourtRpc(state, args) as Promise<QueryResponse<T>>;
+      }
+
+      if (functionName === "record_live_court_presence_action") {
+        return fakeRecordLiveCourtPresenceRpc(state, args) as Promise<
+          QueryResponse<T>
+        >;
       }
 
       if (functionName === "get_current_court_question_action") {
@@ -4329,6 +4533,31 @@ function fakeSelfExcludeRpc(
   });
 }
 
+function fakeHasActiveCourtCommitmentRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<boolean>> {
+  const userId = args.p_user_id;
+  const excludeDareId = args.p_exclude_dare_id;
+  const blockingStatuses = new Set([
+    "ready_check",
+    "active",
+    "awaiting_result",
+    "dispute_pending",
+    "jury_open",
+  ]);
+  const busy = state.dares.some((dare) =>
+    dare.id !== excludeDareId &&
+    blockingStatuses.has(String(dare.status)) &&
+    (dare.issuer_id === userId || dare.challenger_id === userId)
+  );
+
+  return Promise.resolve({
+    data: busy,
+    error: null,
+  });
+}
+
 function fakeCreateEvidenceUploadRpc(
   state: ReturnType<typeof createFakeState>,
   args: Record<string, unknown>,
@@ -4641,8 +4870,47 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
       });
     }
 
+    if (this.table === "live_court_rooms") {
+      const data = this.state.liveCourtRooms.find((record) =>
+        matchesFilters(record, this.#filters)
+      );
+
+      if (data && this.#updateValues) {
+        Object.assign(data, this.#updateValues);
+      }
+
+      return Promise.resolve({
+        data: data as T | undefined ?? null,
+        error: null,
+      });
+    }
+
     return Promise.resolve({ data: null, error: null });
   }
+}
+
+function fakeLiveKitGateway(
+  state: ReturnType<typeof createFakeState>,
+): LiveKitGateway {
+  return {
+    createParticipantToken(
+      params: LiveKitTokenParams,
+    ): Promise<LiveKitRoomAccess> {
+      return Promise.resolve({
+        provider: "livekit",
+        providerRoomId: params.roomName,
+        providerToken: `token:${params.viewerRole}`,
+        providerUrl: "wss://livekit.test",
+      });
+    },
+    ensureRoom(_params: LiveKitRoomParams): Promise<void> {
+      state.liveKitRoomsCreated += 1;
+      return Promise.resolve();
+    },
+    receiveWebhook() {
+      return Promise.resolve({ event: "room_started" });
+    },
+  };
 }
 
 function fakeCreateDareRpc(
@@ -5182,6 +5450,213 @@ function fakeCourtHeartbeatRpc(
     }],
     error: null,
   });
+}
+
+function fakeGetLiveCourtStateRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const row = buildLiveCourtStateRow(
+    state,
+    String(args.p_user_id),
+    String(args.p_dare_id),
+  );
+  if ("error" in row) {
+    return Promise.resolve({ data: [], error: { message: String(row.error) } });
+  }
+
+  return Promise.resolve({ data: [row], error: null });
+}
+
+function fakeEnterLiveCourtRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const dare = state.dares.find((row) => row.id === args.p_dare_id);
+  if (!dare) {
+    return Promise.resolve({ data: [], error: { message: "dare_not_found" } });
+  }
+
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) {
+    return Promise.resolve({ data: [], error: { message: "court_not_found" } });
+  }
+
+  const viewerRole = getLiveCourtViewerRole(
+    dare,
+    String(args.p_user_id),
+  );
+  if (!viewerRole) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
+  }
+
+  const room = getOrCreateLiveCourtRoom(state, dare, court);
+  const participant = state.liveCourtParticipants.find((row) =>
+    row.live_court_room_id === room.id && row.user_id === args.p_user_id
+  );
+  const values = {
+    live_court_room_id: room.id,
+    dare_id: dare.id,
+    user_id: args.p_user_id,
+    role: viewerRole,
+    connection_status: "reconnecting",
+    consented_to_recording: args.p_recording_consent,
+    consent_text_version: "live-court-consent-v1",
+    consented_at: args.p_recording_consent ? "2026-05-21T00:03:00.000Z" : null,
+    audio_enabled: false,
+    video_enabled: false,
+    last_seen_at: "2026-05-21T00:03:00.000Z",
+  };
+  if (participant) {
+    Object.assign(participant, values);
+  } else {
+    state.liveCourtParticipants.push({
+      id: `${
+        state.liveCourtParticipants.length + 1
+      }23e4567-e89b-42d3-a456-426614174000`,
+      ...values,
+    });
+  }
+
+  return fakeGetLiveCourtStateRpc(state, args);
+}
+
+function fakeRecordLiveCourtPresenceRpc(
+  state: ReturnType<typeof createFakeState>,
+  args: Record<string, unknown>,
+): Promise<QueryResponse<Record<string, unknown>[]>> {
+  const room = state.liveCourtRooms.find((row) =>
+    row.dare_id === args.p_dare_id
+  );
+  if (!room) {
+    return Promise.resolve({
+      data: [],
+      error: { message: "live_court_required" },
+    });
+  }
+
+  const participant = state.liveCourtParticipants.find((row) =>
+    row.live_court_room_id === room.id && row.user_id === args.p_user_id
+  );
+  if (!participant) {
+    return Promise.resolve({ data: [], error: { message: "not_participant" } });
+  }
+
+  Object.assign(participant, {
+    consented_to_recording: args.p_recording_consent,
+    last_seen_at: "2026-05-21T00:03:15.000Z",
+  });
+
+  return fakeGetLiveCourtStateRpc(state, args);
+}
+
+function buildLiveCourtStateRow(
+  state: ReturnType<typeof createFakeState>,
+  userId: string,
+  dareId: string,
+): Record<string, unknown> | { error: string } {
+  const dare = state.dares.find((row) => row.id === dareId);
+  if (!dare) return { error: "dare_not_found" };
+  const court = state.courtSessions.find((row) => row.dare_id === dare.id);
+  if (!court) return { error: "court_not_found" };
+  const viewerRole = getLiveCourtViewerRole(dare, userId);
+  if (!viewerRole) return { error: "not_participant" };
+  const room = state.liveCourtRooms.find((row) => row.dare_id === dare.id);
+  const issuerLive = Boolean(
+    room && hasLiveParticipant(state, room.id, dare.issuer_id),
+  );
+  const challengerLive = Boolean(
+    room && hasLiveParticipant(state, room.id, dare.challenger_id),
+  );
+  const viewerJoined = Boolean(
+    room &&
+      state.liveCourtParticipants.some((row) =>
+        row.live_court_room_id === room.id &&
+        row.user_id === userId &&
+        ["joined", "reconnecting"].includes(String(row.connection_status))
+      ),
+  );
+
+  return {
+    live_court_room_id: room?.id ?? null,
+    dare_id: dare.id,
+    court_session_id: court.id,
+    provider: room?.provider ?? "provider_pending",
+    provider_room_id: room?.provider_room_id ?? `dare-${dare.id}`,
+    provider_token: null,
+    viewer_role: viewerRole,
+    room_status: room?.status ?? "created",
+    recording_required: room?.recording_required ?? true,
+    recording_status: room?.recording_status ?? "not_started",
+    participant_count: room
+      ? state.liveCourtParticipants.filter((row) =>
+        row.live_court_room_id === room.id &&
+        ["participant_a", "participant_b"].includes(String(row.role)) &&
+        row.connection_status === "joined"
+      ).length
+      : 0,
+    spectator_count: room
+      ? state.liveCourtParticipants.filter((row) =>
+        row.live_court_room_id === room.id &&
+        row.role === "spectator" &&
+        ["joined", "reconnecting"].includes(String(row.connection_status))
+      ).length
+      : 0,
+    issuer_live: issuerLive,
+    challenger_live: challengerLive,
+    viewer_joined: viewerJoined,
+    live_requirement_met: issuerLive && challengerLive,
+  };
+}
+
+function getOrCreateLiveCourtRoom(
+  state: ReturnType<typeof createFakeState>,
+  dare: Record<string, unknown>,
+  court: Record<string, unknown>,
+) {
+  const existing = state.liveCourtRooms.find((row) => row.dare_id === dare.id);
+  if (existing) return existing;
+  const room = {
+    id: "f23e4567-e89b-42d3-a456-426614174000",
+    dare_id: dare.id,
+    court_session_id: court.id,
+    provider: "provider_pending",
+    provider_room_id: `dare-${dare.id}`,
+    status: dare.status === "active" || dare.status === "awaiting_result"
+      ? "live"
+      : "created",
+    recording_required: true,
+    recording_status: dare.status === "active" ? "recording" : "not_started",
+  };
+  state.liveCourtRooms.push(room);
+  return room;
+}
+
+function getLiveCourtViewerRole(
+  dare: Record<string, unknown>,
+  userId: string,
+) {
+  if (userId === dare.issuer_id) return "participant_a";
+  if (userId === dare.challenger_id) return "participant_b";
+  if (dare.status === "active" || dare.status === "awaiting_result") {
+    return "spectator";
+  }
+  return null;
+}
+
+function hasLiveParticipant(
+  state: ReturnType<typeof createFakeState>,
+  roomId: unknown,
+  userId: unknown,
+) {
+  return state.liveCourtParticipants.some((row) =>
+    row.live_court_room_id === roomId &&
+    row.user_id === userId &&
+    ["participant_a", "participant_b"].includes(String(row.role)) &&
+    row.connection_status === "joined" &&
+    row.consented_to_recording === true &&
+    row.video_enabled === true
+  );
 }
 
 function fakeSubmitAnswerRpc(

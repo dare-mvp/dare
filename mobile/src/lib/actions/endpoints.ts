@@ -212,7 +212,12 @@ export type AcceptQuoteResponse = {
   fundingModel: 'two_sided_stake' | 'darer_reward';
   issuerEscrowAmount: number;
   performerStakeRequired: boolean;
-  reasonCode: 'ACCOUNT_READY' | 'DARE_NOT_OPEN' | 'SELF_CHALLENGE' | 'TARGETED_TO_ANOTHER_USER';
+  reasonCode:
+    | 'ACCOUNT_READY'
+    | 'ACTIVE_COURT_COMMITMENT'
+    | 'DARE_NOT_OPEN'
+    | 'SELF_CHALLENGE'
+    | 'TARGETED_TO_ANOTHER_USER';
   rewardAmount: number;
   settlementPlatformFeeAmount: number;
   stakeAmount: number;
@@ -266,6 +271,36 @@ export type CourtHeartbeatResponse = {
   playerBHeartbeatAt: string | null;
   playerRole: 'A' | 'B';
   reconnectDeadline: string;
+};
+
+export type LiveCourtStateResponse = {
+  challengerLive: boolean;
+  courtSessionId: string;
+  dareId: string;
+  issuerLive: boolean;
+  liveCourtRoomId: string | null;
+  liveRequirementMet: boolean;
+  participantCount: number;
+  provider: 'agora' | 'custom' | 'daily' | 'livekit' | 'mux' | 'provider_pending';
+  providerRoomId: string;
+  providerToken: string | null;
+  providerUrl: string | null;
+  recordingRequired: boolean;
+  recordingStatus: 'available' | 'disabled' | 'failed' | 'not_started' | 'processing' | 'recording';
+  roomStatus: 'cancelled' | 'created' | 'ended' | 'live';
+  spectatorCount: number;
+  viewerJoined: boolean;
+  viewerRole: 'participant_a' | 'participant_b' | 'spectator';
+};
+
+export type EnterLiveCourtPayload = {
+  audioEnabled: boolean;
+  recordingConsent: boolean;
+  videoEnabled: boolean;
+};
+
+export type RecordLiveCourtPresencePayload = EnterLiveCourtPayload & {
+  connectionStatus: 'joined' | 'left' | 'reconnecting';
 };
 
 export type SubmitAnswerPayload = {
@@ -716,6 +751,26 @@ export function recordCourtHeartbeat(dareId: string) {
     body: createActionEnvelope({}),
     method: 'POST',
   });
+}
+
+export function getLiveCourtState(dareId: string) {
+  return callAction<LiveCourtStateResponse>(`/court/${dareId}/live-room`);
+}
+
+export function enterLiveCourt(dareId: string, payload: EnterLiveCourtPayload) {
+  return postAction<LiveCourtStateResponse, EnterLiveCourtPayload>(
+    `/court/${dareId}/live-room/enter`,
+    payload,
+    'live-court-enter',
+  );
+}
+
+export function recordLiveCourtPresence(dareId: string, payload: RecordLiveCourtPresencePayload) {
+  return postAction<LiveCourtStateResponse, RecordLiveCourtPresencePayload>(
+    `/court/${dareId}/live-room/presence`,
+    payload,
+    'live-court-presence',
+  );
 }
 
 export function submitDareAnswer(dareId: string, payload: SubmitAnswerPayload) {

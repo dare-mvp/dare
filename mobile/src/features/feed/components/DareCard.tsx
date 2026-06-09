@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Eye, Flame, LockKeyhole } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
@@ -8,17 +9,19 @@ import { getCategoryVisual } from '../categoryVisuals';
 import { avatarStyles, styles } from './DareCard.styles';
 
 export type DareFeedItem = {
+  actionLabel: string;
   id: string;
   title: string;
   category: string;
+  createdAgo: string;
+  description?: string | null;
   dareType?: 'skill' | 'task';
   fundingModel?: 'two_sided_stake' | 'darer_reward';
   rewardKobo?: number;
+  rules?: string | null;
   stakeKobo: number;
   status: 'open' | 'live' | 'active' | 'completed' | 'disputed';
   resolution: string;
-  createdAgo: string;
-  actionLabel: string;
   playerA: PlayerSummary;
   playerB?: PlayerSummary;
   scoreA?: number;
@@ -41,13 +44,13 @@ const statusStyles: Record<DareFeedItem['status'], { label: string; color: strin
     border: 'rgba(0,232,150,0.30)',
   },
   live: {
-    label: 'AWAITING',
+    label: 'COURT SOON',
     color: colors.warning,
     background: colors.warningDim,
     border: 'rgba(255,176,32,0.30)',
   },
   active: {
-    label: 'ACTIVE NOW',
+    label: 'LIVE',
     color: colors.danger,
     background: colors.dangerDim,
     border: 'rgba(255,51,102,0.35)',
@@ -66,13 +69,20 @@ const statusStyles: Record<DareFeedItem['status'], { label: string; color: strin
   },
 };
 
-export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () => void }) {
+export const DareCard = memo(function DareCard({
+  dare,
+  onPress,
+}: {
+  dare: DareFeedItem;
+  onPress?: (dare: DareFeedItem) => void;
+}) {
   const status = statusStyles[dare.status];
   const category = getCategoryVisual(dare.category);
   const CategoryIcon = category.Icon;
   const opponent = dare.playerB;
   const isTask = dare.dareType === 'task';
-  const isHot = dare.status === 'active' || Boolean(dare.viewers);
+  const isLiveStage = dare.status === 'live' || dare.status === 'active';
+  const isHot = isLiveStage || Boolean(dare.viewers);
   const lockedAmount = isTask ? dare.rewardKobo ?? dare.stakeKobo : dare.stakeKobo;
   const lockedLabel = isTask ? 'Reward' : 'Stake';
   const fundingLabel = formatFundingModelLabel(dare.fundingModel, dare.dareType ?? 'skill');
@@ -81,7 +91,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
     <Pressable
       accessibilityLabel={`${dare.title} DARE`}
       accessibilityRole="button"
-      onPress={onPress}
+      onPress={() => onPress?.(dare)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={[styles.statusRail, { backgroundColor: status.color }]} />
@@ -105,7 +115,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
         <View style={styles.hotLine}>
           <Flame color={colors.danger} size={14} />
           <Text style={styles.hotText}>
-            {dare.viewers ? `${dare.viewers} watching now` : 'Active match'}
+            {dare.viewers ? `${dare.viewers} watching now` : dare.status === 'active' ? 'Live - join audience' : 'Court starting soon'}
           </Text>
         </View>
       ) : null}
@@ -149,7 +159,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
     </Pressable>
   );
-}
+});
 
 function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; player: PlayerSummary }) {
   return (

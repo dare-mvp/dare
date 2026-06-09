@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { walletSummary } from '../../mocks/wallet';
 import { useAuth } from '../auth/AuthProvider';
 import { LedgerEntryRow, mapLedgerEntry } from './ledgerEntries';
@@ -108,7 +109,7 @@ export function useWalletLedger(): WalletLedgerState {
     if (auth.status !== 'authenticated' || !userId || !supabaseClient) return undefined;
 
     const channel = supabaseClient
-      .channel(`wallet-ledger-${userId}`)
+      .channel(uniqueRealtimeChannelName(`wallet-ledger-${userId}`))
       .on(
         'postgres_changes',
         { event: '*', filter: `user_id=eq.${userId}`, schema: 'public', table: 'ledger_entries' },

@@ -8,6 +8,10 @@ import {
 import { enforceActionRateLimit } from "./_shared/rate_limit.ts";
 import { errorResponse, successResponse } from "./_shared/response.ts";
 import {
+  createLiveKitGateway,
+  type LiveKitGateway,
+} from "./_shared/livekit.ts";
+import {
   createServiceClient,
   createUserClient,
   type SupabaseActionClient,
@@ -41,6 +45,11 @@ import {
 } from "./routes/evidence.ts";
 import { assignJuryCase, castJuryVote } from "./routes/jury.ts";
 import { getJuryEvidencePacket } from "./routes/jury_evidence.ts";
+import {
+  enterLiveCourt,
+  getLiveCourtState,
+  recordLiveCourtPresence,
+} from "./routes/live_court.ts";
 import { getMe, updateMyProfile } from "./routes/me.ts";
 import {
   decideKycVerification,
@@ -76,17 +85,20 @@ type RouteContext = {
   pathname: string;
   getClient: () => SupabaseActionClient;
   getServiceClient: () => SupabaseActionClient;
+  getLiveKitGateway: () => LiveKitGateway;
   paystackInitializer?: PaystackInitializer;
 };
 
 type HandlerDependencies = {
   createClient: (request: Request) => SupabaseActionClient;
   createServiceClient?: () => SupabaseActionClient;
+  createLiveKitGateway?: () => LiveKitGateway;
   paystackInitializer?: PaystackInitializer;
 };
 
 const defaultDependencies: HandlerDependencies = {
   createClient: createUserClient,
+  createLiveKitGateway,
   createServiceClient,
 };
 
@@ -115,6 +127,11 @@ export function createHandler(
         getServiceClient: () => {
           const factory = dependencies.createServiceClient ??
             defaultDependencies.createServiceClient!;
+          return factory();
+        },
+        getLiveKitGateway: () => {
+          const factory = dependencies.createLiveKitGateway ??
+            defaultDependencies.createLiveKitGateway!;
           return factory();
         },
         paystackInitializer: dependencies.paystackInitializer,
@@ -333,6 +350,57 @@ async function route(context: RouteContext): Promise<Response> {
       actionPath[1],
       context.getClient(),
       context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "live-room"
+  ) {
+    return successResponse(
+      await getLiveCourtState(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+        context.getLiveKitGateway(),
+      ),
+      context.requestId,
+    );
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "live-room" &&
+    actionPath[3] === "enter"
+  ) {
+    const result = await enterLiveCourt(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+      context.getLiveKitGateway(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "live-room" &&
+    actionPath[3] === "presence"
+  ) {
+    const result = await recordLiveCourtPresence(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+      context.getLiveKitGateway(),
     );
     return successResponse(result.data, result.requestId);
   }

@@ -5,6 +5,8 @@ export const ACTION_ERROR_CODES = [
   "KYC_REQUIRED",
   "LIMIT_EXCEEDED",
   "INSUFFICIENT_FUNDS",
+  "ACTIVE_COURT_COMMITMENT",
+  "LIVE_COURT_REQUIRED",
   "INVALID_STATE",
   "IDEMPOTENCY_CONFLICT",
   "ALREADY_PROCESSED",
@@ -55,6 +57,16 @@ export const ERROR_DEFINITIONS: Record<ActionErrorCode, ErrorDefinition> = {
     retryable: false,
     message: "Available balance is too low for this action.",
   },
+  ACTIVE_COURT_COMMITMENT: {
+    status: 409,
+    retryable: false,
+    message: "Finish your current Court before accepting another DARE.",
+  },
+  LIVE_COURT_REQUIRED: {
+    status: 409,
+    retryable: false,
+    message: "Join the live video Court before submitting a result.",
+  },
   INVALID_STATE: {
     status: 409,
     retryable: false,
@@ -73,7 +85,7 @@ export const ERROR_DEFINITIONS: Record<ActionErrorCode, ErrorDefinition> = {
   PROVIDER_UNAVAILABLE: {
     status: 502,
     retryable: true,
-    message: "The payment provider is temporarily unavailable.",
+    message: "The provider is temporarily unavailable.",
   },
   VALIDATION_FAILED: {
     status: 400,

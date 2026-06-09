@@ -1,6 +1,7 @@
 import { CourtSession } from '../features/court/types';
+import { withCourtLiveRoom } from '../features/court/liveRoom';
 
-export const activeCourtSession: CourtSession = {
+const activeCourtSessionBase: Omit<CourtSession, 'liveRoom'> = {
   challengeType: 'Answer Key court - Issuer vs Challenger',
   connectionState: 'connected',
   dareType: 'skill',
@@ -54,3 +55,5 @@ export const activeCourtSession: CourtSession = {
   votesA: 0,
   votesB: 0,
 };
+
+export const activeCourtSession: CourtSession = withCourtLiveRoom(activeCourtSessionBase);

@@ -49,6 +49,8 @@ The mobile app now has:
 - DARE acceptance via `POST /dares/{id}/accept` for live UUID-backed feed items
 - authenticated court tab/status/result/settlement reads from participant-readable `dares` and `court_sessions`
 - court ready/countdown screens use the live court session state; ready-up waits for `active` before moving into countdown
+- live Court room/presence helpers for `GET /court/{dareId}/live-room`, `POST /court/{dareId}/live-room/enter`, and `POST /court/{dareId}/live-room/presence`
+- live Court UI displays provider room state, participant video state, audience count, recording state, and whether the backend live requirement is met
 - creator-authored court prompt read via `GET /court/{dareId}/question`, backed by `get_current_court_question_action`, returning prompt/options without answer-key material
 - court ready-up via `POST /dares/{id}/ready`
 - court heartbeat via `POST /court/{id}/heartbeat`
@@ -85,6 +87,35 @@ The `answer_key` implementation uses creator-authored prompt instructions and a 
 - Evidence: proof capture/upload and jury/admin review.
 - Settlement follows confirmed result, answer-key verification, jury/admin verdict, or void/refund policy.
 
+## Live Court Video Provider Decision
+
+DARE will use LiveKit Cloud for production live Court video.
+
+Current implemented contract:
+
+- backend creates or reuses one LiveKit room per accepted Court DARE
+- backend generates short-lived LiveKit tokens in the actions function, never in the client
+- mobile enters the live Court through the actions API, receives a token, and renders LiveKit only in native development/production builds
+- LiveKit webhooks process room, participant, track, and egress/recording events
+- answer/result actions are blocked until the backend live Court requirement is met
+- `provider_pending` is only a transitional state before LiveKit room creation succeeds
+
+Required production configuration:
+
+```powershell
+supabase secrets set LIVEKIT_URL="wss://your-project.livekit.cloud" LIVEKIT_API_KEY="..." LIVEKIT_API_SECRET="..." --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+Configure the LiveKit Cloud webhook target as:
+
+```text
+https://dhzcoywgiyrbsiiwlstw.supabase.co/functions/v1/livekit-webhook
+```
+
+The mobile app also needs `EXPO_PUBLIC_LIVEKIT_WS_URL` set to the same LiveKit WebSocket URL for build-time runtime checks. Tokens still come only from the backend.
+
+Expo note: real LiveKit mobile video requires a development build or production build with native modules. Expo Go is not a valid production test target for live Court video.
+
 `mobile/.env.example` exists and is the expected template for local Expo backend configuration.
 
 ## Test Coverage Notes
@@ -93,9 +124,25 @@ The `answer_key` implementation uses creator-authored prompt instructions and a 
 - RPC integration tests cover settlement fee math, settlement idempotency, DARE accept race protection, self-exclusion escrow restoration, withdrawal projection, withdrawal approval gating, jury guards, rate limiting, cron verification, and wallet provisioning.
 - The RPC integration suite requires a running Supabase database at `SUPABASE_DB_URL` or local `127.0.0.1:54322`.
 
+## Production Reviewer Account
+
+Use these accounts for production-phase mobile UI/UX review and two-user end-to-end app testing.
+
+Gmail delivers both plus-addresses to `dareappngofficial@gmail.com`.
+
+| Purpose | Email | Username | Display name | Supabase Auth user id | Profile state | Review balance | Jury review |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Reviewer 1 | `dareappngofficial+appreview@gmail.com` | `dare_app_reviewer` | `DARE App Reviewer` | `d9db2377-cc1c-4f46-8dec-69a505b6b1d0` | `active`, `normal` risk, `kyc3` | NGN test ledger credit | opted in for `knowledge`, `sports`, and `creative` |
+| Reviewer 2 | `dareappngofficial+appreview2@gmail.com` | `dare_app_reviewer_2` | `DARE App Reviewer 2` | `aec19ebf-7f55-4d11-8edc-62509070074e` | `active`, `normal` risk, `kyc3` | NGN test ledger credit | opted in for `knowledge`, `sports`, and `creative` |
+
+Do not commit or document reviewer passwords. If access is lost, rotate credentials through Supabase Auth Admin or the app password-reset flow and send the new temporary credential through the verified `daregamesapp.com` email channel.
+
+Known setup note: Supabase Auth custom SMTP must use a valid Resend SMTP port. Use `587` for STARTTLS or `465` for SSL/TLS. A misconfigured port can make password-reset requests fail even when the account and redirect URL are valid.
+
 ## Remaining Launch Gates
 
 - Jury evidence packets still need richer signed evidence previews; the current mobile read shows live case reason and evidence counts only.
+- LiveKit Cloud room/token/webhook integration is wired. Automatic egress start/stop orchestration remains a launch-hardening item; the webhook already records egress lifecycle events when LiveKit emits them.
 - Witnessed and Evidence need full Court branching after acceptance; they are currently persisted as choices but do not yet have separate post-accept lifecycles.
 - Add richer result-claim, witness-signal, and evidence-review surfaces for the non-answer-key paths.
 - Support remains static content in the current build. A ticket/contact provider is outside the current implementation and must be selected before production support launch.

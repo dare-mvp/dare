@@ -78,6 +78,14 @@ export function assertInteger(
   return value;
 }
 
+export function assertBoolean(value: unknown, path = "value"): boolean {
+  if (typeof value !== "boolean") {
+    throw validationError(path, "must be a boolean");
+  }
+
+  return value;
+}
+
 export function assertUuid(value: unknown, path = "value"): string {
   const id = assertString(value, path);
   if (!UUID_RE.test(id)) {

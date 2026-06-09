@@ -104,6 +104,9 @@ supabase/functions/
   paystack-webhook/
     index.ts
     deno.json
+  livekit-webhook/
+    index.ts
+    deno.json
 ```
 
 ### Edge Function Responsibilities
@@ -592,6 +595,104 @@ Transactional behavior:
 The client displays countdown from server timestamps; the server timestamp is canonical.
 
 Implemented Postgres function: `public.ready_dare_action(...)`, executable only by `service_role`. It marks the caller ready and starts the Court with server-owned timestamps. It does not assign platform-authored challenge rounds; Answer Key prompts come from creator-authored `dare_prompts`.
+
+### Live Court Video Actions
+
+Production provider: LiveKit Cloud.
+
+Routes:
+
+- `GET /court/{dareId}/live-room`
+- `POST /court/{dareId}/live-room/enter`
+- `POST /court/{dareId}/live-room/presence`
+
+Purpose:
+
+- create or read the provider-backed live Court room
+- return the viewer role and live-room state to mobile
+- track participant/spectator presence and recording consent
+- expose whether the backend live Court requirement is satisfied
+- generate LiveKit room tokens, process verified LiveKit webhooks, and record egress metadata
+
+Current contract:
+
+```json
+{
+  "audioEnabled": true,
+  "recordingConsent": true,
+  "videoEnabled": true
+}
+```
+
+Presence update input:
+
+```json
+{
+  "audioEnabled": true,
+  "connectionStatus": "joined",
+  "recordingConsent": true,
+  "videoEnabled": true
+}
+```
+
+Response shape:
+
+```json
+{
+  "challengerLive": true,
+  "courtSessionId": "uuid",
+  "dareId": "uuid",
+  "issuerLive": true,
+  "liveCourtRoomId": "uuid",
+  "liveRequirementMet": true,
+  "participantCount": 2,
+  "provider": "livekit",
+  "providerRoomId": "dare-room-id",
+  "providerToken": "short-lived-token-or-null",
+  "providerUrl": "wss://project.livekit.cloud",
+  "recordingRequired": true,
+  "recordingStatus": "recording",
+  "roomStatus": "live",
+  "spectatorCount": 12,
+  "viewerJoined": true,
+  "viewerRole": "participant_a"
+}
+```
+
+Implementation rules:
+
+- `provider_pending` is allowed only before LiveKit room/token creation is wired or when the provider room has not yet been provisioned.
+- Production Court rooms should use `provider = 'livekit'`.
+- LiveKit tokens must be generated server-side only and short-lived.
+- LiveKit webhook signatures must be verified before provider events are stored.
+- Idempotency storage must never persist returned LiveKit tokens.
+- Provider events are audit/evidence signals; they never directly settle money.
+- Result-bearing actions must require both required participants to be live with video and recording consent.
+
+LiveKit environment:
+
+```powershell
+supabase secrets set LIVEKIT_URL="wss://your-project.livekit.cloud" LIVEKIT_API_KEY="..." LIVEKIT_API_SECRET="..." --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+LiveKit webhook URL:
+
+```text
+https://dhzcoywgiyrbsiiwlstw.supabase.co/functions/v1/livekit-webhook
+```
+
+Implemented Postgres functions:
+
+- `public.get_live_court_state_action(...)`
+- `public.enter_live_court_action(...)`
+- `public.record_live_court_presence_action(...)`
+- `public.live_court_requirement_met(...)`
+
+Implemented database enforcement:
+
+- answer submissions require the live Court requirement
+- result claims require the live Court requirement
+- winner-bearing completion from active/awaiting result requires the live Court requirement
 
 ### `POST /dares/{id}/answers`
 

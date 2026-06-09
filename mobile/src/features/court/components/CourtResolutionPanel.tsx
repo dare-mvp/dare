@@ -43,6 +43,7 @@ export function CourtResolutionPanel({
       <AnswerKeyPanel
         answerText={answerText}
         disabled={Boolean(disabledReason)}
+        disabledReason={disabledReason}
         onChangeAnswer={onChangeAnswer}
         question={question}
       />
@@ -53,6 +54,7 @@ export function CourtResolutionPanel({
     return (
       <WitnessVotePanel
         disabled={courtSource !== 'server' || Boolean(disabledReason)}
+        disabledReason={disabledReason}
         onVote={onSubmitWitnessVote}
         session={session}
         submitting={submitting}

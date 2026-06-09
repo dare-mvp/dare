@@ -1,6 +1,9 @@
 import { CourtSession } from './types';
 
 export function getResolutionDisabledReason(session: CourtSession) {
+  if (isResultActionPhase(session) && !session.liveRoom.requirementMet) {
+    return session.liveRoom.requirementLabel;
+  }
   if (session.phase === 'active') return undefined;
   if (session.resolutionType !== 'answer_key' && session.phase === 'awaiting_result') return undefined;
   if (session.phase === 'awaiting_result') return 'Answer submission is closed while the Court waits for result confirmation.';
@@ -8,6 +11,11 @@ export function getResolutionDisabledReason(session: CourtSession) {
   if (session.phase === 'settlement_pending') return 'Result controls are closed because the DARE is waiting for settlement.';
   if (session.phase === 'settled') return 'Result controls are closed because this DARE is settled.';
   return 'Court controls open when live play starts.';
+}
+
+function isResultActionPhase(session: CourtSession) {
+  if (session.phase === 'active') return true;
+  return session.resolutionType !== 'answer_key' && session.phase === 'awaiting_result';
 }
 
 export function getCourtStatusTone(status: CourtSession['status']) {

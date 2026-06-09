@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { featuredDares } from '../../mocks/home';
 import type { DareFeedItem } from './components/DareCard';
 import { mapPublicDareFeedRows, type PublicDareFeedRow } from './publicDareFeed';
@@ -20,6 +21,7 @@ type PublicDareFeedState = {
 const feedColumns = [
   'id',
   'title',
+  'description',
   'category',
   'dare_type',
   'funding_model',
@@ -36,6 +38,7 @@ const feedColumns = [
   'score_a',
   'score_b',
   'court_phase',
+  'rules',
 ].join(',');
 
 export function usePublicDareFeed(): PublicDareFeedState {
@@ -118,7 +121,7 @@ export function usePublicDareFeed(): PublicDareFeedState {
     if (!supabaseClient) return undefined;
 
     const channel = supabaseClient
-      .channel('public-dare-feed-refresh')
+      .channel(uniqueRealtimeChannelName('public-dare-feed-refresh'))
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dares' },

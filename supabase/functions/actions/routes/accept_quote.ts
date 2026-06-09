@@ -31,6 +31,7 @@ export type AcceptQuoteDareRow = {
   id: string;
   issuer_id: string;
   platform_fee: number | null;
+  resolution_type?: "answer_key" | "witnessed" | "evidence" | null;
   reward_amount: number | null;
   stake_amount: number;
   status: string;
@@ -63,6 +64,7 @@ export type AcceptQuoteResponse = {
   performerStakeRequired: boolean;
   reasonCode:
     | "ACCOUNT_READY"
+    | "ACTIVE_COURT_COMMITMENT"
     | "DARE_NOT_OPEN"
     | "SELF_CHALLENGE"
     | "TARGETED_TO_ANOTHER_USER";
@@ -111,7 +113,12 @@ export async function getAcceptDareQuote(
   const validatedDareId = assertUuid(dareId, "dareId");
   const authUser = await requireAuthenticatedUser(client);
   const dare = await readDareForAcceptQuote(serviceClient, validatedDareId);
-  return buildAcceptQuote(dare, authUser.id);
+  const hasBlockingCommitment = await hasAcceptBlockingCourtCommitment(
+    serviceClient,
+    dare,
+    authUser.id,
+  );
+  return buildAcceptQuote(dare, authUser.id, hasBlockingCommitment);
 }
 
 export async function acceptDareWithQuote(
@@ -147,7 +154,12 @@ export async function acceptDareWithQuote(
   }
 
   const dare = await readDareForAcceptQuote(serviceClient, validatedDareId);
-  const quote = buildAcceptQuote(dare, authUser.id);
+  const hasBlockingCommitment = await hasAcceptBlockingCourtCommitment(
+    serviceClient,
+    dare,
+    authUser.id,
+  );
+  const quote = buildAcceptQuote(dare, authUser.id, hasBlockingCommitment);
   assertQuoteAcceptable(quote);
   assertQuoteMatchesExpected(quote, expectedQuote);
 
@@ -175,6 +187,7 @@ export async function acceptDareWithQuote(
 export function buildAcceptQuote(
   dare: AcceptQuoteDareRow,
   challengerId: string,
+  hasBlockingCommitment = false,
 ): AcceptQuoteResponse {
   const dareType = dare.dare_type ?? "skill";
   const fundingModel = dare.funding_model ??
@@ -190,6 +203,8 @@ export function buildAcceptQuote(
     dare.challenger_id !== challengerId;
   const reasonCode = dare.issuer_id === challengerId
     ? "SELF_CHALLENGE"
+    : hasBlockingCommitment
+    ? "ACTIVE_COURT_COMMITMENT"
     : dare.status !== "open" &&
         !(dare.status === "targeted_pending" &&
           dare.challenger_id === challengerId)
@@ -241,7 +256,7 @@ async function readDareForAcceptQuote(
   const { data, error } = await serviceClient
     .from<AcceptQuoteDareRow>("dares")
     .select(
-      "id,issuer_id,challenger_id,status,dare_type,funding_model,stake_amount,reward_amount,platform_fee,winner_payout,currency,title",
+      "id,issuer_id,challenger_id,status,dare_type,funding_model,resolution_type,stake_amount,reward_amount,platform_fee,winner_payout,currency,title",
     )
     .eq("id", dareId)
     .maybeSingle();
@@ -291,8 +306,56 @@ function mapAcceptDareWithQuoteResponse(
   };
 }
 
+async function hasAcceptBlockingCourtCommitment(
+  serviceClient: SupabaseActionClient,
+  dare: AcceptQuoteDareRow,
+  challengerId: string,
+): Promise<boolean> {
+  if (
+    dare.issuer_id === challengerId ||
+    (dare.status !== "open" &&
+      !(dare.status === "targeted_pending" &&
+        dare.challenger_id === challengerId)) ||
+    (dare.challenger_id !== null && dare.challenger_id !== challengerId)
+  ) {
+    return false;
+  }
+
+  const challengerBusy = await hasActiveCourtCommitment(
+    serviceClient,
+    challengerId,
+    dare.id,
+  );
+  if (challengerBusy) return true;
+
+  const locksIssuer = (dare.dare_type ?? "skill") === "skill" ||
+    dare.resolution_type === "witnessed";
+  if (!locksIssuer) return false;
+
+  return await hasActiveCourtCommitment(serviceClient, dare.issuer_id, dare.id);
+}
+
+async function hasActiveCourtCommitment(
+  serviceClient: SupabaseActionClient,
+  userId: string,
+  excludeDareId: string,
+): Promise<boolean> {
+  const { data, error } = await serviceClient.rpc<boolean>(
+    "has_active_court_commitment",
+    {
+      p_user_id: userId,
+      p_exclude_dare_id: excludeDareId,
+    },
+  );
+  if (error) throw mapDareQueryError(error);
+  return data === true;
+}
+
 function assertQuoteAcceptable(quote: AcceptQuoteResponse): void {
   if (quote.canAccept) return;
+  if (quote.reasonCode === "ACTIVE_COURT_COMMITMENT") {
+    throw new ActionError("ACTIVE_COURT_COMMITMENT");
+  }
   if (quote.reasonCode === "SELF_CHALLENGE") {
     throw new ActionError("INVALID_STATE");
   }

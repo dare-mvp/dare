@@ -63,7 +63,14 @@ export default function WalletScreen() {
           />
         ) : null}
 
-        <WalletHero summary={summary} />
+        <WalletHero
+          canDeposit={data.capabilities.canDeposit}
+          canWithdraw={data.capabilities.canWithdraw}
+          onCoinsPress={() => router.push('/wallet/coins')}
+          onDepositPress={() => router.push('/wallet/deposit')}
+          onWithdrawPress={() => router.push('/wallet/withdraw')}
+          summary={summary}
+        />
 
         <View style={styles.metricGrid}>
           <WalletMetricCard

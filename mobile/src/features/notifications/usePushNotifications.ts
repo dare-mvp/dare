@@ -1,6 +1,5 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -24,15 +23,10 @@ type NotificationData = {
   type?: unknown;
 };
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+
+let notificationsModulePromise: Promise<NotificationsModule> | null = null;
+let notificationHandlerConfigured = false;
 
 export function usePushNotifications() {
   const auth = useAuth();
@@ -40,11 +34,15 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (auth.status !== 'authenticated' || !auth.isBackendConfigured) return;
+    if (!canUseNativePushNotifications()) return;
 
     let cancelled = false;
 
     async function registerCurrentDevice() {
       if (Platform.OS === 'web' || !Device.isDevice) return;
+
+      const Notifications = await loadNotifications();
+      if (cancelled) return;
 
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('dare-alerts', {
@@ -86,16 +84,53 @@ export function usePushNotifications() {
   }, [auth.isBackendConfigured, auth.status]);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as NotificationData;
-      const href = notificationHref(data);
-      router.push(href);
+    if (!canUseNativePushNotifications()) return undefined;
+
+    let subscription: { remove: () => void } | null = null;
+    let cancelled = false;
+
+    void loadNotifications().then((Notifications) => {
+      if (cancelled) return;
+      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data as NotificationData;
+        const href = notificationHref(data);
+        router.push(href);
+      });
+    }).catch((error) => {
+      console.warn('push notification listener setup failed', error);
     });
 
     return () => {
-      subscription.remove();
+      cancelled = true;
+      subscription?.remove();
     };
   }, [router]);
+}
+
+function canUseNativePushNotifications() {
+  if (Platform.OS === 'web') return false;
+  return Constants.appOwnership !== 'expo';
+}
+
+async function loadNotifications() {
+  notificationsModulePromise ??= import('expo-notifications').then((Notifications) => {
+    if (!notificationHandlerConfigured) {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+      notificationHandlerConfigured = true;
+    }
+
+    return Notifications;
+  });
+
+  return notificationsModulePromise;
 }
 
 function getExpoProjectId(): string | null {

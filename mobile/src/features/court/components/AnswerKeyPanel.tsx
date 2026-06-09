@@ -6,11 +6,12 @@ import { CourtQuestion } from '../types';
 type AnswerKeyPanelProps = {
   answerText?: string;
   disabled?: boolean;
+  disabledReason?: string;
   onChangeAnswer?: (value: string) => void;
   question: CourtQuestion;
 };
 
-export function AnswerKeyPanel({ answerText, disabled = false, onChangeAnswer, question }: AnswerKeyPanelProps) {
+export function AnswerKeyPanel({ answerText, disabled = false, disabledReason, onChangeAnswer, question }: AnswerKeyPanelProps) {
   return (
     <View style={styles.panel}>
       <Text style={styles.kicker}>Answer Key Prompt</Text>
@@ -27,7 +28,7 @@ export function AnswerKeyPanel({ answerText, disabled = false, onChangeAnswer, q
         value={answerText}
       />
       <Text style={styles.caption}>
-        {disabled ? 'Answer submission is closed for this Court state.' : 'Your answer is only counted after confirmation.'}
+        {disabled ? disabledReason ?? 'Answer submission is closed for this Court state.' : 'Your answer is only counted after confirmation.'}
       </Text>
     </View>
   );

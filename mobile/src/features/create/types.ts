@@ -7,6 +7,7 @@ export type CreateDareDraft = {
   answerKey: string;
   answerKeyRules: string;
   category: DareCategory;
+  description: string;
   dareType: DareType;
   durationSeconds: number;
   opponent: string;

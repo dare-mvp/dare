@@ -34,6 +34,9 @@ export const dareDetailStyles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
+  iconButtonDisabled: {
+    opacity: 0.46,
+  },
   hero: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -213,14 +216,20 @@ export const dareDetailStyles = StyleSheet.create({
   },
 });
 
-export function DetailHeader({ onBack, title }: { onBack: () => void; title: string }) {
+export function DetailHeader({ onBack, onShare, title }: { onBack: () => void; onShare?: () => void; title: string }) {
   return (
     <View style={dareDetailStyles.header}>
       <Pressable accessibilityLabel="Go back" accessibilityRole="button" onPress={onBack} style={dareDetailStyles.iconButton}>
         <ChevronLeft color={colors.textMuted} size={22} />
       </Pressable>
       <Text style={dareDetailStyles.headerTitle}>{title}</Text>
-      <Pressable accessibilityLabel="Share DARE" accessibilityRole="button" style={dareDetailStyles.iconButton}>
+      <Pressable
+        accessibilityLabel="Share DARE"
+        accessibilityRole="button"
+        disabled={!onShare}
+        onPress={onShare}
+        style={[dareDetailStyles.iconButton, !onShare && dareDetailStyles.iconButtonDisabled]}
+      >
         <Share2 color={colors.textMuted} size={18} />
       </Pressable>
     </View>

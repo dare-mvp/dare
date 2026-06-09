@@ -3,6 +3,7 @@ import { ActionErrorCode } from '../actions/types';
 export const GENERIC_REQUEST_ERROR = 'We could not complete that request. Try again.';
 export const GENERIC_LOAD_ERROR = 'We could not load the latest information. Try again.';
 export const GENERIC_SAVE_ERROR = 'We could not save your changes. Try again.';
+export const ACTIVE_COURT_COMMITMENT_MESSAGE = 'Finish your current Court before accepting another DARE.';
 
 export function getActionUserMessage(code: ActionErrorCode) {
   switch (code) {
@@ -10,6 +11,8 @@ export function getActionUserMessage(code: ActionErrorCode) {
       return 'This action is not available for your account.';
     case 'ALREADY_PROCESSED':
       return 'This action has already been processed.';
+    case 'ACTIVE_COURT_COMMITMENT':
+      return ACTIVE_COURT_COMMITMENT_MESSAGE;
     case 'BAD_REQUEST':
       return 'Check the details and try again.';
     case 'FORBIDDEN':
@@ -17,13 +20,15 @@ export function getActionUserMessage(code: ActionErrorCode) {
     case 'IDEMPOTENCY_CONFLICT':
       return 'This request was already used with different details. Try again.';
     case 'INSUFFICIENT_FUNDS':
-      return 'Available balance is too low for this stake.';
+      return 'Available balance is too low for this stake or reward.';
     case 'INVALID_STATE':
       return 'This request cannot be completed in its current state.';
     case 'KYC_REQUIRED':
       return 'Complete verification before creating money-backed DAREs.';
     case 'LIMIT_EXCEEDED':
       return 'This request cannot be completed with the current limits.';
+    case 'LIVE_COURT_REQUIRED':
+      return 'Join the live video Court before submitting a result.';
     case 'METHOD_NOT_ALLOWED':
       return GENERIC_REQUEST_ERROR;
     case 'NETWORK_ERROR':
@@ -35,7 +40,7 @@ export function getActionUserMessage(code: ActionErrorCode) {
     case 'SERVER_ERROR':
       return 'We could not complete this right now. Try again later.';
     case 'PROVIDER_UNAVAILABLE':
-      return 'The payment provider is temporarily unavailable. Try again later.';
+      return 'The provider is temporarily unavailable. Try again later.';
     case 'UNAUTHENTICATED':
       return 'Sign in again to continue.';
     case 'VALIDATION_FAILED':

@@ -3,10 +3,13 @@ import { useMemo, useState } from 'react';
 import { parseStakeNairaToKobo } from '../createDarePayload';
 import type { CreateDareDraft, DraftValidation } from '../types';
 
+export const TASK_DESCRIPTION_PREFIX = 'I dare you to: ';
+
 const initialDraft: CreateDareDraft = {
   answerKey: '',
   answerKeyRules: '',
   category: 'knowledge',
+  description: '',
   dareType: 'skill',
   durationSeconds: 180,
   opponent: '',
@@ -27,7 +30,15 @@ export function useCreateDareDraft() {
   const platformFeeKobo = Math.round((draft.dareType === 'task' ? rewardKobo : stakeKobo * 2) * 0.05);
 
   function updateDraft<Key extends keyof CreateDareDraft>(key: Key, value: CreateDareDraft[Key]) {
-    setDraft((current) => ({ ...current, [key]: value }));
+    setDraft((current) => {
+      if (key === 'dareType') {
+        const nextDareType = value as CreateDareDraft['dareType'];
+        const description = getDescriptionForDareTypeChange(current, nextDareType);
+        return { ...current, dareType: nextDareType, description };
+      }
+
+      return { ...current, [key]: value };
+    });
   }
 
   return {
@@ -50,6 +61,15 @@ export function validateCreateDareDraft(draft: CreateDareDraft): DraftValidation
     errors.title = 'Use at least 8 characters.';
   } else if (draft.title.trim().length > 140) {
     errors.title = 'Use 140 characters or fewer.';
+  }
+
+  const descriptionMeaningfulText = getDescriptionMeaningfulText(draft);
+  if (descriptionMeaningfulText.length < 5 || draft.description.trim().length < 20) {
+    errors.description = draft.dareType === 'task'
+      ? 'Complete the task description after “I dare you to:”.'
+      : 'Describe the DARE in at least 20 characters.';
+  } else if (draft.description.trim().length > 1000) {
+    errors.description = 'Use 1,000 characters or fewer.';
   }
 
   if (draft.rules.trim().length < 20) {
@@ -92,4 +112,29 @@ export function validateCreateDareDraft(draft: CreateDareDraft): DraftValidation
     errors,
     isValid: Object.keys(errors).length === 0,
   };
+}
+
+function getDescriptionForDareTypeChange(
+  current: CreateDareDraft,
+  nextDareType: CreateDareDraft['dareType'],
+) {
+  const description = current.description;
+  const trimmed = description.trim();
+
+  if (nextDareType === 'task' && trimmed.length === 0) {
+    return TASK_DESCRIPTION_PREFIX;
+  }
+
+  if (nextDareType === 'skill' && description === TASK_DESCRIPTION_PREFIX) {
+    return '';
+  }
+
+  return description;
+}
+
+function getDescriptionMeaningfulText(draft: CreateDareDraft) {
+  if (draft.dareType !== 'task') return draft.description.trim();
+  return draft.description.startsWith(TASK_DESCRIPTION_PREFIX)
+    ? draft.description.slice(TASK_DESCRIPTION_PREFIX.length).trim()
+    : draft.description.trim();
 }

@@ -7,6 +7,7 @@ import {
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { formatRelativeTime } from '../../lib/format/time';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { notifications as mockNotifications } from '../../mocks/notifications';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNotification, NotificationKind } from './types';
@@ -168,7 +169,7 @@ export function useNotifications(): NotificationsState {
     if (auth.status !== 'authenticated' || !userId || !supabaseClient) return undefined;
 
     const channel = supabaseClient
-      .channel(`notification-inbox-${userId}`)
+      .channel(uniqueRealtimeChannelName(`notification-inbox-${userId}`))
       .on(
         'postgres_changes',
         { event: '*', filter: `user_id=eq.${userId}`, schema: 'public', table: 'notifications' },

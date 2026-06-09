@@ -24,6 +24,7 @@ export function ConstitutionPreview({
     <View style={styles.card}>
       <Text style={styles.title}>DARE Constitution</Text>
       <PreviewRow label="Challenge" value={draft.title || 'Not set'} />
+      <PreviewRow label={draft.dareType === 'task' ? 'Task description' : 'DARE description'} value={draft.description || 'Description not set'} />
       <PreviewRow label="DARE type" value={formatDareTypeLabel(draft.dareType)} />
       <PreviewRow label="Category" value={draft.category.toUpperCase()} />
       <PreviewRow label="Resolution" value={formatResolutionLabel(draft.resolutionType)} />

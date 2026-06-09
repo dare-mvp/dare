@@ -36,7 +36,7 @@ Player who accepts or claims a Task-Based DARE and attempts to complete the Dare
 
 ### Spectator
 
-User who watches live Court sessions, chats, reacts, and votes only when eligible.
+User who watches LiveKit-powered live Court sessions, chats, reacts, and votes only when eligible.
 
 ### Juror
 
@@ -123,7 +123,7 @@ Failure states:
 4. Server starts match and broadcasts server time.
 5. Match runs according to the creator-authored constitution.
 6. For Answer Key DAREs, prompts/answers are checked against the pre-committed answer key for exact-match answer types. Non-exact or contested answers enter jury/admin review.
-7. For witnessed/evidence DAREs, spectators, recordings, evidence, and participant claims produce the result packet.
+7. For witnessed/evidence DAREs, LiveKit spectators, recordings, evidence, and participant claims produce the result packet.
 8. Spectators can watch, chat, and vote if eligible.
 9. Result is confirmed by answer-key verification, witness signals, evidence review, or jury/admin verdict.
 10. Result overlay is shown.
@@ -139,7 +139,7 @@ Court must support reconnects:
 ## Journey 5: Evidence-Based DARE
 
 1. Players enter Court.
-2. App requests camera/microphone permission only when the user enters capture or live Court recording.
+2. App requests camera/microphone permission only when the user enters capture or a LiveKit live Court.
 3. Recording session is server-stamped.
 4. Evidence is captured in-app.
 5. Upload shows progress and failure recovery.

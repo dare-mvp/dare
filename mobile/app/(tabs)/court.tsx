@@ -70,7 +70,7 @@ export default function CourtScreen() {
         {session ? <CourtArena session={session} /> : null}
 
         {session ? <View style={styles.readyPanel}>
-          <View>
+          <View style={styles.readyCopy}>
             <Text style={styles.readyTitle}>Both players ready</Text>
             <Text style={styles.readyText}>
               Countdown has started. Leaving during an active court may trigger forfeit review.
@@ -202,9 +202,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing[12],
     justifyContent: 'space-between',
     padding: spacing[16],
+  },
+  readyCopy: {
+    flex: 1,
+    minWidth: 180,
   },
   readyTitle: {
     color: colors.text,
@@ -217,7 +222,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyRegular,
     fontSize: typography.caption.fontSize,
     lineHeight: typography.caption.lineHeight,
-    maxWidth: 230,
     marginTop: spacing[4],
   },
   settlementPanel: {

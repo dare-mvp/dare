@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { getFeaturedDareById } from '../../mocks/home';
 import { formatResolutionLabel } from '../create/createLabels';
 import type { DareFeedItem } from './components/DareCard';
@@ -21,6 +22,7 @@ type DareDetailState = {
 const detailColumns = [
   'id',
   'title',
+  'description',
   'category',
   'dare_type',
   'funding_model',
@@ -37,12 +39,14 @@ const detailColumns = [
   'score_a',
   'score_b',
   'court_phase',
+  'rules',
 ].join(',');
 
 type ParticipantDareRow = {
   category: string;
   challenger_id: string | null;
   created_at: string;
+  description: string | null;
   id: string;
   issuer_id: string;
   dare_type?: 'skill' | 'task';
@@ -52,6 +56,9 @@ type ParticipantDareRow = {
   stake_amount: number;
   status: string;
   title: string;
+  dare_constitutions?: {
+    rules: string | null;
+  } | null;
 };
 
 type ParticipantCourtRow = {
@@ -156,7 +163,7 @@ export function useDareDetail(id?: string): DareDetailState {
     if (!supabaseClient || !isUuid(id)) return undefined;
 
     const channel = supabaseClient
-      .channel(`dare-detail-${id}`)
+      .channel(uniqueRealtimeChannelName(`dare-detail-${id}`))
       .on(
         'postgres_changes',
         { event: '*', filter: `id=eq.${id}`, schema: 'public', table: 'dares' },
@@ -193,7 +200,7 @@ async function fetchParticipantDare(id: string) {
 
   const { data: dare, error: dareError } = await supabaseClient
     .from('dares')
-    .select('id,title,category,dare_type,funding_model,resolution_type,status,stake_amount,reward_amount,created_at,issuer_id,challenger_id')
+    .select('id,title,description,category,dare_type,funding_model,resolution_type,status,stake_amount,reward_amount,created_at,issuer_id,challenger_id,dare_constitutions(rules)')
     .eq('id', id)
     .maybeSingle();
 
@@ -230,6 +237,7 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
     actionLabel: status === 'disputed' ? 'Review dispute' : 'View DARE',
     category: formatLabel(row.category),
     createdAgo: row.created_at ? 'Created' : '',
+    description: row.description ?? null,
     id: row.id,
     dareType: row.dare_type ?? 'skill',
     fundingModel: row.funding_model ?? (row.dare_type === 'task' ? 'darer_reward' : 'two_sided_stake'),
@@ -249,6 +257,7 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
     scoreA: court?.score_a ?? undefined,
     scoreB: court?.score_b ?? undefined,
     rewardKobo: row.reward_amount ?? 0,
+    rules: row.dare_constitutions?.rules ?? null,
     stakeKobo: row.stake_amount,
     status,
     title: row.title,

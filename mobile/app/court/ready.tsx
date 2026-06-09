@@ -7,8 +7,12 @@ import { ConnectionBanner } from '../../src/components/ui/ConnectionBanner';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
+import { CourtLiveRoomPanel } from '../../src/features/court/components/CourtLiveRoomPanel';
 import { CourtPhaseCard } from '../../src/features/court/components/CourtPhaseCard';
+import { canUseNativeLiveKit } from '../../src/features/court/liveKitRuntime';
+import { withCourtLiveRoom } from '../../src/features/court/liveRoom';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
+import { useLiveCourtPresence } from '../../src/features/court/useLiveCourtPresence';
 import { useMe } from '../../src/features/me/useMe';
 import { isUuid } from '../../src/lib/ids';
 import { markDareReady, ReadyDareResponse } from '../../src/lib/actions/endpoints';
@@ -20,11 +24,23 @@ export default function CourtReadyScreen() {
   const { dareId } = useLocalSearchParams<{ dareId?: string }>();
   const { data, error, loading } = useMe();
   const court = useActiveCourtSession(dareId);
+  const refreshCourt = court.refresh;
   const [submitting, setSubmitting] = useState(false);
   const [readyState, setReadyState] = useState<ReadyDareResponse | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const session = court.session ? { ...court.session, phase: 'ready' as const } : null;
-  const canReady = data.capabilities.canAcceptDare && !submitting && readyState?.phase !== 'ready_check';
+  const baseSession = court.session ? { ...court.session, phase: 'ready' as const } : null;
+  const resolvedDareId = isUuid(dareId) ? dareId : baseSession?.dareId;
+  const livePresence = useLiveCourtPresence({
+    dareId: resolvedDareId,
+    enabled: court.source === 'server' && Boolean(baseSession),
+    nativeVideoEnabled: canUseNativeLiveKit(),
+    phase: baseSession?.phase,
+    viewerRole: baseSession?.viewerRole,
+  });
+  const session = baseSession ? withCourtLiveRoom(baseSession, livePresence.liveState) : null;
+  const viewerReady = getViewerReady(session, readyState);
+  const hasSession = Boolean(session);
+  const canReady = Boolean(session?.liveRoom.canEnter && session.liveRoom.viewerJoined) && data.capabilities.canAcceptDare && !submitting && !viewerReady;
 
   useEffect(() => {
     if (court.source !== 'server' || court.session?.phase !== 'active') return;
@@ -36,6 +52,18 @@ export default function CourtReadyScreen() {
       },
     });
   }, [court.session?.dareId, court.session?.phase, court.source, dareId, router]);
+
+  useEffect(() => {
+    if (court.source !== 'server' || !hasSession || !viewerReady) return undefined;
+
+    const poll = setInterval(() => {
+      void refreshCourt();
+    }, 2500);
+
+    return () => {
+      clearInterval(poll);
+    };
+  }, [court.source, hasSession, refreshCourt, viewerReady]);
 
   return (
     <CourtFlowFrame
@@ -76,7 +104,15 @@ export default function CourtReadyScreen() {
         />
       ) : null}
 
-      {readyState?.phase === 'ready_check' ? (
+      {livePresence.error ? (
+        <InlineAlert
+          tone="danger"
+          title="Live Court unavailable"
+          message={livePresence.error}
+        />
+      ) : null}
+
+      {viewerReady ? (
         <InlineAlert
           tone="info"
           title="Ready confirmed"
@@ -88,7 +124,7 @@ export default function CourtReadyScreen() {
       {session ? (
         <CourtPhaseCard
           body="Ready-up protects both players from accidental starts and stale sessions."
-          statusLabel="READY-UP"
+          statusLabel={viewerReady ? 'READY CONFIRMED' : 'READY-UP'}
           statusTone="warning"
           title={session.title}
         >
@@ -102,6 +138,13 @@ export default function CourtReadyScreen() {
           message={court.loading ? 'Checking your court session.' : 'Accept a DARE before entering ready-up.'}
         />
       )}
+      {session ? (
+        <CourtLiveRoomPanel
+          liveRoom={session.liveRoom}
+          liveState={livePresence.liveState}
+          onConnectionStatus={livePresence.recordConnectionStatus}
+        />
+      ) : null}
       <InlineAlert
         tone="warning"
         title="Leaving can affect the match"
@@ -111,7 +154,7 @@ export default function CourtReadyScreen() {
         accessibilityLabel="Confirm ready"
         disabled={!canReady}
         icon={<CheckCircle2 color={colors.text} size={18} />}
-        label={readyState?.phase === 'ready_check' ? 'Waiting opponent' : submitting ? 'Confirming' : 'Confirm ready'}
+        label={viewerReady ? 'Waiting opponent' : livePresence.entering ? 'Joining Court' : submitting ? 'Confirming' : 'Confirm ready'}
         onPress={() => {
           void handleReady();
         }}
@@ -120,14 +163,14 @@ export default function CourtReadyScreen() {
   );
 
   async function handleReady() {
-    if (!isUuid(dareId)) {
+    if (!isUuid(resolvedDareId)) {
       router.push('/court/countdown');
       return;
     }
 
     setSubmitting(true);
     setSubmitError(null);
-    const result = await markDareReady(dareId);
+    const result = await markDareReady(resolvedDareId);
     if (!result.ok) {
       setSubmitError(result.error.message);
       setSubmitting(false);
@@ -148,6 +191,16 @@ export default function CourtReadyScreen() {
       });
     }
   }
+}
+
+function getViewerReady(
+  session: ReturnType<typeof useActiveCourtSession>['session'] | null,
+  readyState: ReadyDareResponse | null,
+) {
+  if (!session) return false;
+  if (session.playerA.isYou) return readyState?.playerAReady ?? session.playerA.isReady;
+  if (session.playerB.isYou) return readyState?.playerBReady ?? session.playerB.isReady;
+  return false;
 }
 
 function PlayerReadyRow({ name, ready, you = false }: { name: string; ready: boolean; you?: boolean }) {

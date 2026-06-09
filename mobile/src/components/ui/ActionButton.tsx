@@ -36,7 +36,14 @@ export function ActionButton({
     >
       <View style={styles.content}>
         {icon ? <View style={styles.icon}>{icon}</View> : null}
-        <Text style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}>{label}</Text>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          numberOfLines={1}
+          style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}
+        >
+          {label}
+        </Text>
       </View>
     </Pressable>
   );
@@ -75,6 +82,7 @@ const styles = StyleSheet.create({
     gap: spacing[8],
     justifyContent: 'center',
     minWidth: 0,
+    maxWidth: '100%',
   },
   icon: {
     alignItems: 'center',
@@ -86,6 +94,7 @@ const styles = StyleSheet.create({
     fontSize: typography.body.fontSize,
     fontWeight: '800',
     letterSpacing: 0,
+    maxWidth: '100%',
     textTransform: 'uppercase',
   },
   secondaryLabel: {

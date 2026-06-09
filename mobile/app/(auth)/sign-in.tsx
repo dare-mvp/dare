@@ -76,7 +76,7 @@ export default function SignInScreen() {
         label={isBackendConfigured ? (loading ? 'Signing in' : 'Sign in') : 'Open preview'}
         onPress={handleSignIn}
       />
-      <AuthFooterLink label="Forgot password?" onPress={() => undefined} />
+      <AuthFooterLink label="Forgot password?" onPress={() => router.push('/forgot-password')} />
       {!isBackendConfigured ? (
         <InlineAlert
           tone="info"

@@ -1,10 +1,12 @@
 import { draftToCreateDarePayload } from './createDarePayload';
+import { TASK_DESCRIPTION_PREFIX, validateCreateDareDraft } from './hooks/useCreateDareDraft';
 import type { CreateDareDraft } from './types';
 
 const baseDraft: CreateDareDraft = {
   answerKey: 'Paris',
   answerKeyRules: 'Case insensitive',
   category: 'knowledge',
+  description: 'Answer this creator-authored geography prompt during the court session.',
   dareType: 'skill',
   durationSeconds: 180,
   opponent: '@player_two',
@@ -25,6 +27,8 @@ function testSkillPayloadUsesStake() {
   assert(payload.dareType === 'skill', 'Skill payload should use skill dareType.');
   assert(payload.stakeAmount === 50_000, 'Skill payload should send stake amount.');
   assert(payload.rewardAmount === 0, 'Skill payload should not send a reward amount.');
+  assert(payload.description === baseDraft.description, 'Payload should include the DARE description.');
+  assert(payload.constitution.test === baseDraft.description, 'Constitution test should use the DARE description.');
   assert(payload.constitution.answerKey === 'Paris', 'Answer Key payload should include answer key.');
   assert(payload.constitution.answerKeyRules === 'Case insensitive', 'Answer Key payload should include judging rules.');
 }
@@ -55,6 +59,19 @@ function testNonAnswerKeyPayloadOmitsAnswerKey() {
   assert(payload.constitution.answerKeyRules === null, 'Evidence payload should omit answer-key rules.');
 }
 
+function testTaskDescriptionPrefixAloneIsIncomplete() {
+  const validation = validateCreateDareDraft({
+    ...baseDraft,
+    dareType: 'task',
+    description: TASK_DESCRIPTION_PREFIX,
+    rewardNaira: '750',
+  });
+
+  assert(!validation.isValid, 'Task description prefix alone should not be valid.');
+  assert(Boolean(validation.errors.description), 'Task prefix-only description should show a description error.');
+}
+
 testSkillPayloadUsesStake();
 testTaskPayloadUsesReward();
 testNonAnswerKeyPayloadOmitsAnswerKey();
+testTaskDescriptionPrefixAloneIsIncomplete();

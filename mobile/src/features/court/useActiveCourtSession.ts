@@ -5,6 +5,7 @@ import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { isUuid } from '../../lib/ids';
 import { activeCourtSession } from '../../mocks/court';
+import { withCourtLiveRoom } from './liveRoom';
 import { CourtDareStatus, CourtEvidenceSummary, CourtJuryCaseSummary, CourtResultClaimSummary, CourtSession } from './types';
 
 type CourtSource = 'mock' | 'server';
@@ -250,15 +251,16 @@ function mapCourtSession(
   const isIssuer = dare.issuer_id === userId;
   const isChallenger = dare.challenger_id === userId;
   const currentHeartbeat = isIssuer ? court.player_a_heartbeat_at : court.player_b_heartbeat_at;
+  const heartbeatAgeSeconds = getHeartbeatAgeSeconds(currentHeartbeat);
 
-  return {
+  return withCourtLiveRoom({
     ...activeCourtSession,
     challengeType: `${dare.dare_type === 'task' ? 'Task-Based' : 'Skill-Based'} ${formatLabel(dare.category)} DARE - ${formatResolution(dare.resolution_type)}`,
-    connectionState: court.phase === 'active' ? 'connected' : 'reconnecting',
+    connectionState: court.phase === 'active' && heartbeatAgeSeconds > 30 ? 'reconnecting' : 'connected',
     dareType: dare.dare_type ?? 'skill',
     dareId: dare.id,
     evidence: metadata.evidence,
-    heartbeatAgeSeconds: getHeartbeatAgeSeconds(currentHeartbeat),
+    heartbeatAgeSeconds,
     juryCase: metadata.juryCase,
     phase: mapPhase(court.phase, dare.status),
     playerA: {
@@ -288,7 +290,7 @@ function mapCourtSession(
     viewerRole: isIssuer ? 'participant_a' : isChallenger ? 'participant_b' : 'spectator',
     votesA: court.votes_a,
     votesB: court.votes_b,
-  };
+  });
 }
 
 function mapPhase(phase: string, status: CourtDareStatus): CourtSession['phase'] {

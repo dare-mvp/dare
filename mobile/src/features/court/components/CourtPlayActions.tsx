@@ -11,6 +11,7 @@ type CourtPlayActionsProps = {
   onForfeit: () => void;
   onOpenChat: () => void;
   onSubmitAnswer: () => void;
+  submitDisabledReason?: string;
   submitting: boolean;
   showAnswerSubmit: boolean;
 };
@@ -22,6 +23,7 @@ export function CourtPlayActions({
   onForfeit,
   onOpenChat,
   onSubmitAnswer,
+  submitDisabledReason,
   showAnswerSubmit,
   submitting,
 }: CourtPlayActionsProps) {
@@ -32,7 +34,7 @@ export function CourtPlayActions({
           accessibilityLabel="Submit answer"
           disabled={!canSubmit}
           icon={<CheckCircle2 color={colors.text} size={18} />}
-          label={submitting ? 'Submitting' : 'Submit answer'}
+          label={submitting ? 'Submitting' : submitDisabledReason ? 'Live room required' : 'Submit answer'}
           onPress={onSubmitAnswer}
         />
       ) : null}

@@ -1,6 +1,7 @@
 export type ActionErrorCode =
   | 'ACCOUNT_RESTRICTED'
   | 'ALREADY_PROCESSED'
+  | 'ACTIVE_COURT_COMMITMENT'
   | 'BAD_REQUEST'
   | 'FORBIDDEN'
   | 'IDEMPOTENCY_CONFLICT'
@@ -8,6 +9,7 @@ export type ActionErrorCode =
   | 'INVALID_STATE'
   | 'KYC_REQUIRED'
   | 'LIMIT_EXCEEDED'
+  | 'LIVE_COURT_REQUIRED'
   | 'METHOD_NOT_ALLOWED'
   | 'NETWORK_ERROR'
   | 'NOT_FOUND'

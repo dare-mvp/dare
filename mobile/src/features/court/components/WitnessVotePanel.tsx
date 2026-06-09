@@ -9,6 +9,7 @@ type WitnessVote = 'A' | 'B';
 
 type WitnessVotePanelProps = {
   disabled: boolean;
+  disabledReason?: string;
   onVote: (vote: WitnessVote) => void;
   session: CourtSession;
   submitting: boolean;
@@ -18,6 +19,7 @@ type WitnessVotePanelProps = {
 
 export function WitnessVotePanel({
   disabled,
+  disabledReason,
   onVote,
   session,
   submitting,
@@ -39,6 +41,9 @@ export function WitnessVotePanel({
       <Text style={styles.body}>
         Vote only if you were present for the live attempt. Your vote helps resolve the DARE under the witnessed rules.
       </Text>
+      {disabledReason && !hasVoted ? (
+        <Text style={styles.waitingText}>{disabledReason}</Text>
+      ) : null}
       {!witnessEligible && !hasVoted ? (
         <Text style={styles.waitingText}>Stay in the live Court a little longer before voting.</Text>
       ) : null}

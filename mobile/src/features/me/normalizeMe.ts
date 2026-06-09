@@ -1,19 +1,8 @@
 import { MeResponse } from '../../lib/actions/endpoints';
-import { profileSummary } from '../../mocks/profile';
-import { walletSummary } from '../../mocks/wallet';
 import { ProfileSummary } from '../profile/types';
 import { WalletSummary } from '../wallet/types';
 import { formatNgnCompactFromKobo, formatNgnFromKobo } from './format';
 import { MeState } from './types';
-
-const previewCapabilities = {
-  canAcceptDare: true,
-  canCreateDare: true,
-  canDeposit: true,
-  canJury: true,
-  canUpdateProfile: true,
-  canWithdraw: true,
-};
 
 const emptyCapabilities = {
   canAcceptDare: false,
@@ -74,11 +63,11 @@ const emptyProfileSummary: ProfileSummary = {
 
 export function createPreviewMeState(): MeState {
   return {
-    capabilities: previewCapabilities,
-    profile: profileSummary,
+    capabilities: emptyCapabilities,
+    profile: emptyProfileSummary,
     source: 'mock',
     user: null,
-    wallet: walletSummary,
+    wallet: emptyWalletSummary,
   };
 }
 

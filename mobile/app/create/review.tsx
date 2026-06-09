@@ -27,6 +27,7 @@ export default function CreateReviewScreen() {
     answerKey?: string;
     answerKeyRules?: string;
     category?: string;
+    description?: string;
     dareType?: string;
     durationSeconds?: string;
     opponent?: string;
@@ -180,6 +181,7 @@ export default function CreateReviewScreen() {
 
 function getFirstValidationError(errors: ReturnType<typeof validateCreateDareDraft>['errors']) {
   return errors.title
+    ?? errors.description
     ?? errors.rules
     ?? errors.answerKey
     ?? errors.answerKeyRules

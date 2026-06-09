@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { LifeBuoy, Settings } from 'lucide-react-native';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
@@ -12,12 +13,24 @@ import { AccountControlsPanel } from '../../src/features/profile/components/Acco
 import { ProfileHero } from '../../src/features/profile/components/ProfileHero';
 import { RecentChallengesPanel } from '../../src/features/profile/components/RecentChallengesPanel';
 import { TrustScorePanel } from '../../src/features/profile/components/TrustScorePanel';
+import { shareProfile } from '../../src/lib/share/shareContent';
 import { colors, spacing } from '../../src/theme/tokens';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
   const profile = data.profile;
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  async function handleShareProfile() {
+    setShareError(null);
+
+    try {
+      await shareProfile(profile.displayName);
+    } catch {
+      setShareError('Profile sharing is not available right now.');
+    }
+  }
 
   return (
     <Screen>
@@ -44,8 +57,17 @@ export default function ProfileScreen() {
           />
         ) : null}
 
+        {shareError ? (
+          <InlineAlert
+            tone="danger"
+            title="Share failed"
+            message={shareError}
+          />
+        ) : null}
+
         <ProfileHero
           onEditPress={() => router.push('/profile/edit')}
+          onSharePress={handleShareProfile}
           profile={profile}
         />
         <TrustScorePanel profile={profile} />

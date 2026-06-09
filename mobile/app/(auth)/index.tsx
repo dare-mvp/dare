@@ -44,15 +44,15 @@ export default function AuthWelcomeScreen() {
         onPress={() => router.push('/age-gate')}
       />
       <ActionButton
-        accessibilityLabel="Explore preview"
+        accessibilityLabel="Explore public DARE feed"
         icon={<Eye color={colors.text} size={18} />}
-        label="Explore preview"
+        label="Explore DARE"
         onPress={() => router.replace('/(tabs)')}
         variant="secondary"
       />
       <Text style={styles.note}>
         {isBackendConfigured
-          ? 'Sign in to sync wallet, court, dispute, and jury state.'
+          ? 'Explore public DAREs now. Sign in to create, accept, fund, or settle.'
           : 'Preview mode uses sample data and disables money-moving actions.'}
       </Text>
     </AuthFrame>

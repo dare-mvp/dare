@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react';
 import { ConnectionBanner } from '../../src/components/ui/ConnectionBanner';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
+import { CourtLiveRoomPanel } from '../../src/features/court/components/CourtLiveRoomPanel';
 import { CourtPlayActions } from '../../src/features/court/components/CourtPlayActions';
 import { CourtPlayAlerts } from '../../src/features/court/components/CourtPlayAlerts';
 import { CourtResolutionPanel } from '../../src/features/court/components/CourtResolutionPanel';
 import { CourtStatusPanel } from '../../src/features/court/components/CourtStatusPanel';
 import { getResolutionDisabledReason } from '../../src/features/court/courtPlayStatus';
+import { canUseNativeLiveKit } from '../../src/features/court/liveKitRuntime';
+import { withCourtLiveRoom } from '../../src/features/court/liveRoom';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { useCourtQuestion } from '../../src/features/court/useCourtQuestion';
+import { useLiveCourtPresence } from '../../src/features/court/useLiveCourtPresence';
 import { useMe } from '../../src/features/me/useMe';
 import {
   completeDare,
@@ -42,12 +46,21 @@ export default function CourtPlayScreen() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [witnessEligible, setWitnessEligible] = useState(false);
   const [witnessVote, setWitnessVote] = useState<WitnessVote | null>(null);
-  const session = court.session ?? activeCourtSession;
+  const baseSession = court.session ?? activeCourtSession;
+  const resolvedDareId = isUuid(dareId) ? dareId : baseSession.dareId;
+  const livePresence = useLiveCourtPresence({
+    dareId: resolvedDareId,
+    enabled: court.source === 'server' && Boolean(court.session),
+    nativeVideoEnabled: canUseNativeLiveKit(),
+    phase: baseSession.phase,
+    viewerRole: baseSession.viewerRole,
+  });
+  const session = court.session ? withCourtLiveRoom(baseSession, livePresence.liveState) : activeCourtSession;
   const question = courtQuestion.question;
   const isParticipant = session.viewerRole !== 'spectator';
   const canPlay = session.phase === 'active' || session.phase === 'awaiting_result';
   const resolutionDisabledReason = getResolutionDisabledReason(session);
-  const canSubmit = session.resolutionType === 'answer_key' && session.phase === 'active' && isParticipant && data.capabilities.canAcceptDare && answerText.trim().length > 0 && !submitting;
+  const canSubmit = session.resolutionType === 'answer_key' && session.phase === 'active' && isParticipant && data.capabilities.canAcceptDare && answerText.trim().length > 0 && !submitting && !resolutionDisabledReason;
 
   useEffect(() => {
     setAnswerText('');
@@ -58,34 +71,38 @@ export default function CourtPlayScreen() {
     setActionNotice(null);
     setWitnessEligible(false);
     setWitnessVote(null);
-  }, [dareId]);
+  }, [resolvedDareId]);
 
   useEffect(() => {
-    if (!isUuid(dareId) || !isParticipant || session.phase !== 'active') return;
+    if (livePresence.error) setActionError(livePresence.error);
+  }, [livePresence.error]);
+
+  useEffect(() => {
+    if (!isUuid(resolvedDareId) || !isParticipant || session.phase !== 'active') return;
 
     let mounted = true;
     const interval = setInterval(() => {
-      recordCourtHeartbeat(dareId).then((result) => {
+      recordCourtHeartbeat(resolvedDareId).then((result) => {
         if (mounted && !result.ok) {
           setActionError(result.error.message);
         }
       });
     }, 15_000);
 
-    void recordCourtHeartbeat(dareId);
+    void recordCourtHeartbeat(resolvedDareId);
 
     return () => {
       mounted = false;
       clearInterval(interval);
     };
-  }, [dareId, isParticipant, session.phase]);
+  }, [isParticipant, resolvedDareId, session.phase]);
 
   useEffect(() => {
-    if (!isUuid(dareId) || session.phase !== 'active' || session.resolutionType !== 'witnessed' || session.viewerRole !== 'spectator') return;
+    if (!isUuid(resolvedDareId) || session.phase !== 'active' || session.resolutionType !== 'witnessed' || session.viewerRole !== 'spectator') return;
 
     let mounted = true;
     const updateWitnessAttendance = async () => {
-      const result = await recordWitnessAttendance(dareId);
+      const result = await recordWitnessAttendance(resolvedDareId);
       if (!mounted) return;
       if (!result.ok) {
         setWitnessEligible(false);
@@ -105,7 +122,7 @@ export default function CourtPlayScreen() {
       mounted = false;
       clearInterval(interval);
     };
-  }, [dareId, session.phase, session.resolutionType, session.viewerRole]);
+  }, [resolvedDareId, session.phase, session.resolutionType, session.viewerRole]);
 
   return (
     <CourtFlowFrame
@@ -122,6 +139,11 @@ export default function CourtPlayScreen() {
         courtQuestion={courtQuestion}
         courtSource={court.source}
         session={session}
+      />
+      <CourtLiveRoomPanel
+        liveRoom={session.liveRoom}
+        liveState={livePresence.liveState}
+        onConnectionStatus={livePresence.recordConnectionStatus}
       />
       <CourtArena session={session} />
       <CourtResolutionPanel
@@ -151,11 +173,12 @@ export default function CourtPlayScreen() {
         onForfeit={() => {
           void handleForfeit();
         }}
-        onOpenChat={() => router.push({ pathname: '/court/chat', params: { dareId } })}
+        onOpenChat={() => router.push({ pathname: '/court/chat', params: { dareId: resolvedDareId } })}
         onSubmitAnswer={() => {
           void handleSubmitAnswer();
         }}
         showAnswerSubmit={session.resolutionType === 'answer_key'}
+        submitDisabledReason={resolutionDisabledReason}
         submitting={submitting}
       />
     </CourtFlowFrame>
@@ -167,8 +190,12 @@ export default function CourtPlayScreen() {
       setActionError('Answer submission is closed for this Court state.');
       return;
     }
+    if (resolutionDisabledReason) {
+      setActionError(resolutionDisabledReason);
+      return;
+    }
 
-    if (!isUuid(dareId) || courtQuestion.source !== 'server' || !isUuid(question.id)) {
+    if (!isUuid(resolvedDareId) || courtQuestion.source !== 'server' || !isUuid(question.id)) {
       router.push('/court/result');
       return;
     }
@@ -176,7 +203,7 @@ export default function CourtPlayScreen() {
     setSubmitting(true);
     setActionError(null);
     setActionNotice(null);
-    const result = await submitDareAnswer(dareId, {
+    const result = await submitDareAnswer(resolvedDareId, {
       answerText: answerText.trim(),
       questionId: question.id,
     });
@@ -187,7 +214,7 @@ export default function CourtPlayScreen() {
       return;
     }
 
-    const completeResult = await completeDare(dareId);
+    const completeResult = await completeDare(resolvedDareId);
     setSubmitting(false);
     if (!completeResult.ok && result.data.phase !== 'active') {
       setActionError(completeResult.error.message);
@@ -216,7 +243,7 @@ export default function CourtPlayScreen() {
       return;
     }
 
-    if (!isUuid(dareId)) {
+    if (!isUuid(resolvedDareId)) {
       router.push('/court/result');
       return;
     }
@@ -230,7 +257,7 @@ export default function CourtPlayScreen() {
         pathname: '/disputes/evidence-upload',
         params: {
           claimOutcome: outcome,
-          dareId,
+          dareId: resolvedDareId,
           mode: 'result-claim',
           rationale: claimRationale,
         },
@@ -241,7 +268,7 @@ export default function CourtPlayScreen() {
     setSubmitting(true);
     setActionError(null);
     setActionNotice(null);
-    const claimResult = await submitResultClaim(dareId, {
+    const claimResult = await submitResultClaim(resolvedDareId, {
       claimedOutcome: outcome,
       evidenceObjectIds: [],
       rationale: claimRationale || undefined,
@@ -267,13 +294,18 @@ export default function CourtPlayScreen() {
 
   async function handleSubmitWitnessVote(vote: WitnessVote) {
     if (session.resolutionType !== 'witnessed' || session.viewerRole !== 'spectator') return;
+    if (resolutionDisabledReason) {
+      setActionError(resolutionDisabledReason);
+      setActionNotice(null);
+      return;
+    }
     if (session.phase !== 'active') {
       setActionError('Witness voting is closed for this Court state.');
       setActionNotice(null);
       return;
     }
 
-    if (!isUuid(dareId)) {
+    if (!isUuid(resolvedDareId)) {
       setActionError('Court is not ready for witness voting yet.');
       setActionNotice(null);
       return;
@@ -289,7 +321,7 @@ export default function CourtPlayScreen() {
       return;
     }
 
-    const voteResult = await submitWitnessVote(dareId, { vote });
+    const voteResult = await submitWitnessVote(resolvedDareId, { vote });
 
     if (!voteResult.ok) {
       setActionError(voteResult.error.message);
@@ -304,7 +336,7 @@ export default function CourtPlayScreen() {
   }
 
   async function handleForfeit() {
-    if (!isUuid(dareId)) {
+    if (!isUuid(resolvedDareId)) {
       router.push('/court/result');
       return;
     }
@@ -312,7 +344,7 @@ export default function CourtPlayScreen() {
     setSubmitting(true);
     setActionError(null);
     setActionNotice(null);
-    const result = await forfeitDare(dareId);
+    const result = await forfeitDare(resolvedDareId);
     if (!result.ok) {
       setActionError(result.error.message);
       setSubmitting(false);

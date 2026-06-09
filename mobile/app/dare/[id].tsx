@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LockKeyhole, ShieldCheck } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
@@ -18,6 +19,9 @@ import {
 } from '../../src/features/feed/components/DareDetailParts';
 import { useDareDetail } from '../../src/features/feed/useDareDetail';
 import { useMe } from '../../src/features/me/useMe';
+import { getAcceptQuote, type AcceptQuoteResponse } from '../../src/lib/actions/endpoints';
+import { ACTIVE_COURT_COMMITMENT_MESSAGE } from '../../src/lib/errors/userMessages';
+import { shareDare } from '../../src/lib/share/shareContent';
 import { colors } from '../../src/theme/tokens';
 
 const platformFeeRate = 0.05;
@@ -27,6 +31,25 @@ export default function DareDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, error: meError, loading: meLoading } = useMe();
   const { dare, error: detailError, loading: detailLoading, source } = useDareDetail(id);
+  const [acceptQuote, setAcceptQuote] = useState<AcceptQuoteResponse | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dare?.id || !isUuid(dare.id) || dare.status !== 'open') {
+      setAcceptQuote(null);
+      return undefined;
+    }
+
+    let mounted = true;
+    void getAcceptQuote(dare.id).then((result) => {
+      if (!mounted) return;
+      setAcceptQuote(result.ok ? result.data : null);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [dare?.id, dare?.status]);
 
   if (!dare) {
     return (
@@ -41,6 +64,7 @@ export default function DareDetailScreen() {
     );
   }
 
+  const currentDare = dare;
   const isTask = dare.dareType === 'task';
   const dareType = dare.dareType ?? 'skill';
   const fundingModel = formatFundingModelLabel(dare.fundingModel, dareType);
@@ -49,12 +73,25 @@ export default function DareDetailScreen() {
   const platformFeeKobo = Math.round(acceptStakeKobo * platformFeeRate);
   const escrowRequiredKobo = acceptStakeKobo + platformFeeKobo;
   const projectedPotKobo = isTask ? rewardKobo : dare.stakeKobo * 2;
-  const canAccept = dare.status === 'open' && data.capabilities.canAcceptDare;
+  const isCreator = data.source === 'server' &&
+    data.user?.username?.toLowerCase() === dare.playerA.name.toLowerCase();
+  const hasActiveCourtCommitment = acceptQuote?.reasonCode === 'ACTIVE_COURT_COMMITMENT';
+  const canAccept = dare.status === 'open' && data.capabilities.canAcceptDare && !isCreator && !hasActiveCourtCommitment;
+
+  async function handleShareDare() {
+    setShareError(null);
+
+    try {
+      await shareDare({ id: currentDare.id, title: currentDare.title });
+    } catch {
+      setShareError('DARE sharing is not available right now.');
+    }
+  }
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <DetailHeader onBack={() => router.back()} title="Accept DARE" />
+        <DetailHeader onBack={() => router.back()} onShare={handleShareDare} title="Accept DARE" />
 
         {(source === 'mock' || data.source === 'mock') && !meError ? (
           <InlineAlert
@@ -77,6 +114,14 @@ export default function DareDetailScreen() {
             tone="danger"
             title="DARE detail unavailable"
             message={detailError}
+          />
+        ) : null}
+
+        {shareError ? (
+          <InlineAlert
+            tone="danger"
+            title="Share failed"
+            message={shareError}
           />
         ) : null}
 
@@ -124,10 +169,14 @@ export default function DareDetailScreen() {
           <DetailRow label="Resolution" value={dare.resolution} />
           <DetailRow label="Created" value={dare.createdAgo} />
           <DetailRow
+            label={isTask ? 'Task description' : 'DARE description'}
+            value={dare.description?.trim() || 'Description not available.'}
+          />
+          <DetailRow
             label="Rules"
-            value={isTask
+            value={dare.rules?.trim() || (isTask
               ? 'The performer completes the task for the Darer-funded reward. No performer stake is locked.'
-              : 'Both players enter court mode with matched stakes. Settlement remains pending until confirmation.'}
+              : 'Both players enter court mode with matched stakes. Settlement remains pending until confirmation.')}
           />
           <DetailRow label="Dispute window" value="A dispute may be opened after the result if either player files a valid dispute." />
         </View>
@@ -155,6 +204,22 @@ export default function DareDetailScreen() {
           message="This DARE is only accepted after escrow, limits, and eligibility checks are confirmed."
         />
 
+        {isCreator ? (
+          <InlineAlert
+            tone="info"
+            title="Created by you"
+            message="You cannot accept your own DARE. Share it or wait for another eligible player to accept."
+          />
+        ) : null}
+
+        {hasActiveCourtCommitment ? (
+          <InlineAlert
+            tone="info"
+            title="Court already active"
+            message={ACTIVE_COURT_COMMITMENT_MESSAGE}
+          />
+        ) : null}
+
         <InlineAlert
           tone="info"
           title={isTask ? 'Task-Based acceptance' : 'KYC and limits checked before ready-up'}
@@ -167,16 +232,29 @@ export default function DareDetailScreen() {
           <ActionButton
             accessibilityLabel="Accept this DARE"
             disabled={!canAccept}
-            label={dare.status === 'open' ? 'Review accept' : 'Not open'}
+            label={isCreator ? 'Created by you' : hasActiveCourtCommitment ? 'Court already active' : dare.status === 'open' ? 'Review accept' : 'Not open'}
             onPress={() => router.push(`/dare/${dare.id}/accept`)}
           />
+          {hasActiveCourtCommitment ? (
+            <ActionButton
+              accessibilityLabel="Go to your current Court"
+              label="Go to Court"
+              onPress={() => router.push('/(tabs)/court')}
+              variant="secondary"
+            />
+          ) : null}
           <ActionButton
             accessibilityLabel="Share this DARE"
             label="Share"
+            onPress={handleShareDare}
             variant="secondary"
           />
         </View>
       </ScrollView>
     </Screen>
   );
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

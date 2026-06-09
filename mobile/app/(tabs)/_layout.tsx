@@ -1,11 +1,15 @@
 import { Tabs } from 'expo-router';
 import { CirclePlus, Flame, Scale, User, Wallet } from 'lucide-react-native';
 
+import { useAuth } from '../../src/features/auth/AuthProvider';
 import { colors, fonts, typography } from '../../src/theme/tokens';
 
 const iconSize = 22;
 
 export default function TabLayout() {
+  const auth = useAuth();
+  const isPublicExplore = auth.status !== 'authenticated';
+
   return (
     <Tabs
       screenOptions={{
@@ -40,6 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="create"
         options={{
+          href: isPublicExplore ? null : undefined,
           title: 'Create',
           tabBarAccessibilityLabel: 'Create DARE tab',
           tabBarIcon: ({ color }) => <CirclePlus color={color} size={iconSize} />,
@@ -48,6 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="court"
         options={{
+          href: isPublicExplore ? null : undefined,
           title: 'Court',
           tabBarAccessibilityLabel: 'Court tab',
           tabBarIcon: ({ color }) => <Scale color={color} size={iconSize} />,
@@ -56,6 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="wallet"
         options={{
+          href: isPublicExplore ? null : undefined,
           title: 'Wallet',
           tabBarAccessibilityLabel: 'Wallet tab',
           tabBarIcon: ({ color }) => <Wallet color={color} size={iconSize} />,
@@ -64,6 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          href: isPublicExplore ? null : undefined,
           title: 'Profile',
           tabBarAccessibilityLabel: 'Profile tab',
           tabBarIcon: ({ color }) => <User color={color} size={iconSize} />,

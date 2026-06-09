@@ -40,6 +40,18 @@
       "expo-router",
       "expo-font",
       [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          },
+          "ios": {
+            "enableMultitaskingCameraAccess": false
+          }
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
+      [
         "expo-notifications",
         {
           "color": "#FF5500",

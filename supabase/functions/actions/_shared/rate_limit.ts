@@ -51,6 +51,15 @@ const RATE_LIMITS: Record<string, RateLimitRule[]> = {
   "POST /court/*/heartbeat": [
     { scope: "court_heartbeat:minute", limit: 60, windowSeconds: 60 },
   ],
+  "GET /court/*/live-room": [
+    { scope: "live_court_read:minute", limit: 60, windowSeconds: 60 },
+  ],
+  "POST /court/*/live-room/enter": [
+    { scope: "live_court_enter:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /court/*/live-room/presence": [
+    { scope: "live_court_presence:minute", limit: 60, windowSeconds: 60 },
+  ],
   "POST /court/*/ready": [
     { scope: "court_ready:minute", limit: 20, windowSeconds: 60 },
   ],

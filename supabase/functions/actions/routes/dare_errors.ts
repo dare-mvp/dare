@@ -41,6 +41,14 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
     return new ActionError("INSUFFICIENT_FUNDS", { cause: error });
   }
 
+  if (error.message === "active_court_commitment") {
+    return new ActionError("ACTIVE_COURT_COMMITMENT", { cause: error });
+  }
+
+  if (error.message === "live_court_required") {
+    return new ActionError("LIVE_COURT_REQUIRED", { cause: error });
+  }
+
   if (
     ["account_restricted", "wallet_restricted", "target_restricted"].includes(
       error.message ?? "",
@@ -117,6 +125,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "invalid_withdrawal_state",
       "invalid_resolution_type",
       "invalid_result_claim",
+      "invalid_live_court_state",
       "invalid_witness_vote",
       "participant_cannot_witness_vote",
       "witness_attendance_required",

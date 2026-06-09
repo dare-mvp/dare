@@ -10,8 +10,9 @@ The player who creates a DARE defines the challenge, rules, proof requirements, 
 - live Court session
 - participant readiness and presence
 - timer
+- LiveKit Cloud video room
 - audience/witness participation
-- evidence capture and storage
+- Court recording, evidence capture, and storage
 - dispute filing
 - jury/admin review
 - settlement
@@ -112,7 +113,7 @@ Flow:
 2. Challenger or Performer accepts after reviewing the constitution.
 3. Required participants enter Court.
 4. Court starts a server-authoritative timer and presence session.
-5. Spectators/audience can watch, chat, and submit witness signals when eligible.
+5. Spectators/audience can watch through LiveKit Cloud, chat, and submit witness signals when eligible.
 6. Participants submit live proof or recorded evidence when required.
 7. If all required participants agree, result can proceed to settlement.
 8. If there is disagreement, a jury/admin review uses the constitution, recordings, evidence, witness signals, and participant claims.
@@ -142,8 +143,8 @@ Flow:
 
 1. Issuer creates a public constitution with exact evidence requirements.
 2. Challenger or Performer accepts after reviewing the required proof format.
-3. Court opens with server-authoritative timing and participant presence.
-4. Participants capture or upload proof through approved app flows.
+3. Court opens with server-authoritative timing, LiveKit Cloud video, participant presence, and recording consent.
+4. Participants perform live; they can also capture or upload proof through approved app flows.
 5. Evidence is stored privately with metadata, content hashes for uploaded files, and signed access.
 6. If all required participants accept the submitted result, settlement can proceed.
 7. If there is disagreement or policy requires review, a blinded jury/admin packet is created.
@@ -186,7 +187,7 @@ Recommended MVP:
 3. Creator-authored Answer Key DARE with committed answer rules.
 4. Witnessed DARE with live audience/witness signals.
 5. Evidence DARE with private proof capture/upload and review.
-6. Live Court with timer, participant presence, chat, and event metadata.
+6. Live Court with LiveKit Cloud video, timer, participant presence, chat, recording, and event metadata.
 7. Dispute path with evidence packet and jury/admin review.
 8. Server-side settlement after dispute window or verdict.
 
@@ -202,7 +203,10 @@ Replace platform-authored challenge assumptions with these domain concepts:
 - `dare_prompts`: issuer-authored prompt/question records for Answer Key DAREs.
 - `dare_answer_keys`: private committed answer records or answer hashes.
 - `court_events`: append-only events for prompts asked, answers given, witness votes, result claims, and confirmations.
-- `court_recordings` or `evidence_objects`: media metadata and storage links.
+- `live_court_rooms`: LiveKit room metadata, provider state, and audience/recording flags.
+- `live_court_participants`: participant/spectator video presence and recording consent.
+- `live_court_recordings`: LiveKit egress recording metadata and private storage links.
+- `court_recordings` or `evidence_objects`: media metadata and storage links when used by older code paths or uploaded evidence.
 - `witness_votes`: audience/witness result signals with eligibility controls.
 - `result_claims`: participant-submitted winner/score claims.
 

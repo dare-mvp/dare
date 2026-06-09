@@ -15,6 +15,8 @@ import { useDareDetail } from '../../../src/features/feed/useDareDetail';
 import { formatNgnFromKobo } from '../../../src/features/me/format';
 import { useMe } from '../../../src/features/me/useMe';
 import { acceptDareWithQuote, getAcceptQuote, type AcceptQuoteResponse } from '../../../src/lib/actions/endpoints';
+import type { ActionErrorCode } from '../../../src/lib/actions/types';
+import { ACTIVE_COURT_COMMITMENT_MESSAGE } from '../../../src/lib/errors/userMessages';
 import { colors } from '../../../src/theme/tokens';
 
 export default function AcceptDareScreen() {
@@ -27,6 +29,7 @@ export default function AcceptDareScreen() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorCode, setSubmitErrorCode] = useState<ActionErrorCode | null>(null);
 
   useEffect(() => {
     if (!dare?.id || !isUuid(dare.id)) {
@@ -39,6 +42,8 @@ export default function AcceptDareScreen() {
     let mounted = true;
     setQuoteLoading(true);
     setQuoteError(null);
+    setSubmitError(null);
+    setSubmitErrorCode(null);
 
     void getAcceptQuote(dare.id).then((result) => {
       if (!mounted) return;
@@ -95,6 +100,9 @@ export default function AcceptDareScreen() {
   const quoteReady = !isBackendDare || Boolean(quote);
   const quoteAllowsAccept = !isBackendDare || quote?.canAccept === true;
   const canAccept = isOpen && data.capabilities.canAcceptDare && quoteReady && quoteAllowsAccept && !submitting;
+  const acceptBlockedMessage = getAcceptBlockedMessage(quote);
+  const showGoToCourtAction = quote?.reasonCode === 'ACTIVE_COURT_COMMITMENT' ||
+    submitErrorCode === 'ACTIVE_COURT_COMMITMENT';
 
   return (
     <DareFlowFrame
@@ -140,6 +148,14 @@ export default function AcceptDareScreen() {
           tone="danger"
           title="Accept failed"
           message={submitError}
+        />
+      ) : null}
+
+      {acceptBlockedMessage ? (
+        <InlineAlert
+          tone="info"
+          title={acceptBlockedMessage.title}
+          message={acceptBlockedMessage.message}
         />
       ) : null}
 
@@ -195,11 +211,19 @@ export default function AcceptDareScreen() {
         <ActionButton
           accessibilityLabel="Confirm accept DARE"
           disabled={!canAccept}
-          label={submitting ? 'Accepting' : quoteLoading ? 'Loading quote' : 'Confirm accept'}
+          label={submitting ? 'Accepting' : quoteLoading ? 'Loading quote' : acceptBlockedMessage ? 'Cannot accept' : 'Confirm accept'}
           onPress={() => {
             void handleAcceptDare();
           }}
         />
+        {showGoToCourtAction ? (
+          <ActionButton
+            accessibilityLabel="Go to your current Court"
+            label="Go to Court"
+            onPress={() => router.push('/(tabs)/court')}
+            variant="secondary"
+          />
+        ) : null}
         <ActionButton
           accessibilityLabel="Return to DARE detail"
           label="Back to detail"
@@ -226,10 +250,12 @@ export default function AcceptDareScreen() {
 
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitErrorCode(null);
 
     const result = await acceptDareWithQuote(currentDare.id, quote);
     if (!result.ok) {
       setSubmitError(result.error.message);
+      setSubmitErrorCode(result.error.code);
       setSubmitting(false);
       return;
     }
@@ -253,4 +279,34 @@ export default function AcceptDareScreen() {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getAcceptBlockedMessage(quote: AcceptQuoteResponse | null) {
+  if (!quote || quote.canAccept) return null;
+
+  if (quote.reasonCode === 'SELF_CHALLENGE') {
+    return {
+      title: 'Created by you',
+      message: 'You cannot accept your own DARE. Share it or wait for another eligible player to accept.',
+    };
+  }
+
+  if (quote.reasonCode === 'TARGETED_TO_ANOTHER_USER') {
+    return {
+      title: 'Reserved DARE',
+      message: 'This DARE is reserved for another player.',
+    };
+  }
+
+  if (quote.reasonCode === 'ACTIVE_COURT_COMMITMENT') {
+    return {
+      title: 'Court already active',
+      message: ACTIVE_COURT_COMMITMENT_MESSAGE,
+    };
+  }
+
+  return {
+    title: 'Not open',
+    message: 'This DARE is not accepting players right now.',
+  };
 }

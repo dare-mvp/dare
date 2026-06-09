@@ -5,6 +5,7 @@ type RouteDraftParams = {
   answerKey?: string;
   answerKeyRules?: string;
   category?: string;
+  description?: string;
   dareType?: string;
   durationSeconds?: string;
   opponent?: string;
@@ -20,6 +21,7 @@ export function draftToRouteParams(draft: CreateDareDraft) {
     answerKey: draft.answerKey,
     answerKeyRules: draft.answerKeyRules,
     category: draft.category,
+    description: draft.description,
     dareType: draft.dareType,
     durationSeconds: String(draft.durationSeconds),
     opponent: draft.opponent,
@@ -36,6 +38,7 @@ export function routeParamsToDraft(params: RouteDraftParams): CreateDareDraft {
     answerKey: params.answerKey ?? '',
     answerKeyRules: params.answerKeyRules ?? '',
     category: parseCategory(params.category),
+    description: params.description ?? '',
     dareType: parseDareType(params.dareType),
     durationSeconds: parseDuration(params.durationSeconds),
     opponent: params.opponent ?? '',
@@ -53,6 +56,7 @@ export function draftToCreateDarePayload(draft: CreateDareDraft): CreateDarePayl
   const rewardAmount = parseStakeNairaToKobo(draft.rewardNaira);
   const isAnswerKey = draft.resolutionType === 'answer_key';
   const isTask = draft.dareType === 'task';
+  const description = draft.description.trim();
 
   return {
     category: draft.category,
@@ -62,11 +66,11 @@ export function draftToCreateDarePayload(draft: CreateDareDraft): CreateDarePayl
       edgeCases: 'Ties, late entry, abandoned sessions, and disputes follow DARE platform rules.',
       proofMethod: resolutionProofMethod(draft.resolutionType),
       rules: draft.rules.trim(),
-      test: draft.title.trim(),
+      test: description,
     },
     currency: 'NGN',
     dareType: draft.dareType,
-    description: `${draft.dareType} ${draft.resolutionType} DARE`,
+    description,
     durationSeconds: draft.durationSeconds,
     resolutionType: toBackendResolutionType(draft.resolutionType),
     rewardAmount: isTask ? rewardAmount : 0,

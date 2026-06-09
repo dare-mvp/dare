@@ -128,6 +128,69 @@ Key fields:
 - player_b_heartbeat_at
 - reconnect_deadline
 
+### Live Court Room
+
+Provider-backed video room for a Court session.
+
+Production provider: LiveKit Cloud.
+
+Key fields:
+
+- id
+- dare_id
+- court_session_id
+- provider (`livekit` in production)
+- provider_room_id
+- status
+- audience_enabled
+- recording_required
+- recording_status
+- recording_started_at
+- recording_ended_at
+- metadata
+
+### Live Court Participant
+
+Tracks authenticated Court video presence and recording consent.
+
+Key fields:
+
+- id
+- live_court_room_id
+- dare_id
+- user_id
+- role (`participant_a`, `participant_b`, or `spectator`)
+- connection_status
+- consented_to_recording
+- consent_text_version
+- consented_at
+- audio_enabled
+- video_enabled
+- joined_at
+- last_seen_at
+- left_at
+
+### Live Court Recording
+
+Provider recording or egress metadata for Court review.
+
+Production source: LiveKit egress.
+
+Key fields:
+
+- id
+- live_court_room_id
+- dare_id
+- provider
+- provider_recording_id
+- evidence_object_id
+- storage_bucket
+- storage_path
+- status
+- started_at
+- ended_at
+- retention_expires_at
+
 ### Evidence
 
 Proof submitted for evidence-based or disputed DAREs.
@@ -370,6 +433,9 @@ User 1--many DARE as issuer
 User 1--many DARE as challenger
 DARE 1--1 Constitution
 DARE 1--1 Court Session
+Court Session 1--1 Live Court Room
+Live Court Room 1--many Live Court Participant
+Live Court Room 1--many Live Court Recording
 DARE 1--many Evidence
 DARE 1--many Jury Case
 Jury Case 1--many Jury Assignment

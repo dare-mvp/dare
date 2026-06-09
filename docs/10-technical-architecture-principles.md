@@ -147,8 +147,32 @@ The final stack decision is still open, but the prototype points toward:
 - Backend: Supabase plus server functions, or a dedicated API service with Supabase/Postgres.
 - Database: Postgres with migrations committed.
 - Realtime: Supabase Realtime or equivalent broadcast/presence layer.
+- Live Court video: LiveKit Cloud for WebRTC rooms, mobile video calls, audience viewing, server-side recording/egress, and provider webhooks.
 - Storage: private object storage for evidence.
 - Payments: provider abstraction layer with Paystack first if approved.
+
+## Live Court Video Provider
+
+DARE will use LiveKit Cloud as the production live Court video provider.
+
+Provider responsibilities:
+
+- create or reuse one LiveKit room per accepted Court DARE
+- issue short-lived participant and spectator tokens from the backend only
+- stream two active participants with low-latency WebRTC
+- allow eligible audience viewing without granting settlement authority
+- emit webhook events for room lifecycle, participant join/leave, and recording/egress lifecycle
+- record Court sessions through LiveKit egress for dispute and evidence review
+
+DARE responsibilities:
+
+- store LiveKit room id, participant consent, provider event ids, and recording metadata in the live Court tables
+- treat LiveKit webhooks as provider signals, not final settlement decisions
+- require both required participants to join with video and recording consent before answer/result actions
+- keep evidence and recordings private by default, with signed access for jurors/admins
+- keep `provider_pending` only as a transitional state before LiveKit room creation succeeds
+
+Mux is not the primary provider for live Court because DARE needs two-way low-latency video, not RTMP/HLS broadcast. Daily and Agora remain alternatives only if LiveKit Cloud becomes unsuitable.
 
 ## Repository Expectations
 
