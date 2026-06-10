@@ -19,6 +19,7 @@ import { useMe } from '../../src/features/me/useMe';
 import {
   completeDare,
   forfeitDare,
+  getSettlementStatus,
   recordCourtHeartbeat,
   recordWitnessAttendance,
   submitDareAnswer,
@@ -215,10 +216,15 @@ export default function CourtPlayScreen() {
     }
 
     const completeResult = await completeDare(resolvedDareId);
-    setSubmitting(false);
-    if (!completeResult.ok && result.data.phase !== 'active') {
-      setActionError(completeResult.error.message);
-      return;
+    if (!completeResult.ok) {
+      const suppressCompleteError = await shouldSuppressCompleteFailure(resolvedDareId, completeResult.error.code);
+      setSubmitting(false);
+      if (!suppressCompleteError) {
+        setActionError(completeResult.error.message);
+        return;
+      }
+    } else {
+      setSubmitting(false);
     }
 
     router.push({
@@ -331,7 +337,13 @@ export default function CourtPlayScreen() {
 
     setWitnessVote(voteResult.data.vote);
     setActionNotice('Your witness vote was recorded. Final settlement still waits for the Court result rules.');
-    await court.refresh();
+    if (court.source === 'server') {
+      try {
+        await court.refresh();
+      } catch {
+        setActionError('Your vote was recorded, but the latest Court state could not be loaded.');
+      }
+    }
     setSubmitting(false);
   }
 
@@ -360,4 +372,13 @@ export default function CourtPlayScreen() {
       },
     });
   }
+}
+
+async function shouldSuppressCompleteFailure(dareId: string, errorCode: string) {
+  if (errorCode !== 'INVALID_STATE') return false;
+
+  const settlementResult = await getSettlementStatus(dareId);
+  if (!settlementResult.ok) return false;
+
+  return settlementResult.data.settlement.reason === 'result_not_ready';
 }

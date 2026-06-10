@@ -20,6 +20,7 @@ type LiveCourtRoomRow = {
   court_session_id: string;
   dare_id: string;
   id: string;
+  provider_room_id: string;
 };
 
 const defaultDependencies: Required<HandlerDependencies> = {
@@ -45,7 +46,7 @@ export function createLiveKitWebhookHandler(
         rawBody,
         request.headers.get("authorization"),
       );
-      const result = await applyLiveKitEvent(serviceClient, event);
+      const result = await applyLiveKitEvent(serviceClient, event, gateway);
 
       return successResponse(result, requestId);
     } catch (error) {
@@ -59,6 +60,7 @@ export const handler = createLiveKitWebhookHandler();
 async function applyLiveKitEvent(
   serviceClient: SupabaseActionClient,
   event: LiveKitWebhookEvent,
+  gateway: LiveKitGateway,
 ) {
   const eventName = stringValue(event.event) ?? "unknown";
   const roomName = roomNameFromEvent(event);
@@ -71,7 +73,16 @@ async function applyLiveKitEvent(
     return { ignored: true, reason: "room_not_tracked", roomName };
   }
 
-  await insertProviderEvent(serviceClient, room, event, eventName);
+  const inserted = await insertProviderEvent(serviceClient, room, event, eventName);
+  if (!inserted) {
+    return {
+      duplicate: true,
+      event: eventName,
+      liveCourtRoomId: room.id,
+    };
+  }
+
+  await stopRecordingForFinishedRoom(gateway, room, eventName);
   await updateRoomForEvent(serviceClient, room, event, eventName);
   await updateParticipantForEvent(serviceClient, room, event, eventName);
   await updateRecordingForEvent(serviceClient, room, event, eventName);
@@ -89,7 +100,7 @@ async function findLiveCourtRoom(
 ): Promise<LiveCourtRoomRow | null> {
   const { data, error } = await serviceClient
     .from<LiveCourtRoomRow>("live_court_rooms")
-    .select("id,dare_id,court_session_id")
+    .select("id,dare_id,court_session_id,provider_room_id")
     .eq("provider", "livekit")
     .eq("provider_room_id", roomName)
     .maybeSingle();
@@ -98,24 +109,39 @@ async function findLiveCourtRoom(
   return data;
 }
 
+async function stopRecordingForFinishedRoom(
+  gateway: LiveKitGateway,
+  room: LiveCourtRoomRow,
+  eventName: string,
+): Promise<void> {
+  if (eventName !== "room_finished") return;
+  try {
+    await gateway.stopRoomRecording(room.provider_room_id);
+  } catch {
+    // RoomComposite egress normally stops with the room; webhook processing must stay idempotent.
+  }
+}
+
 async function insertProviderEvent(
   serviceClient: SupabaseActionClient,
   room: LiveCourtRoomRow,
   event: LiveKitWebhookEvent,
   eventName: string,
-): Promise<void> {
+): Promise<boolean> {
+  const providerEventId = providerEventIdFromEvent(room, event, eventName);
   const { error } = await serviceClient.from("live_court_provider_events").insert({
     dare_id: room.dare_id,
     event_type: eventName,
     live_court_room_id: room.id,
     payload: event as unknown as Record<string, unknown>,
     provider: "livekit",
-    provider_event_id: stringValue(event.id) ??
-      `${eventName}:${room.id}:${event.createdAt ?? Date.now()}`,
+    provider_event_id: providerEventId,
     received_at: new Date().toISOString(),
   });
 
-  if (error && error.code !== "23505") throw mapProviderEventError(error);
+  if (error?.code === "23505") return false;
+  if (error) throw mapProviderEventError(error);
+  return true;
 }
 
 async function updateRoomForEvent(
@@ -221,9 +247,14 @@ async function updateRecordingForEvent(
   if (!egressId) return;
 
   const now = new Date().toISOString();
+  const existing = await findLiveCourtRecording(serviceClient, egressId);
+  if (eventName === "egress_started" && isFinalRecordingStatus(existing?.status)) {
+    return;
+  }
+
   const values = {
     dare_id: room.dare_id,
-    ended_at: eventName === "egress_ended" ? now : null,
+    ended_at: eventName === "egress_ended" ? now : existing?.ended_at ?? null,
     live_court_room_id: room.id,
     metadata: event.egressInfo ?? {},
     provider: "livekit",
@@ -259,6 +290,20 @@ async function updateRecordingForEvent(
   }
 }
 
+async function findLiveCourtRecording(
+  serviceClient: SupabaseActionClient,
+  providerRecordingId: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await serviceClient
+    .from<Record<string, unknown>>("live_court_recordings")
+    .select("*")
+    .eq("provider", "livekit")
+    .eq("provider_recording_id", providerRecordingId)
+    .maybeSingle();
+  if (error) throw mapProviderEventError(error);
+  return data;
+}
+
 function roomNameFromEvent(event: LiveKitWebhookEvent): string | null {
   return stringValue(event.room?.name) ??
     stringValue(event.egressInfo?.roomName) ??
@@ -286,6 +331,35 @@ function recordingLocation(event: LiveKitWebhookEvent): string | null {
 function egressFailed(event: LiveKitWebhookEvent): boolean {
   const status = stringValue(event.egressInfo?.status);
   return status ? /fail|error/i.test(status) : false;
+}
+
+function providerEventIdFromEvent(
+  room: LiveCourtRoomRow,
+  event: LiveKitWebhookEvent,
+  eventName: string,
+): string {
+  const directId = stringValue(event.id);
+  if (directId) return directId;
+
+  const egressId = stringValue(event.egressInfo?.egressId) ??
+    stringValue(event.egressInfo?.egress_id);
+  const participantId = stringValue(event.participant?.identity);
+  const trackId = stringValue((event.participant?.track as Record<string, unknown> | undefined)?.sid) ??
+    stringValue((event.participant?.track as Record<string, unknown> | undefined)?.id);
+  const createdAt = event.createdAt ? String(event.createdAt) : "unknown-time";
+
+  return [
+    eventName,
+    room.id,
+    egressId,
+    participantId,
+    trackId,
+    createdAt,
+  ].filter(Boolean).join(":");
+}
+
+function isFinalRecordingStatus(status: unknown): boolean {
+  return ["available", "deleted", "failed", "processing"].includes(String(status));
 }
 
 function recordingWasRunning(event: LiveKitWebhookEvent): boolean {

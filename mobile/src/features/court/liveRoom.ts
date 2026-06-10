@@ -34,13 +34,17 @@ export function getCourtLiveRoom(
       isYou: session.playerA.isYou,
       label: session.playerA.name,
       role: 'issuer',
-      state: liveState ? getServerParticipantState(liveState.issuerLive) : getParticipantState(session, session.playerA.isReady, session.playerA.isYou),
+      state: liveState
+        ? getServerParticipantState(liveState.issuerLive, liveState.roomStatus)
+        : getParticipantState(session, session.playerA.isReady, session.playerA.isYou),
     },
     {
       isYou: session.playerB.isYou,
       label: session.playerB.name,
       role: session.dareType === 'task' ? 'performer' : 'challenger',
-      state: liveState ? getServerParticipantState(liveState.challengerLive) : getParticipantState(session, session.playerB.isReady, session.playerB.isYou),
+      state: liveState
+        ? getServerParticipantState(liveState.challengerLive, liveState.roomStatus)
+        : getParticipantState(session, session.playerB.isReady, session.playerB.isYou),
     },
   ];
   const bothParticipantsLive = participants.every((participant) => participant.state === 'live');
@@ -53,6 +57,15 @@ export function getCourtLiveRoom(
   const requirementMet = liveState
     ? liveState.liveRequirementMet
     : status === 'live' && bothParticipantsLive && (!recordingRequired || recordingActive);
+  const statusReason = getStatusReason({
+    bothParticipantsLive,
+    liveState,
+    recordingActive,
+    recordingRequired,
+    requirementMet,
+    session,
+    status,
+  });
 
   return {
     audienceCount: liveState?.spectatorCount ?? session.spectators,
@@ -72,9 +85,11 @@ export function getCourtLiveRoom(
       recordingRequired,
       recordingActive,
       liveState,
+      statusReason,
     ),
     requirementMet,
     roomId,
+    statusReason,
     status,
     viewerJoined: liveState?.viewerJoined ?? canEnter,
   };
@@ -101,8 +116,13 @@ function getRoomStatus(
   return 'initializing';
 }
 
-function getServerParticipantState(isLive: boolean): CourtLiveParticipant['state'] {
-  return isLive ? 'live' : 'waiting';
+function getServerParticipantState(
+  isLive: boolean,
+  roomStatus: LiveCourtStateResponse['roomStatus'],
+): CourtLiveParticipant['state'] {
+  if (isLive) return 'live';
+  if (roomStatus === 'live') return 'camera_missing';
+  return 'waiting';
 }
 
 function getServerRoomStatus(
@@ -133,6 +153,7 @@ function getRecordingLabel(
   recordingStatus?: LiveCourtStateResponse['recordingStatus'],
 ) {
   if (!required) return 'Not required';
+  if (recordingStatus === 'disabled') return 'Consent missing';
   if (recordingStatus === 'available') return 'Recording available';
   if (recordingStatus === 'processing') return 'Recording processing';
   if (recordingStatus === 'failed') return 'Recording needs review';
@@ -148,14 +169,87 @@ function getRequirementLabel(
   recordingRequired: boolean,
   recordingActive: boolean,
   liveState?: LiveCourtStateResponse | null,
+  statusReason?: CourtLiveRoom['statusReason'],
 ) {
   if (status === 'closed') return 'Live room is closed for this Court state.';
   if (status === 'reconnecting') return 'Result actions locked until the live video room reconnects.';
-  if (liveState && !liveState.viewerJoined) return 'Join the live video Court before taking Court actions.';
-  if (status === 'initializing' && bothParticipantsLive) return 'Live room ready for countdown.';
-  if (!bothParticipantsLive) return 'Result actions locked until both participants are live on video.';
+  if (statusReason === 'viewer_not_joined') {
+    return 'LiveKit room is created, but this device has not joined yet.';
+  }
+  if (statusReason === 'participant_not_joined') {
+    return 'LiveKit room is created. Waiting for both participants to join.';
+  }
+  if (statusReason === 'webhook_pending') {
+    return 'LiveKit is connected. Waiting for provider confirmation before Court actions unlock.';
+  }
+  if (statusReason === 'camera_not_detected') {
+    return `Camera not detected for ${formatMissingParticipants(liveState, session)}.`;
+  }
+  if (statusReason === 'waiting_participants') {
+    return 'Waiting for both participants to be live on video.';
+  }
+  if (statusReason === 'recording_consent_missing') {
+    return 'Recording consent is missing, so evidence actions remain locked.';
+  }
+  if (statusReason === 'recording_pending') {
+    return 'Evidence actions locked until Court recording is active.';
+  }
+  if (statusReason === 'ready') return 'Live room ready for countdown.';
+  if (!bothParticipantsLive) return 'Waiting for both participants to be live on video.';
   if (recordingRequired && !recordingActive) return 'Evidence actions locked until Court recording is active.';
   return 'Live video requirement met.';
+}
+
+function getStatusReason({
+  bothParticipantsLive,
+  liveState,
+  recordingActive,
+  recordingRequired,
+  requirementMet,
+  session,
+  status,
+}: {
+  bothParticipantsLive: boolean;
+  liveState?: LiveCourtStateResponse | null;
+  recordingActive: boolean;
+  recordingRequired: boolean;
+  requirementMet: boolean;
+  session: CourtSessionLiveInput;
+  status: CourtLiveRoom['status'];
+}): CourtLiveRoom['statusReason'] {
+  if (status === 'closed') return 'closed';
+  if (status === 'reconnecting') return 'reconnecting';
+  if (requirementMet) return 'requirement_met';
+  if (liveState?.provider === 'livekit' && liveState.roomStatus === 'created' && !liveState.viewerJoined) {
+    return 'viewer_not_joined';
+  }
+  if (liveState?.provider === 'livekit' && liveState.roomStatus === 'created' && liveState.participantCount < 2) {
+    return 'participant_not_joined';
+  }
+  if (liveState?.provider === 'livekit' && liveState.roomStatus === 'created' && liveState.viewerJoined) {
+    return 'webhook_pending';
+  }
+  if (liveState?.roomStatus === 'live' && !bothParticipantsLive) return 'camera_not_detected';
+  if (!bothParticipantsLive) return 'waiting_participants';
+  if (recordingRequired && liveState?.recordingStatus === 'disabled') return 'recording_consent_missing';
+  if (recordingRequired && !recordingActive) return 'recording_pending';
+  if (status === 'initializing' && bothParticipantsLive) return 'ready';
+  if (isEnterablePhase(session.phase)) return 'ready';
+  return 'waiting_participants';
+}
+
+function formatMissingParticipants(
+  liveState: LiveCourtStateResponse | null | undefined,
+  session: CourtSessionLiveInput,
+) {
+  const missing = [
+    liveState?.issuerLive ? null : session.playerA.isYou ? 'you' : session.playerA.name,
+    liveState?.challengerLive ? null : session.playerB.isYou ? 'you' : session.playerB.name,
+  ].filter(Boolean);
+
+  if (missing.length === 0) return 'a participant';
+  if (missing.length === 1) return missing[0];
+  return 'both participants';
 }
 
 function isEnterablePhase(phase: CourtSession['phase']) {

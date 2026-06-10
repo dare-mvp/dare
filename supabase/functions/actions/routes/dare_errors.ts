@@ -130,6 +130,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "participant_cannot_witness_vote",
       "witness_attendance_required",
       "witness_attendance_not_eligible",
+      "livekit_witness_presence_required",
       "witness_not_eligible",
       "result_not_ready",
     ].includes(

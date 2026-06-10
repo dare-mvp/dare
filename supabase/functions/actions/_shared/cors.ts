@@ -4,7 +4,7 @@ const ADMIN_ORIGINS_ENV = "DARE_ALLOWED_ADMIN_ORIGINS";
 export const CORS_HEADERS = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-request-id",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "DELETE, GET, POST, PATCH, OPTIONS",
   "Vary": "Origin",
 } as const;
 

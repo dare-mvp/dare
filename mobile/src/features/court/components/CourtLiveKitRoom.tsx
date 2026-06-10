@@ -24,7 +24,7 @@ let liveKitGlobalsRegistered = false;
 export function CourtLiveKitRoom({ liveState, onConnectionStatus }: CourtLiveKitRoomProps) {
   const [loaded, setLoaded] = useState<LoadedLiveKit | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const serverUrl = backendConfig.liveKitWsUrl;
+  const serverUrl = liveState?.providerUrl ?? backendConfig.liveKitWsUrl;
   const token = liveState?.providerToken ?? null;
   const canAttemptLiveKit = liveState?.provider === 'livekit' && Boolean(token);
   const shouldPublishMedia = liveState?.viewerRole !== 'spectator';

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LockKeyhole, ShieldCheck } from 'lucide-react-native';
+import { Eye, LockKeyhole, ShieldCheck } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -76,6 +76,7 @@ export default function DareDetailScreen() {
   const isCreator = data.source === 'server' &&
     data.user?.username?.toLowerCase() === dare.playerA.name.toLowerCase();
   const hasActiveCourtCommitment = acceptQuote?.reasonCode === 'ACTIVE_COURT_COMMITMENT';
+  const canEnterAudience = dare.status === 'active' || isLiveCourtPhase(dare.courtPhase);
   const canAccept = dare.status === 'open' && data.capabilities.canAcceptDare && !isCreator && !hasActiveCourtCommitment;
 
   async function handleShareDare() {
@@ -91,7 +92,7 @@ export default function DareDetailScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <DetailHeader onBack={() => router.back()} onShare={handleShareDare} title="Accept DARE" />
+        <DetailHeader onBack={() => router.back()} onShare={handleShareDare} title={canEnterAudience ? 'Live DARE' : 'Accept DARE'} />
 
         {(source === 'mock' || data.source === 'mock') && !meError ? (
           <InlineAlert
@@ -198,11 +199,19 @@ export default function DareDetailScreen() {
           )}
         </View>
 
-        <InlineAlert
-          tone="warning"
-          title="Acceptance requires confirmation"
-          message="This DARE is only accepted after escrow, limits, and eligibility checks are confirmed."
-        />
+        {canEnterAudience ? (
+          <InlineAlert
+            tone="info"
+            title="Audience entry"
+            message="Join as audience only. You cannot accept, fund, forfeit, or submit participant results from this path."
+          />
+        ) : (
+          <InlineAlert
+            tone="warning"
+            title="Acceptance requires confirmation"
+            message="This DARE is only accepted after escrow, limits, and eligibility checks are confirmed."
+          />
+        )}
 
         {isCreator ? (
           <InlineAlert
@@ -229,12 +238,21 @@ export default function DareDetailScreen() {
         />
 
         <View style={styles.actions}>
-          <ActionButton
-            accessibilityLabel="Accept this DARE"
-            disabled={!canAccept}
-            label={isCreator ? 'Created by you' : hasActiveCourtCommitment ? 'Court already active' : dare.status === 'open' ? 'Review accept' : 'Not open'}
-            onPress={() => router.push(`/dare/${dare.id}/accept`)}
-          />
+          {canEnterAudience ? (
+            <ActionButton
+              accessibilityLabel="Join live Court audience"
+              icon={<Eye color={colors.text} size={18} />}
+              label={dare.status === 'active' ? 'Join audience' : 'Enter Court audience'}
+              onPress={() => router.push({ pathname: '/court/play', params: { dareId: dare.id } })}
+            />
+          ) : (
+            <ActionButton
+              accessibilityLabel="Accept this DARE"
+              disabled={!canAccept}
+              label={isCreator ? 'Created by you' : hasActiveCourtCommitment ? 'Court already active' : dare.status === 'open' ? 'Review accept' : 'Not open'}
+              onPress={() => router.push(`/dare/${dare.id}/accept`)}
+            />
+          )}
           {hasActiveCourtCommitment ? (
             <ActionButton
               accessibilityLabel="Go to your current Court"
@@ -257,4 +275,8 @@ export default function DareDetailScreen() {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isLiveCourtPhase(phase?: string | null) {
+  return phase === 'ready_check' || phase === 'countdown' || phase === 'active';
 }

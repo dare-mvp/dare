@@ -14,6 +14,7 @@ export type DareFeedItem = {
   title: string;
   category: string;
   createdAgo: string;
+  courtPhase?: string | null;
   description?: string | null;
   dareType?: 'skill' | 'task';
   fundingModel?: 'two_sided_stake' | 'darer_reward';

@@ -10,6 +10,7 @@ import {
 import {
   createLiveKitGateway,
   type LiveKitGateway,
+  type LiveKitRecordingStartResult,
   type LiveKitRoomAccess,
 } from "../_shared/livekit.ts";
 import { firstForwardedIp } from "../_shared/request.ts";
@@ -371,11 +372,126 @@ async function ensureLiveKitCourtRoom(
     .maybeSingle();
   if (error) throw mapDareQueryError(error);
 
+  await ensureLiveKitCourtRecording(
+    liveKitGateway,
+    serviceClient,
+    data,
+  );
+
   return createLiveKitAccess(liveKitGateway, userId, {
     ...data,
     provider: "livekit",
     providerRoomId,
   });
+}
+
+async function ensureLiveKitCourtRecording(
+  liveKitGateway: LiveKitGateway,
+  serviceClient: SupabaseActionClient,
+  data: LiveCourtStateResponse,
+): Promise<void> {
+  if (!data.liveCourtRoomId || data.viewerRole === "spectator") return;
+  if (data.recordingRequired !== true) return;
+  if (data.recordingStatus === "recording" || data.recordingStatus === "processing" || data.recordingStatus === "available") {
+    return;
+  }
+
+  const recording = await liveKitGateway.startRoomRecording({
+    courtSessionId: data.courtSessionId,
+    dareId: data.dareId,
+    roomName: getLiveKitRoomName(data.dareId),
+  });
+  if (!recording) {
+    await markLiveKitRecordingUnconfigured(serviceClient, data);
+    return;
+  }
+
+  await persistLiveKitRecordingStart(serviceClient, data, recording);
+}
+
+async function markLiveKitRecordingUnconfigured(
+  serviceClient: SupabaseActionClient,
+  data: LiveCourtStateResponse,
+): Promise<void> {
+  const { error } = await serviceClient
+    .from("live_court_rooms")
+    .update({
+      metadata: {
+        egressConfigured: false,
+        egressProvider: "livekit",
+        egressSkippedReason: "s3_output_not_configured",
+        liveKitRoomName: getLiveKitRoomName(data.dareId),
+        provisionedBy: "actions/live-court",
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", data.liveCourtRoomId)
+    .select("*")
+    .maybeSingle();
+  if (error) throw mapDareQueryError(error);
+}
+
+async function persistLiveKitRecordingStart(
+  serviceClient: SupabaseActionClient,
+  data: LiveCourtStateResponse,
+  recording: LiveKitRecordingStartResult,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const values = {
+    dare_id: data.dareId,
+    live_court_room_id: data.liveCourtRoomId,
+    metadata: {
+      egressStartedBy: "actions/live-court",
+      providerRoomId: getLiveKitRoomName(data.dareId),
+    },
+    provider: recording.provider,
+    provider_recording_id: recording.egressId,
+    started_at: now,
+    status: recording.recordingStatus,
+    storage_bucket: recording.storageBucket,
+    storage_path: recording.storagePath,
+    updated_at: now,
+  };
+
+  const { data: existing, error } = await serviceClient
+    .from("live_court_recordings")
+    .update(values)
+    .eq("provider", "livekit")
+    .eq("provider_recording_id", recording.egressId)
+    .select("*")
+    .maybeSingle();
+  if (error) throw mapDareQueryError(error);
+
+  if (!existing) {
+    const { error: insertError } = await serviceClient
+      .from("live_court_recordings")
+      .insert({
+        ...values,
+        created_at: now,
+      });
+    if (insertError && insertError.code !== "23505") {
+      throw mapDareQueryError(insertError);
+    }
+  }
+
+  const { error: roomError } = await serviceClient
+    .from("live_court_rooms")
+    .update({
+      metadata: {
+        egressConfigured: true,
+        egressProvider: "livekit",
+        liveKitRoomName: getLiveKitRoomName(data.dareId),
+        providerRecordingId: recording.egressId,
+        provisionedBy: "actions/live-court",
+      },
+      recording_started_at: now,
+      recording_status: recording.recordingStatus,
+      updated_at: now,
+    })
+    .eq("id", data.liveCourtRoomId)
+    .select("*")
+    .maybeSingle();
+  if (roomError) throw mapDareQueryError(roomError);
 }
 
 async function createLiveKitAccess(

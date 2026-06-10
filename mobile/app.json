@@ -58,7 +58,8 @@
           "icon": "./assets/notification-icon.png",
           "defaultChannel": "dare-alerts"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "owner": "dare-mobile-organization"
   }

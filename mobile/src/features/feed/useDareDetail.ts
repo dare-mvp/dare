@@ -236,6 +236,7 @@ function mapParticipantDare(row: ParticipantDareRow, court: ParticipantCourtRow 
   return {
     actionLabel: status === 'disputed' ? 'Review dispute' : 'View DARE',
     category: formatLabel(row.category),
+    courtPhase: court?.phase ?? null,
     createdAgo: row.created_at ? 'Created' : '',
     description: row.description ?? null,
     id: row.id,

@@ -41,6 +41,7 @@ export function mapPublicDareFeedRow(row: PublicDareFeedRow): DareFeedItem {
   return {
     actionLabel: getActionLabel(status),
     category: formatLabel(row.category),
+    courtPhase: row.court_phase,
     createdAgo: formatRelativeTime(row.created_at),
     description: row.description ?? null,
     dareType: row.dare_type ?? 'skill',

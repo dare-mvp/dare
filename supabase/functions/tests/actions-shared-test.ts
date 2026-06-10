@@ -7,8 +7,10 @@ import {
   type LiveKitRoomAccess,
   type LiveKitRoomParams,
   type LiveKitTokenParams,
+  type LiveKitWebhookEvent,
 } from "../actions/_shared/livekit.ts";
 import {
+  CORS_HEADERS,
   corsPreflightResponse,
   isAllowedCorsRequest,
   withCorsHeaders,
@@ -37,6 +39,7 @@ import {
   type SettlementJuryCaseRow,
 } from "../actions/routes/settlement_status.ts";
 import { createPaystackWebhookHandler } from "../paystack-webhook/handler.ts";
+import { createLiveKitWebhookHandler } from "../livekit-webhook/handler.ts";
 import { createWithdrawalProcessorHandler } from "../withdrawal-processor/handler.ts";
 import {
   type QueryResponse,
@@ -162,6 +165,8 @@ Deno.test("response helpers return stable success and error envelopes", async ()
 });
 
 Deno.test("cors helpers restrict browser and admin origins while preserving native calls", async () => {
+  assert(CORS_HEADERS["Access-Control-Allow-Methods"].includes("DELETE"));
+
   await withDenoEnv(
     {
       DARE_ALLOWED_BROWSER_ORIGINS: "https://app.example.com",
@@ -2144,6 +2149,188 @@ Deno.test("live Court presence does not trust client-declared leave state", asyn
   assertEquals(leftBody.data.providerToken, "token:participant_a");
 });
 
+Deno.test("LiveKit webhook participant_joined marks connection joined", async () => {
+  const state = createFakeState();
+  const { room, participant } = seedLiveKitWebhookState(state);
+  participant.connection_status = "reconnecting";
+  participant.left_at = "2026-05-21T00:02:00.000Z";
+
+  const response = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "participant_joined",
+      id: "lk-event-participant-joined",
+      participant: { identity: state.user.id },
+      room: { name: room.provider_room_id },
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(participant.connection_status, "joined");
+  assertEquals(participant.left_at, null);
+  assertEquals(state.liveCourtProviderEvents.length, 1);
+});
+
+Deno.test("LiveKit webhook camera track_published marks video enabled", async () => {
+  const state = createFakeState();
+  const { room, participant } = seedLiveKitWebhookState(state);
+  participant.video_enabled = false;
+
+  const response = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "track_published",
+      id: "lk-event-camera-published",
+      participant: {
+        identity: state.user.id,
+        track: { source: "CAMERA" },
+      },
+      room: { name: room.provider_room_id },
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(participant.video_enabled, true);
+  assertEquals(state.liveCourtProviderEvents.length, 1);
+});
+
+Deno.test("LiveKit webhook participant_left marks connection left", async () => {
+  const state = createFakeState();
+  const { room, participant } = seedLiveKitWebhookState(state);
+  participant.connection_status = "joined";
+
+  const response = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "participant_left",
+      id: "lk-event-participant-left",
+      participant: { identity: state.user.id },
+      room: { name: room.provider_room_id },
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(participant.connection_status, "left");
+  assert(typeof participant.left_at === "string");
+  assertEquals(state.liveCourtProviderEvents.length, 1);
+});
+
+Deno.test("LiveKit webhook room_finished marks room ended", async () => {
+  const state = createFakeState();
+  const { room } = seedLiveKitWebhookState(state);
+  room.status = "live";
+  room.recording_status = "recording";
+
+  const response = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "room_finished",
+      id: "lk-event-room-finished",
+      room: { name: room.provider_room_id },
+    }),
+  );
+
+  assertEquals(response.status, 200);
+  assertEquals(room.status, "ended");
+  assertEquals(room.recording_status, "processing");
+  assert(typeof room.ended_at === "string");
+  assert(typeof room.recording_ended_at === "string");
+});
+
+Deno.test("LiveKit webhook egress events store and update recording metadata", async () => {
+  const state = createFakeState();
+  const { room } = seedLiveKitWebhookState(state);
+  const egressId = "egress-123";
+
+  const started = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "egress_started",
+      id: "lk-event-egress-started",
+      egressInfo: {
+        egressId,
+        roomName: room.provider_room_id,
+        status: "EGRESS_ACTIVE",
+      },
+    }),
+  );
+  assertEquals(started.status, 200);
+  assertEquals(room.recording_status, "recording");
+  assertEquals(state.liveCourtRecordings.length, 1);
+  assertEquals(state.liveCourtRecordings[0].provider, "livekit");
+  assertEquals(state.liveCourtRecordings[0].provider_recording_id, egressId);
+  assertEquals(state.liveCourtRecordings[0].status, "recording");
+  assertEquals(state.liveCourtRecordings[0].ended_at, null);
+  assertEquals(
+    state.liveCourtRecordings[0].metadata,
+    {
+      egressId,
+      roomName: room.provider_room_id,
+      status: "EGRESS_ACTIVE",
+    },
+  );
+
+  const ended = await liveKitWebhookHandler(state)(
+    liveKitWebhookRequest({
+      event: "egress_ended",
+      id: "lk-event-egress-ended",
+      egressInfo: {
+        egressId,
+        fileResults: [{ location: "s3://dare-recordings/live-court.mp4" }],
+        roomName: room.provider_room_id,
+        status: "EGRESS_COMPLETE",
+      },
+    }),
+  );
+
+  assertEquals(ended.status, 200);
+  assertEquals(state.liveCourtRecordings.length, 1);
+  assertEquals(room.recording_status, "processing");
+  assertEquals(state.liveCourtRecordings[0].status, "processing");
+  assertEquals(
+    state.liveCourtRecordings[0].storage_path,
+    "s3://dare-recordings/live-court.mp4",
+  );
+  assert(typeof state.liveCourtRecordings[0].ended_at === "string");
+});
+
+Deno.test("LiveKit webhook duplicate events are idempotent", async () => {
+  const state = createFakeState();
+  const { room, participant } = seedLiveKitWebhookState(state);
+  const duplicateEvent = {
+    event: "egress_started",
+    id: "lk-event-egress-duplicate",
+    egressInfo: {
+      egressId: "egress-duplicate",
+      roomName: room.provider_room_id,
+      status: "EGRESS_ACTIVE",
+    },
+  };
+  const participantEvent = {
+    event: "participant_joined",
+    id: "lk-event-join-duplicate",
+    participant: { identity: state.user.id },
+    room: { name: room.provider_room_id },
+  };
+  const handler = liveKitWebhookHandler(state);
+
+  const firstRecording = await handler(liveKitWebhookRequest(duplicateEvent));
+  const replayRecording = await handler(liveKitWebhookRequest(duplicateEvent));
+  const firstParticipant = await handler(
+    liveKitWebhookRequest(participantEvent),
+  );
+  const replayParticipant = await handler(
+    liveKitWebhookRequest(participantEvent),
+  );
+
+  assertEquals(firstRecording.status, 200);
+  assertEquals(replayRecording.status, 200);
+  assertEquals(firstParticipant.status, 200);
+  assertEquals(replayParticipant.status, 200);
+  assertEquals(state.liveCourtProviderEvents.length, 2);
+  assertEquals(state.liveCourtRecordings.length, 1);
+  assertEquals(
+    state.liveCourtRecordings[0].provider_recording_id,
+    "egress-duplicate",
+  );
+  assertEquals(participant.connection_status, "joined");
+});
+
 Deno.test("POST /court/{dareId}/messages stores participant message once", async () => {
   const state = createFakeState();
   const dareId = "623e4567-e89b-12d3-a456-426614174000";
@@ -3792,6 +3979,71 @@ function webhookRequest(rawBody: string, signature: string): Request {
   });
 }
 
+function liveKitWebhookRequest(event: LiveKitWebhookEvent): Request {
+  return new Request("http://localhost/functions/v1/livekit-webhook", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer livekit-test-signature",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(event),
+  });
+}
+
+function liveKitWebhookHandler(
+  state: ReturnType<typeof createFakeState>,
+): (request: Request) => Promise<Response> {
+  return createLiveKitWebhookHandler({
+    createLiveKitGateway: () => fakeLiveKitGateway(state),
+    createServiceClient: () => fakeClient(state),
+  });
+}
+
+function seedLiveKitWebhookState(
+  state: ReturnType<typeof createFakeState>,
+): {
+  participant: Record<string, unknown>;
+  room: Record<string, unknown>;
+} {
+  const dareId = "623e4567-e89b-12d3-a456-426614174000";
+  const courtSessionId = "d23e4567-e89b-12d3-a456-426614174000";
+  const room = {
+    id: "f23e4567-e89b-42d3-a456-426614174000",
+    court_session_id: courtSessionId,
+    dare_id: dareId,
+    provider: "livekit",
+    provider_room_id: `dare-${dareId}`,
+    recording_required: true,
+    recording_status: "not_started",
+    status: "live",
+  };
+  const participant = {
+    id: "p23e4567-e89b-42d3-a456-426614174000",
+    connection_status: "reconnecting",
+    dare_id: dareId,
+    live_court_room_id: room.id,
+    role: "participant_a",
+    user_id: state.user.id,
+    video_enabled: false,
+  };
+
+  state.dares.push({
+    id: dareId,
+    challenger_id: "723e4567-e89b-12d3-a456-426614174000",
+    issuer_id: state.user.id,
+    status: "active",
+  });
+  state.courtSessions.push({
+    id: courtSessionId,
+    dare_id: dareId,
+    phase: "active",
+  });
+  state.liveCourtRooms.push(room);
+  state.liveCourtParticipants.push(participant);
+
+  return { participant, room };
+}
+
 async function hmacSha512Hex(payload: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -3965,6 +4217,8 @@ function createFakeState() {
     courtSessions: [] as Record<string, unknown>[],
     liveCourtRooms: [] as Record<string, unknown>[],
     liveCourtParticipants: [] as Record<string, unknown>[],
+    liveCourtProviderEvents: [] as Record<string, unknown>[],
+    liveCourtRecordings: [] as Record<string, unknown>[],
     liveKitRoomsCreated: 0,
     courtChatMessages: [] as Record<string, unknown>[],
     evidenceObjects: [] as Record<string, unknown>[],
@@ -4710,6 +4964,36 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
       this.state.courtChatMessages.push({ ...values });
     }
 
+    if (this.table === "live_court_provider_events") {
+      const exists = this.state.liveCourtProviderEvents.some((record) =>
+        record.provider === values.provider &&
+        record.provider_event_id === values.provider_event_id
+      );
+      if (exists) {
+        return Promise.resolve({
+          data: null,
+          error: { code: "23505", message: "duplicate provider event" },
+        });
+      }
+
+      this.state.liveCourtProviderEvents.push({ ...values });
+    }
+
+    if (this.table === "live_court_recordings") {
+      const exists = this.state.liveCourtRecordings.some((record) =>
+        record.provider === values.provider &&
+        record.provider_recording_id === values.provider_recording_id
+      );
+      if (exists) {
+        return Promise.resolve({
+          data: null,
+          error: { code: "23505", message: "duplicate recording" },
+        });
+      }
+
+      this.state.liveCourtRecordings.push({ ...values });
+    }
+
     return Promise.resolve({ data: null, error: null });
   }
 
@@ -4885,6 +5169,36 @@ class FakeBuilder<T> implements SupabaseFilterBuilder<T> {
       });
     }
 
+    if (this.table === "live_court_participants") {
+      const data = this.state.liveCourtParticipants.find((record) =>
+        matchesFilters(record, this.#filters)
+      );
+
+      if (data && this.#updateValues) {
+        Object.assign(data, this.#updateValues);
+      }
+
+      return Promise.resolve({
+        data: data as T | undefined ?? null,
+        error: null,
+      });
+    }
+
+    if (this.table === "live_court_recordings") {
+      const data = this.state.liveCourtRecordings.find((record) =>
+        matchesFilters(record, this.#filters)
+      );
+
+      if (data && this.#updateValues) {
+        Object.assign(data, this.#updateValues);
+      }
+
+      return Promise.resolve({
+        data: data as T | undefined ?? null,
+        error: null,
+      });
+    }
+
     return Promise.resolve({ data: null, error: null });
   }
 }
@@ -4907,8 +5221,14 @@ function fakeLiveKitGateway(
       state.liveKitRoomsCreated += 1;
       return Promise.resolve();
     },
-    receiveWebhook() {
-      return Promise.resolve({ event: "room_started" });
+    receiveWebhook(rawBody: string) {
+      return Promise.resolve(JSON.parse(rawBody) as LiveKitWebhookEvent);
+    },
+    startRoomRecording(_params: LiveKitRoomParams) {
+      return Promise.resolve(null);
+    },
+    stopRoomRecording(_roomName: string) {
+      return Promise.resolve([]);
     },
   };
 }

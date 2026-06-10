@@ -15,7 +15,7 @@ type CourtLiveRoomPanelProps = {
 };
 
 export function CourtLiveRoomPanel({ liveRoom, liveState, onConnectionStatus }: CourtLiveRoomPanelProps) {
-  const statusCopy = getStatusCopy(liveRoom.status);
+  const statusCopy = getStatusCopy(liveRoom);
   const iconColor = liveRoom.status === 'live' ? colors.success : liveRoom.status === 'reconnecting' ? colors.warning : colors.textMuted;
 
   return (
@@ -102,15 +102,22 @@ function StateCell({ icon, label, value }: { icon: ReactNode; label: string; val
   );
 }
 
-function getStatusCopy(status: CourtLiveRoom['status']): {
+function getStatusCopy(liveRoom: CourtLiveRoom): {
   badge: string;
   title: string;
   tone: 'danger' | 'info' | 'neutral' | 'success' | 'warning';
 } {
-  if (status === 'live') return { badge: 'LIVE', title: 'Room active', tone: 'success' };
-  if (status === 'reconnecting') return { badge: 'RECONNECT', title: 'Room reconnecting', tone: 'warning' };
-  if (status === 'closed') return { badge: 'CLOSED', title: 'Room closed', tone: 'neutral' };
-  return { badge: 'REQUIRED', title: 'Room required', tone: 'info' };
+  if (liveRoom.statusReason === 'requirement_met') return { badge: 'LIVE', title: 'Room active', tone: 'success' };
+  if (liveRoom.statusReason === 'reconnecting') return { badge: 'RECONNECT', title: 'Room reconnecting', tone: 'warning' };
+  if (liveRoom.statusReason === 'closed') return { badge: 'CLOSED', title: 'Room closed', tone: 'neutral' };
+  if (liveRoom.statusReason === 'viewer_not_joined') return { badge: 'JOIN', title: 'Join required', tone: 'warning' };
+  if (liveRoom.statusReason === 'participant_not_joined') return { badge: 'WAITING', title: 'Waiting for players', tone: 'warning' };
+  if (liveRoom.statusReason === 'webhook_pending') return { badge: 'SYNCING', title: 'Provider confirming', tone: 'info' };
+  if (liveRoom.statusReason === 'camera_not_detected') return { badge: 'CAMERA', title: 'Camera needed', tone: 'warning' };
+  if (liveRoom.statusReason === 'waiting_participants') return { badge: 'WAITING', title: 'Waiting for both players', tone: 'warning' };
+  if (liveRoom.statusReason === 'recording_consent_missing') return { badge: 'CONSENT', title: 'Recording consent needed', tone: 'warning' };
+  if (liveRoom.statusReason === 'recording_pending') return { badge: 'REC', title: 'Recording pending', tone: 'warning' };
+  return { badge: 'READY', title: 'Room ready', tone: 'info' };
 }
 
 function getPresenceCopy(state: CourtLiveParticipant['state']): {
@@ -119,6 +126,7 @@ function getPresenceCopy(state: CourtLiveParticipant['state']): {
 } {
   if (state === 'live') return { label: 'VIDEO LIVE', tone: 'success' };
   if (state === 'reconnecting') return { label: 'RECONNECTING', tone: 'warning' };
+  if (state === 'camera_missing') return { label: 'CAMERA OFF', tone: 'warning' };
   return { label: 'WAITING', tone: 'warning' };
 }
 

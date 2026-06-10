@@ -106,6 +106,18 @@ Required production configuration:
 supabase secrets set LIVEKIT_URL="wss://your-project.livekit.cloud" LIVEKIT_API_KEY="..." LIVEKIT_API_SECRET="..." --project-ref dhzcoywgiyrbsiiwlstw
 ```
 
+LiveKit Court recording uses RoomComposite egress. Egress requires an output destination; configure an S3-compatible private bucket before treating Court recordings as evidence-grade:
+
+```powershell
+supabase secrets set LIVEKIT_EGRESS_S3_BUCKET="..." LIVEKIT_EGRESS_S3_ACCESS_KEY="..." LIVEKIT_EGRESS_S3_SECRET_KEY="..." LIVEKIT_EGRESS_S3_REGION="..." LIVEKIT_EGRESS_S3_ENDPOINT="..." LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE="true" --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+Optional:
+
+```powershell
+supabase secrets set LIVEKIT_EGRESS_S3_PREFIX="live-court-recordings" --project-ref dhzcoywgiyrbsiiwlstw
+```
+
 Configure the LiveKit Cloud webhook target as:
 
 ```text
@@ -142,7 +154,7 @@ Known setup note: Supabase Auth custom SMTP must use a valid Resend SMTP port. U
 ## Remaining Launch Gates
 
 - Jury evidence packets still need richer signed evidence previews; the current mobile read shows live case reason and evidence counts only.
-- LiveKit Cloud room/token/webhook integration is wired. Automatic egress start/stop orchestration remains a launch-hardening item; the webhook already records egress lifecycle events when LiveKit emits them.
+- LiveKit Cloud room/token/webhook integration is wired. RoomComposite egress start/stop orchestration is wired when `LIVEKIT_EGRESS_S3_*` storage secrets are configured; object verification, evidence linkage, retention/deletion jobs, and playback review remain launch-hardening items.
 - Witnessed and Evidence need full Court branching after acceptance; they are currently persisted as choices but do not yet have separate post-accept lifecycles.
 - Add richer result-claim, witness-signal, and evidence-review surfaces for the non-answer-key paths.
 - Support remains static content in the current build. A ticket/contact provider is outside the current implementation and must be selected before production support launch.

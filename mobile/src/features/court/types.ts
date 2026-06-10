@@ -53,7 +53,7 @@ export type CourtJuryCaseSummary = {
   votesNeeded: number;
 };
 
-export type CourtLivePresenceState = 'live' | 'waiting' | 'reconnecting';
+export type CourtLivePresenceState = 'camera_missing' | 'live' | 'waiting' | 'reconnecting';
 
 export type CourtLiveParticipant = {
   isYou?: boolean;
@@ -76,6 +76,18 @@ export type CourtLiveRoom = {
   requirementLabel: string;
   requirementMet: boolean;
   roomId: string | null;
+  statusReason:
+    | 'camera_not_detected'
+    | 'closed'
+    | 'participant_not_joined'
+    | 'ready'
+    | 'recording_consent_missing'
+    | 'recording_pending'
+    | 'reconnecting'
+    | 'requirement_met'
+    | 'viewer_not_joined'
+    | 'waiting_participants'
+    | 'webhook_pending';
   status: 'initializing' | 'live' | 'reconnecting' | 'closed';
   viewerJoined: boolean;
 };

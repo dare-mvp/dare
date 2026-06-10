@@ -675,6 +675,14 @@ LiveKit environment:
 supabase secrets set LIVEKIT_URL="wss://your-project.livekit.cloud" LIVEKIT_API_KEY="..." LIVEKIT_API_SECRET="..." --project-ref dhzcoywgiyrbsiiwlstw
 ```
 
+LiveKit RoomComposite egress output:
+
+```powershell
+supabase secrets set LIVEKIT_EGRESS_S3_BUCKET="..." LIVEKIT_EGRESS_S3_ACCESS_KEY="..." LIVEKIT_EGRESS_S3_SECRET_KEY="..." LIVEKIT_EGRESS_S3_REGION="..." LIVEKIT_EGRESS_S3_ENDPOINT="..." LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE="true" --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+If the egress storage secrets are missing, live video can still run, but recording remains `not_started` and the room metadata records `egressSkippedReason = s3_output_not_configured`.
+
 LiveKit webhook URL:
 
 ```text
@@ -687,6 +695,7 @@ Implemented Postgres functions:
 - `public.enter_live_court_action(...)`
 - `public.record_live_court_presence_action(...)`
 - `public.live_court_requirement_met(...)`
+- `public.livekit_spectator_presence_verified(...)`
 
 Implemented database enforcement:
 
