@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Camera, Play } from 'lucide-react';
+import { Camera, Play, MessageCircle } from 'lucide-react';
 import { DareLogo } from '@/components/brand/dare-logo';
 
 const NAV_LINKS = [
@@ -27,6 +27,12 @@ const SOCIAL_LINKS = [
     label: 'YouTube',
     handle: '@iDareUChallenge',
     Icon: Play,
+  },
+  {
+    href: 'https://whatsapp.com/channel/0029VbCZi4bLdQec56X6i81K',
+    label: 'WhatsApp',
+    handle: 'DARE Channel',
+    Icon: MessageCircle,
   },
 ];
 

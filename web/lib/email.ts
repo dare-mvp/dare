@@ -108,11 +108,20 @@ export function buildLegendWelcomePayload(to: string, referralUrl: string) {
             </div>
           </div>
 
-          <div style="display:flex;gap:10px;">
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
             <span style="font-family:monospace;font-size:10px;color:#FBBF24;min-width:16px;padding-top:2px;">C</span>
             <div>
               <p style="margin:0;font-size:14px;font-weight:600;color:#ffffff;">Drop in a WhatsApp community</p>
               <p style="margin:4px 0 0;font-size:12px;color:#71717a;">Share your link in a group of 20+ people. Screenshot the delivery as proof.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FBBF24;min-width:16px;padding-top:2px;">D</span>
+            <div>
+              <p style="margin:0;font-size:14px;font-weight:600;color:#ffffff;">Join our WhatsApp Channel</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#71717a;">Join the official DARE channel. Screenshot your membership screen as proof.</p>
+              <a href="https://whatsapp.com/channel/0029VbCZi4bLdQec56X6i81K" style="display:inline-block;margin-top:6px;font-size:12px;color:#25D366;text-decoration:none;">Join DARE WhatsApp Channel →</a>
             </div>
           </div>
         </div>
@@ -125,7 +134,7 @@ export function buildLegendWelcomePayload(to: string, referralUrl: string) {
         </a>
 
         <p style="font-size:14px;color:#71717a;margin-top:16px;">
-          When done, DM <strong style="color:#ffffff;">@dareappofficial</strong> on Instagram with:<br/>
+          When done, DM <strong style="color:#ffffff;">@dareappofficial</strong> on Instagram or WhatsApp with your proof (battle videos, WhatsApp group screenshot, channel membership screenshot):<br/>
           <span style="font-family:monospace;color:#FBBF24;">Legend Dare complete — ref: YOUR_CODE</span>
         </p>
 
@@ -196,11 +205,20 @@ export function buildLegendClosingSoonPayload(to: string, referralUrl: string) {
             </div>
           </div>
 
-          <div style="display:flex;gap:10px;">
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
             <span style="font-family:monospace;font-size:10px;color:#FBBF24;min-width:16px;padding-top:2px;">C</span>
             <div>
               <p style="margin:0;font-size:14px;font-weight:600;color:#ffffff;">Drop in a WhatsApp community</p>
               <p style="margin:4px 0 0;font-size:12px;color:#71717a;">Share your link in a group of 20+. Screenshot proof.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FBBF24;min-width:16px;padding-top:2px;">D</span>
+            <div>
+              <p style="margin:0;font-size:14px;font-weight:600;color:#ffffff;">Join our WhatsApp Channel</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#71717a;">Join the official DARE channel. Screenshot your membership as proof.</p>
+              <a href="https://whatsapp.com/channel/0029VbCZi4bLdQec56X6i81K" style="display:inline-block;margin-top:6px;font-size:12px;color:#25D366;text-decoration:none;">Join DARE WhatsApp Channel →</a>
             </div>
           </div>
         </div>
@@ -211,7 +229,7 @@ export function buildLegendClosingSoonPayload(to: string, referralUrl: string) {
         </a>
 
         <p style="font-size:14px;color:#71717a;margin-top:16px;">
-          When done, DM <strong style="color:#ffffff;">@dareappofficial</strong> on Instagram:<br/>
+          When done, DM <strong style="color:#ffffff;">@dareappofficial</strong> on Instagram or WhatsApp with your proof:<br/>
           <span style="font-family:monospace;color:#FBBF24;">Legend Dare complete — ref: YOUR_CODE</span>
         </p>
 
