@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
 
 import { ActionButton } from '../../../src/components/ui/ActionButton';
 import { EscrowBreakdown } from '../../../src/components/ui/EscrowBreakdown';
@@ -9,21 +9,58 @@ import { InlineAlert } from '../../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../../src/components/ui/StatusBadge';
 import { TrustBadge } from '../../../src/components/ui/TrustBadge';
 import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFrame';
+import { formatDareTypeLabel, formatFundingModelLabel } from '../../../src/features/create/createLabels';
+import { CheckLine, acceptDareStyles as styles } from '../../../src/features/feed/components/AcceptDareParts';
 import { useDareDetail } from '../../../src/features/feed/useDareDetail';
+import { formatNgnFromKobo } from '../../../src/features/me/format';
 import { useMe } from '../../../src/features/me/useMe';
-import { acceptDare } from '../../../src/lib/actions/endpoints';
-import { colors, fonts, radius, spacing, typography } from '../../../src/theme/tokens';
-import { useState } from 'react';
-
-const platformFeeRate = 0.05;
+import { acceptDareWithQuote, getAcceptQuote, type AcceptQuoteResponse } from '../../../src/lib/actions/endpoints';
+import type { ActionErrorCode } from '../../../src/lib/actions/types';
+import { ACTIVE_COURT_COMMITMENT_MESSAGE } from '../../../src/lib/errors/userMessages';
+import { colors } from '../../../src/theme/tokens';
 
 export default function AcceptDareScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, error: meError, loading: meLoading } = useMe();
   const { dare, error: detailError, loading: detailLoading, source } = useDareDetail(id);
+  const [quote, setQuote] = useState<AcceptQuoteResponse | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorCode, setSubmitErrorCode] = useState<ActionErrorCode | null>(null);
+
+  useEffect(() => {
+    if (!dare?.id || !isUuid(dare.id)) {
+      setQuote(null);
+      setQuoteError(null);
+      setQuoteLoading(false);
+      return undefined;
+    }
+
+    let mounted = true;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    setSubmitError(null);
+    setSubmitErrorCode(null);
+
+    void getAcceptQuote(dare.id).then((result) => {
+      if (!mounted) return;
+      if (result.ok) {
+        setQuote(result.data);
+        setQuoteError(null);
+      } else {
+        setQuote(null);
+        setQuoteError(result.error.message);
+      }
+      setQuoteLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [dare?.id]);
 
   if (!dare) {
     return (
@@ -51,16 +88,28 @@ export default function AcceptDareScreen() {
     );
   }
 
-  const platformFeeKobo = Math.round(dare.stakeKobo * platformFeeRate);
+  const isBackendDare = isUuid(dare.id);
+  const dareType = quote?.dareType ?? dare.dareType ?? 'skill';
+  const isTask = dareType === 'task';
+  const fundingModelValue = quote?.fundingModel ?? dare.fundingModel;
+  const fundingModel = formatFundingModelLabel(fundingModelValue, dareType);
+  const rewardKobo = quote?.rewardAmount ?? dare.rewardKobo ?? 0;
+  const challengerStakeKobo = quote?.challengerStakeAmount ?? (isTask ? 0 : dare.stakeKobo);
+  const totalDueKobo = quote?.totalDueAmount ?? challengerStakeKobo;
   const isOpen = dare.status === 'open';
-  const canAccept = isOpen && data.capabilities.canAcceptDare && !submitting;
+  const quoteReady = !isBackendDare || Boolean(quote);
+  const quoteAllowsAccept = !isBackendDare || quote?.canAccept === true;
+  const canAccept = isOpen && data.capabilities.canAcceptDare && quoteReady && quoteAllowsAccept && !submitting;
+  const acceptBlockedMessage = getAcceptBlockedMessage(quote);
+  const showGoToCourtAction = quote?.reasonCode === 'ACTIVE_COURT_COMMITMENT' ||
+    submitErrorCode === 'ACTIVE_COURT_COMMITMENT';
 
   return (
     <DareFlowFrame
       eyebrow="Accept DARE"
       onBack={() => router.back()}
       title="Accept review."
-      subtitle="Accepting locks your stake and opens ready-up after confirmation."
+      subtitle={isTask ? 'Task-Based acceptance reserves your performer slot without locking a performer stake.' : 'Accepting locks your challenger stake and opens ready-up after confirmation.'}
     >
       {(source === 'mock' || data.source === 'mock') && !meError ? (
         <InlineAlert
@@ -86,11 +135,27 @@ export default function AcceptDareScreen() {
         />
       ) : null}
 
+      {quoteError ? (
+        <InlineAlert
+          tone="danger"
+          title="Accept quote unavailable"
+          message={quoteError}
+        />
+      ) : null}
+
       {submitError ? (
         <InlineAlert
           tone="danger"
           title="Accept failed"
           message={submitError}
+        />
+      ) : null}
+
+      {acceptBlockedMessage ? (
+        <InlineAlert
+          tone="info"
+          title={acceptBlockedMessage.title}
+          message={acceptBlockedMessage.message}
         />
       ) : null}
 
@@ -112,30 +177,53 @@ export default function AcceptDareScreen() {
         </View>
       </View>
 
-      <EscrowBreakdown platformFeeKobo={platformFeeKobo} stakeKobo={dare.stakeKobo} />
+      <EscrowBreakdown
+        platformFeeKobo={0}
+        stakeKobo={challengerStakeKobo}
+        stakeLabel={quote?.copy.escrowLabel ?? (isTask ? 'Performer money locked' : 'Challenger stake')}
+        title={quote?.copy.title ?? (isTask ? 'Task-Based acceptance' : 'Challenger escrow')}
+        totalKobo={totalDueKobo}
+        totalLabel={isTask ? 'Total to lock from you' : 'Total to lock'}
+      />
 
       <View style={styles.checkPanel}>
         <Text style={styles.panelTitle}>Acceptance checks</Text>
-        <CheckLine label="Escrow" value="Stake and fee reserved after confirmation" />
+        <CheckLine label="DARE type" value={formatDareTypeLabel(dareType)} />
+        <CheckLine label="Funding" value={fundingModel} />
+        <CheckLine
+          label="Escrow"
+          value={quote?.copy.primary ?? (isTask
+            ? `Performer money is not locked. The Darer reward is ${formatNgnFromKobo(rewardKobo)}.`
+            : 'Challenger stake is reserved after confirmation')}
+        />
+        <CheckLine label={isTask ? 'Reward' : 'Stake'} value={isTask ? formatNgnFromKobo(rewardKobo) : formatNgnFromKobo(dare.stakeKobo)} />
+        <CheckLine label="Resolution" value={`${dare.resolution} with dispute window`} />
         <CheckLine label="KYC" value="Tier and limits checked before ready-up" />
-        <CheckLine label="Rules" value={`${dare.resolution} resolution with dispute window`} />
       </View>
 
       <InlineAlert
         tone="warning"
         title="Accept only clear rules"
-        message="Do not accept if the win condition, timing, or dispute path is unclear."
+        message={quote?.copy.confirmation ?? 'Do not accept if the win condition, timing, or dispute path is unclear.'}
       />
 
       <View style={styles.actions}>
         <ActionButton
           accessibilityLabel="Confirm accept DARE"
           disabled={!canAccept}
-          label={submitting ? 'Accepting' : 'Confirm accept'}
+          label={submitting ? 'Accepting' : quoteLoading ? 'Loading quote' : acceptBlockedMessage ? 'Cannot accept' : 'Confirm accept'}
           onPress={() => {
             void handleAcceptDare();
           }}
         />
+        {showGoToCourtAction ? (
+          <ActionButton
+            accessibilityLabel="Go to your current Court"
+            label="Go to Court"
+            onPress={() => router.push('/(tabs)/court')}
+            variant="secondary"
+          />
+        ) : null}
         <ActionButton
           accessibilityLabel="Return to DARE detail"
           label="Back to detail"
@@ -155,12 +243,19 @@ export default function AcceptDareScreen() {
       return;
     }
 
+    if (!quote) {
+      setSubmitError('Acceptance details are still loading. Try again in a moment.');
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitErrorCode(null);
 
-    const result = await acceptDare(currentDare.id);
+    const result = await acceptDareWithQuote(currentDare.id, quote);
     if (!result.ok) {
       setSubmitError(result.error.message);
+      setSubmitErrorCode(result.error.code);
       setSubmitting(false);
       return;
     }
@@ -170,9 +265,13 @@ export default function AcceptDareScreen() {
       pathname: `/dare/${currentDare.id}/accept-receipt`,
       params: {
         courtSessionId: result.data.courtSessionId,
-        reference: result.data.challengerEscrowHoldId,
-        stakeAmount: String(result.data.stakeAmount),
+        dareType: result.data.dareType,
+        reference: result.data.challengerEscrowHoldId ?? result.data.courtSessionId,
+        rewardAmount: String(result.data.rewardAmount),
+        settlementPlatformFeeAmount: String(result.data.quote.settlementPlatformFeeAmount),
+        stakeAmount: String(result.data.quote.challengerStakeAmount),
         status: result.data.status,
+        totalDueAmount: String(result.data.quote.totalDueAmount),
       },
     });
   }
@@ -182,123 +281,32 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function CheckLine({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.checkLine}>
-      <ShieldCheck color={colors.success} size={16} />
-      <View style={styles.checkCopy}>
-        <Text style={styles.checkLabel}>{label}</Text>
-        <Text style={styles.checkValue}>{value}</Text>
-      </View>
-    </View>
-  );
-}
+function getAcceptBlockedMessage(quote: AcceptQuoteResponse | null) {
+  if (!quote || quote.canAccept) return null;
 
-const styles = StyleSheet.create({
-  challengeCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing[14],
-    padding: spacing[16],
-  },
-  cardHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  category: {
-    color: colors.textMuted,
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: typography.sectionTitle.fontSize,
-    fontWeight: '900',
-    lineHeight: typography.sectionTitle.lineHeight,
-  },
-  issuerRow: {
-    alignItems: 'center',
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: spacing[10],
-    paddingTop: spacing[12],
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  avatarText: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  issuerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  issuerLabel: {
-    color: colors.textMuted,
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    textTransform: 'uppercase',
-  },
-  issuerName: {
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  checkPanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing[12],
-    padding: spacing[16],
-  },
-  panelTitle: {
-    color: colors.text,
-    fontFamily: fonts.displaySemi,
-    fontSize: typography.sectionTitle.fontSize,
-    fontWeight: '900',
-  },
-  checkLine: {
-    alignItems: 'flex-start',
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: spacing[10],
-    paddingTop: spacing[10],
-  },
-  checkCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  checkLabel: {
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  checkValue: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodyRegular,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: spacing[4],
-  },
-  actions: {
-    gap: spacing[10],
-  },
-});
+  if (quote.reasonCode === 'SELF_CHALLENGE') {
+    return {
+      title: 'Created by you',
+      message: 'You cannot accept your own DARE. Share it or wait for another eligible player to accept.',
+    };
+  }
+
+  if (quote.reasonCode === 'TARGETED_TO_ANOTHER_USER') {
+    return {
+      title: 'Reserved DARE',
+      message: 'This DARE is reserved for another player.',
+    };
+  }
+
+  if (quote.reasonCode === 'ACTIVE_COURT_COMMITMENT') {
+    return {
+      title: 'Court already active',
+      message: ACTIVE_COURT_COMMITMENT_MESSAGE,
+    };
+  }
+
+  return {
+    title: 'Not open',
+    message: 'This DARE is not accepting players right now.',
+  };
+}

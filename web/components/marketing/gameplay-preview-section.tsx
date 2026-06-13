@@ -17,72 +17,70 @@ import {
 } from 'lucide-react';
 
 const GAME_STEPS = [
-  { label: 'Challenge', value: 'Street hoops', icon: Swords },
-  { label: 'Escrow', value: 'NGN 12,000 locked', icon: LockKeyhole },
-  { label: 'Proof', value: 'Clip submitted', icon: Camera },
-  { label: 'Court', value: '2 jurors ready', icon: Vote },
-];
-
-const LIVE_EVENTS = [
-  { label: 'Escrow verified', icon: ShieldCheck, color: 'text-[#19C37D]' },
-  { label: 'Proof window open', icon: Camera, color: 'text-[#2DD4BF]' },
-  { label: 'Court timer live', icon: Gauge, color: 'text-[#F59E0B]' },
+  { label: 'DARE type', value: 'Skill or Task', icon: Swords },
+  { label: 'Funding', value: 'Stake or reward', icon: LockKeyhole },
+  { label: 'Resolution', value: 'Answer, witness, proof', icon: Camera },
+  { label: 'Review', value: 'Packet ready', icon: Vote },
 ];
 
 const GAMEPLAY_SCREENS = [
   {
-    eyebrow: 'Live DARE',
-    title: '3-point sprint',
-    badge: 'ESCROW LOCKED',
+    eyebrow: 'Skill-Based',
+    title: 'Trivia sprint',
+    badge: 'ANSWER KEY COMMITTED',
     timer: '00:42',
     icon: Zap,
     accent: 'text-brand-primary',
-    cta: 'Enter court mode',
+    cta: 'Answer live',
     stats: [
-      { name: 'Ayo', value: '78 pts', score: 78, tone: 'bg-brand-primary' },
-      { name: 'Mira', value: '72 pts', score: 72, tone: 'bg-[#19C37D]' },
+      { name: 'Ayo', value: '7/10', score: 70, tone: 'bg-brand-primary' },
+      { name: 'Mira', value: '6/10', score: 60, tone: 'bg-[#19C37D]' },
     ],
     metrics: [
-      { label: 'Stake', value: '12K', icon: WalletCards, color: 'text-brand-primary' },
+      { label: 'Stakes', value: '2-way', icon: WalletCards, color: 'text-brand-primary' },
       { label: 'Trust', value: '98', icon: BadgeCheck, color: 'text-[#19C37D]' },
-      { label: 'Prize', value: 'Win', icon: Trophy, color: 'text-[#F59E0B]' },
+      { label: 'Path', value: 'Key', icon: Trophy, color: 'text-[#F59E0B]' },
     ],
-    events: LIVE_EVENTS,
+    events: [
+      { label: 'Answer key hash verified', icon: ShieldCheck, color: 'text-[#19C37D]' },
+      { label: 'Prompt window open', icon: Camera, color: 'text-[#2DD4BF]' },
+      { label: 'Court timer live', icon: Gauge, color: 'text-[#F59E0B]' },
+    ],
   },
   {
-    eyebrow: 'Proof run',
-    title: 'Freestyle round',
-    badge: 'UPLOAD WINDOW',
+    eyebrow: 'Task-Based',
+    title: 'Freestyle proof',
+    badge: 'EVIDENCE WINDOW',
     timer: '01:18',
     icon: Camera,
     accent: 'text-[#2DD4BF]',
     cta: 'Submit proof',
     stats: [
-      { name: 'Clip quality', value: 'HD', score: 92, tone: 'bg-[#2DD4BF]' },
+      { name: 'Performer proof', value: 'Submitted', score: 92, tone: 'bg-[#2DD4BF]' },
       { name: 'Geo check', value: 'Match', score: 84, tone: 'bg-brand-primary' },
     ],
     metrics: [
-      { label: 'Angles', value: '2', icon: Camera, color: 'text-[#2DD4BF]' },
+      { label: 'Reward', value: '1-way', icon: Camera, color: 'text-[#2DD4BF]' },
       { label: 'Time', value: '1m', icon: Gauge, color: 'text-[#F59E0B]' },
       { label: 'Ready', value: 'Yes', icon: ShieldCheck, color: 'text-[#19C37D]' },
     ],
     events: [
-      { label: 'Camera roll attached', icon: Camera, color: 'text-[#2DD4BF]' },
-      { label: 'Opponent proof pending', icon: Swords, color: 'text-brand-primary' },
+      { label: 'Proof attached', icon: Camera, color: 'text-[#2DD4BF]' },
+      { label: 'Opponent response pending', icon: Swords, color: 'text-brand-primary' },
       { label: 'Hash created', icon: LockKeyhole, color: 'text-[#19C37D]' },
     ],
   },
   {
-    eyebrow: 'Court mode',
-    title: 'Evidence vote',
+    eyebrow: 'Witnessed',
+    title: 'Live review',
     badge: 'JURY LIVE',
     timer: '02:05',
     icon: Vote,
     accent: 'text-[#F59E0B]',
-    cta: 'Review evidence',
+    cta: 'Review packet',
     stats: [
-      { name: 'Player A proof', value: 'Strong', score: 86, tone: 'bg-[#19C37D]' },
-      { name: 'Player B proof', value: 'Needs review', score: 61, tone: 'bg-[#F59E0B]' },
+      { name: 'Witness signals', value: 'Ready', score: 86, tone: 'bg-[#19C37D]' },
+      { name: 'Evidence packet', value: 'Open', score: 61, tone: 'bg-[#F59E0B]' },
     ],
     metrics: [
       { label: 'Jurors', value: '3', icon: Vote, color: 'text-[#F59E0B]' },
@@ -120,7 +118,7 @@ const GAMEPLAY_SCREENS = [
   },
 ];
 
-const TAB_LABELS = ['Challenge', 'Proof', 'Court', 'Settlement'];
+const TAB_LABELS = ['Answer Key', 'Evidence', 'Witnessed', 'Settlement'];
 
 export function GameplayPreviewSection() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -165,8 +163,8 @@ export function GameplayPreviewSection() {
                 The app should feel like a match, not a form.
               </h2>
               <p className="max-w-lg text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                Players move through a fast challenge loop: issue the DARE, lock escrow, capture
-                proof, and settle the winner in court mode.
+                Participants move through a user-authored flow: define the DARE, lock stakes or a
+                reward in escrow, capture proof, and settle by Answer Key, Witnessed, or Evidence review.
               </p>
             </div>
 

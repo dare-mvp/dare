@@ -1,20 +1,28 @@
+import { memo } from 'react';
 import { Eye, Flame, LockKeyhole } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { MoneyAmount } from '../../../components/ui/MoneyAmount';
 import { colors } from '../../../theme/tokens';
+import { formatDareTypeLabel, formatFundingModelLabel } from '../../create/createLabels';
 import { getCategoryVisual } from '../categoryVisuals';
 import { avatarStyles, styles } from './DareCard.styles';
 
 export type DareFeedItem = {
+  actionLabel: string;
   id: string;
   title: string;
   category: string;
+  createdAgo: string;
+  courtPhase?: string | null;
+  description?: string | null;
+  dareType?: 'skill' | 'task';
+  fundingModel?: 'two_sided_stake' | 'darer_reward';
+  rewardKobo?: number;
+  rules?: string | null;
   stakeKobo: number;
   status: 'open' | 'live' | 'active' | 'completed' | 'disputed';
   resolution: string;
-  createdAgo: string;
-  actionLabel: string;
   playerA: PlayerSummary;
   playerB?: PlayerSummary;
   scoreA?: number;
@@ -37,13 +45,13 @@ const statusStyles: Record<DareFeedItem['status'], { label: string; color: strin
     border: 'rgba(0,232,150,0.30)',
   },
   live: {
-    label: 'AWAITING',
+    label: 'COURT SOON',
     color: colors.warning,
     background: colors.warningDim,
     border: 'rgba(255,176,32,0.30)',
   },
   active: {
-    label: 'ACTIVE NOW',
+    label: 'LIVE',
     color: colors.danger,
     background: colors.dangerDim,
     border: 'rgba(255,51,102,0.35)',
@@ -62,18 +70,29 @@ const statusStyles: Record<DareFeedItem['status'], { label: string; color: strin
   },
 };
 
-export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () => void }) {
+export const DareCard = memo(function DareCard({
+  dare,
+  onPress,
+}: {
+  dare: DareFeedItem;
+  onPress?: (dare: DareFeedItem) => void;
+}) {
   const status = statusStyles[dare.status];
   const category = getCategoryVisual(dare.category);
   const CategoryIcon = category.Icon;
   const opponent = dare.playerB;
-  const isHot = dare.status === 'active' || Boolean(dare.viewers);
+  const isTask = dare.dareType === 'task';
+  const isLiveStage = dare.status === 'live' || dare.status === 'active';
+  const isHot = isLiveStage || Boolean(dare.viewers);
+  const lockedAmount = isTask ? dare.rewardKobo ?? dare.stakeKobo : dare.stakeKobo;
+  const lockedLabel = isTask ? 'Reward' : 'Stake';
+  const fundingLabel = formatFundingModelLabel(dare.fundingModel, dare.dareType ?? 'skill');
 
   return (
     <Pressable
       accessibilityLabel={`${dare.title} DARE`}
       accessibilityRole="button"
-      onPress={onPress}
+      onPress={() => onPress?.(dare)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={[styles.statusRail, { backgroundColor: status.color }]} />
@@ -89,14 +108,15 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
         </View>
         <View style={styles.stakePill}>
           <LockKeyhole color={colors.warning} size={13} />
-          <MoneyAmount amountKobo={dare.stakeKobo} tone="locked" />
+          <Text style={styles.stakeLabel}>{lockedLabel}</Text>
+          <MoneyAmount amountKobo={lockedAmount} tone="locked" />
         </View>
       </View>
       {isHot ? (
         <View style={styles.hotLine}>
           <Flame color={colors.danger} size={14} />
           <Text style={styles.hotText}>
-            {dare.viewers ? `${dare.viewers} watching now` : 'Active match'}
+            {dare.viewers ? `${dare.viewers} watching now` : dare.status === 'active' ? 'Live - join audience' : 'Court starting soon'}
           </Text>
         </View>
       ) : null}
@@ -107,7 +127,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
           <View style={styles.vsBadge}>
             <Text style={styles.vsText}>VS</Text>
           </View>
-          {opponent ? <PlayerBlock alignRight player={opponent} /> : <OpenSlot />}
+          {opponent ? <PlayerBlock alignRight player={opponent} /> : <OpenSlot label={isTask ? 'Performer' : 'Open'} />}
         </View>
         <View style={styles.playerMetaRow}>
           <View style={styles.metaColumn}>
@@ -119,7 +139,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
               <PlayerMetaLine alignRight player={opponent} />
             ) : (
               <Text numberOfLines={1} style={[styles.openMeta, styles.metaRight]}>
-                Awaiting challenger
+                {isTask ? 'Awaiting performer' : 'Awaiting challenger'}
               </Text>
             )}
           </View>
@@ -127,8 +147,9 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
       <View style={styles.footer}>
         <View>
-          <Text style={styles.footerMain}>{dare.resolution} resolution</Text>
+          <Text style={styles.footerMain}>{formatDareTypeLabel(dare.dareType ?? 'skill')} - {fundingLabel}</Text>
           <Text style={styles.footerSub}>{dare.createdAgo}</Text>
+          <Text style={styles.footerSub}>Resolution: {dare.resolution}</Text>
         </View>
         <View style={styles.actionWrap}>
           {dare.viewers ? <Eye color={colors.textMuted} size={14} /> : null}
@@ -139,7 +160,7 @@ export function DareCard({ dare, onPress }: { dare: DareFeedItem; onPress?: () =
       </View>
     </Pressable>
   );
-}
+});
 
 function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; player: PlayerSummary }) {
   return (
@@ -156,7 +177,7 @@ function PlayerBlock({ alignRight = false, player }: { alignRight?: boolean; pla
   );
 }
 
-function OpenSlot() {
+function OpenSlot({ label }: { label: string }) {
   return (
     <View style={[styles.player, styles.playerRight]}>
       <View style={[styles.avatar, styles.openAvatar]}>
@@ -164,7 +185,7 @@ function OpenSlot() {
       </View>
       <View style={[styles.playerCopy, styles.rightText]}>
         <Text numberOfLines={1} style={styles.playerName}>
-          Open
+          {label}
         </Text>
       </View>
     </View>

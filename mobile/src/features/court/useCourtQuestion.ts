@@ -4,7 +4,7 @@ import { getCurrentCourtQuestion } from '../../lib/actions/endpoints';
 import { isUuid } from '../../lib/ids';
 import { activeCourtSession } from '../../mocks/court';
 import { useAuth } from '../auth/AuthProvider';
-import { CourtQuestion } from './types';
+import { CourtQuestion, CourtSession } from './types';
 
 type CourtQuestionState = {
   answeredRounds: number;
@@ -16,14 +16,29 @@ type CourtQuestionState = {
   totalRounds: number;
 };
 
-export function useCourtQuestion(dareId?: string): CourtQuestionState {
+export function useCourtQuestion(
+  dareId?: string,
+  resolutionType: CourtSession['resolutionType'] = 'answer_key',
+): CourtQuestionState {
   const auth = useAuth();
-  const [state, setState] = useState<CourtQuestionState>(() => createPreviewState());
+  const [state, setState] = useState<CourtQuestionState>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? createEmptyServerState(auth.status === 'loading') : createPreviewState(),
+  );
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
+      if (auth.status === 'loading') {
+        if (mounted) setState(createEmptyServerState(true));
+        return;
+      }
+
+      if (resolutionType !== 'answer_key') {
+        if (mounted) setState(createResolutionModeState(resolutionType));
+        return;
+      }
+
       if (!isUuid(dareId) || auth.status !== 'authenticated') {
         if (mounted) setState(createPreviewState());
         return;
@@ -35,10 +50,8 @@ export function useCourtQuestion(dareId?: string): CourtQuestionState {
 
       if (!result.ok) {
         setState({
-          ...createPreviewState(),
+          ...createEmptyServerState(false),
           error: result.error.message,
-          loading: false,
-          source: 'server',
         });
         return;
       }
@@ -63,9 +76,25 @@ export function useCourtQuestion(dareId?: string): CourtQuestionState {
     return () => {
       mounted = false;
     };
-  }, [auth.status, dareId]);
+  }, [auth.status, dareId, resolutionType]);
 
   return state;
+}
+
+function createEmptyServerState(loading: boolean): CourtQuestionState {
+  return {
+    answeredRounds: 0,
+    error: null,
+    loading,
+    question: {
+      id: 'empty',
+      options: [],
+      prompt: 'No active question.',
+    },
+    roundIndex: 0,
+    source: 'server',
+    totalRounds: 0,
+  };
 }
 
 function createPreviewState(): CourtQuestionState {
@@ -78,4 +107,32 @@ function createPreviewState(): CourtQuestionState {
     source: 'mock',
     totalRounds: 5,
   };
+}
+
+function createResolutionModeState(resolutionType: CourtSession['resolutionType']): CourtQuestionState {
+  return {
+    answeredRounds: 0,
+    error: null,
+    loading: false,
+    question: {
+      id: resolutionType,
+      options: [],
+      prompt: getResolutionPrompt(resolutionType),
+    },
+    roundIndex: 0,
+    source: 'server',
+    totalRounds: 0,
+  };
+}
+
+function getResolutionPrompt(resolutionType: CourtSession['resolutionType']) {
+  if (resolutionType === 'witnessed') {
+    return 'Complete the DARE while both sides remain present for witnessed confirmation.';
+  }
+
+  if (resolutionType === 'evidence') {
+    return 'Complete the DARE and submit evidence according to the agreed rules.';
+  }
+
+  return 'No active prompt.';
 }

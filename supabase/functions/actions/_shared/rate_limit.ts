@@ -27,11 +27,41 @@ const RATE_LIMITS: Record<string, RateLimitRule[]> = {
   "POST /dares/*/accept": [
     { scope: "accept_dare:minute", limit: 10, windowSeconds: 60 },
   ],
+  "GET /dares/*/accept-quote": [
+    { scope: "accept_quote:minute", limit: 60, windowSeconds: 60 },
+  ],
+  "POST /dares/*/accept-quote": [
+    { scope: "accept_dare:minute", limit: 10, windowSeconds: 60 },
+  ],
   "POST /dares/*/answers": [
     { scope: "answer_submission:minute", limit: 30, windowSeconds: 60 },
   ],
+  "POST /dares/*/complete": [
+    { scope: "complete_dare:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /dares/*/settle": [
+    { scope: "settle_dare:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "GET /dares/*/settlement-status": [
+    { scope: "settlement_status:minute", limit: 60, windowSeconds: 60 },
+  ],
   "POST /court/*/messages": [
     { scope: "court_chat:minute", limit: 20, windowSeconds: 60 },
+  ],
+  "POST /court/*/heartbeat": [
+    { scope: "court_heartbeat:minute", limit: 60, windowSeconds: 60 },
+  ],
+  "GET /court/*/live-room": [
+    { scope: "live_court_read:minute", limit: 60, windowSeconds: 60 },
+  ],
+  "POST /court/*/live-room/enter": [
+    { scope: "live_court_enter:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /court/*/live-room/presence": [
+    { scope: "live_court_presence:minute", limit: 60, windowSeconds: 60 },
+  ],
+  "POST /court/*/ready": [
+    { scope: "court_ready:minute", limit: 20, windowSeconds: 60 },
   ],
   "POST /devices/push-token": [
     { scope: "push_token_register:minute", limit: 10, windowSeconds: 60 },
@@ -45,6 +75,33 @@ const RATE_LIMITS: Record<string, RateLimitRule[]> = {
   ],
   "POST /dares/*/disputes": [
     { scope: "dispute_filing:day", limit: 3, windowSeconds: 86_400 },
+  ],
+  "POST /dares/*/evidence": [
+    { scope: "evidence_upload_request:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /dares/*/evidence/confirm": [
+    { scope: "evidence_upload_confirm:minute", limit: 20, windowSeconds: 60 },
+  ],
+  "POST /dares/*/results/claims": [
+    { scope: "result_claim:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /dares/*/results/witness-attendance": [
+    { scope: "witness_attendance:minute", limit: 20, windowSeconds: 60 },
+  ],
+  "POST /dares/*/results/witness-votes": [
+    { scope: "witness_vote:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "POST /jury-cases/*/votes": [
+    { scope: "jury_vote:minute", limit: 10, windowSeconds: 60 },
+  ],
+  "GET /jury-cases/*/evidence": [
+    { scope: "jury_evidence_read:minute", limit: 30, windowSeconds: 60 },
+  ],
+  "POST /admin/jury-cases/*/assign": [
+    { scope: "admin_jury_assign:minute", limit: 20, windowSeconds: 60 },
+  ],
+  "POST /admin/jury-cases/*/resolve": [
+    { scope: "admin_jury_resolve:minute", limit: 20, windowSeconds: 60 },
   ],
   "POST /kyc/submit": [
     { scope: "kyc_submit:day", limit: 3, windowSeconds: 86_400 },
@@ -105,6 +162,11 @@ function routeKey(method: string, actionPath: string[]): string {
   const normalized = actionPath.map((segment, index) => {
     if (index === 1 && ["dares"].includes(actionPath[0])) return "*";
     if (index === 1 && ["court"].includes(actionPath[0])) return "*";
+    if (index === 1 && ["jury-cases"].includes(actionPath[0])) return "*";
+    if (
+      index === 2 && actionPath[0] === "admin" &&
+      ["jury-cases", "withdrawals", "users"].includes(actionPath[1])
+    ) return "*";
     return segment;
   });
   return `${method} /${normalized.join("/")}`;

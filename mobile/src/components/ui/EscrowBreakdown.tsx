@@ -4,20 +4,32 @@ import { MoneyAmount } from './MoneyAmount';
 import { colors, fonts, radius, spacing, typography } from '../../theme/tokens';
 
 type EscrowBreakdownProps = {
+  platformFeeLabel?: string;
   platformFeeKobo: number;
   stakeKobo: number;
+  stakeLabel?: string;
   title?: string;
+  totalKobo?: number;
+  totalLabel?: string;
 };
 
-export function EscrowBreakdown({ platformFeeKobo, stakeKobo, title = 'Escrow breakdown' }: EscrowBreakdownProps) {
-  const totalKobo = stakeKobo + platformFeeKobo;
+export function EscrowBreakdown({
+  platformFeeLabel = 'Platform fee',
+  platformFeeKobo,
+  stakeKobo,
+  stakeLabel = 'Stake',
+  title = 'Escrow breakdown',
+  totalKobo,
+  totalLabel = 'Total to lock',
+}: EscrowBreakdownProps) {
+  const lockKobo = totalKobo ?? stakeKobo + platformFeeKobo;
 
   return (
     <View style={styles.panel}>
       <Text style={styles.title}>{title}</Text>
-      <Line label="Stake" valueKobo={stakeKobo} />
-      <Line label="Platform fee" valueKobo={platformFeeKobo} />
-      <Line emphasis label="Total to lock" valueKobo={totalKobo} />
+      <Line label={stakeLabel} valueKobo={stakeKobo} />
+      <Line label={platformFeeLabel} valueKobo={platformFeeKobo} />
+      <Line emphasis label={totalLabel} valueKobo={lockKobo} />
     </View>
   );
 }

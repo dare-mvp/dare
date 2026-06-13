@@ -8,10 +8,14 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { ConstitutionPreview } from '../../src/features/create/components/ConstitutionPreview';
 import { CreateFlowFrame } from '../../src/features/create/components/CreateFlowFrame';
+import { getCreateStakeAvailabilityError } from '../../src/features/create/createEligibility';
 import {
   draftToCreateDarePayload,
+  parseStakeNairaToKobo,
   routeParamsToDraft,
 } from '../../src/features/create/createDarePayload';
+import { getCreateDareDraft } from '../../src/features/create/createDraftStore';
+import { validateCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
 import { useMe } from '../../src/features/me/useMe';
 import { createDare } from '../../src/lib/actions/endpoints';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
@@ -20,22 +24,32 @@ import { useState } from 'react';
 export default function CreateReviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    answerKey?: string;
+    answerKeyRules?: string;
     category?: string;
+    description?: string;
+    dareType?: string;
     durationSeconds?: string;
     opponent?: string;
     resolutionType?: string;
+    rewardNaira?: string;
     rules?: string;
     stakeNaira?: string;
     title?: string;
+    draftId?: string;
   }>();
   const { data, error, loading } = useMe();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const draft = routeParamsToDraft(params);
-  const stakeKobo = Math.round(Number(draft.stakeNaira || 0) * 100);
-  const platformFeeKobo = Math.round(stakeKobo * 0.05);
-  const escrowKobo = stakeKobo + platformFeeKobo;
-  const canCreate = data.capabilities.canCreateDare && !submitting;
+  const draft = getCreateDareDraft(params.draftId) ?? routeParamsToDraft(params);
+  const validation = validateCreateDareDraft(draft);
+  const stakeKobo = parseStakeNairaToKobo(draft.stakeNaira);
+  const rewardKobo = parseStakeNairaToKobo(draft.rewardNaira);
+  const escrowKobo = draft.dareType === 'task' ? rewardKobo : stakeKobo;
+  const platformFeeKobo = Math.round((draft.dareType === 'task' ? rewardKobo : stakeKobo * 2) * 0.05);
+  const stakeAvailabilityError = getCreateStakeAvailabilityError(escrowKobo, data);
+  const canCreate = validation.isValid && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error && !submitting;
+  const validationMessage = getFirstValidationError(validation.errors) ?? stakeAvailabilityError;
 
   return (
     <CreateFlowFrame
@@ -68,12 +82,24 @@ export default function CreateReviewScreen() {
         />
       ) : null}
 
+      {validationMessage ? (
+        <InlineAlert
+          tone="warning"
+          title="Review incomplete"
+          message={validationMessage}
+        />
+      ) : null}
+
       <View style={styles.statusCard}>
-        <ShieldCheck color={colors.success} size={24} />
+        <ShieldCheck color={validation.isValid ? colors.success : colors.warning} size={24} />
         <View style={styles.statusCopy}>
-          <StatusBadge label="READY TO CREATE" tone="success" />
-          <Text style={styles.statusTitle}>Constitution complete</Text>
-          <Text style={styles.statusText}>Your rules, stake, duration, and resolution path are ready for confirmation.</Text>
+          <StatusBadge label={validation.isValid ? 'READY TO CREATE' : 'NEEDS EDIT'} tone={validation.isValid ? 'success' : 'warning'} />
+          <Text style={styles.statusTitle}>{validation.isValid ? 'Constitution complete' : 'Constitution incomplete'}</Text>
+          <Text style={styles.statusText}>
+            {validation.isValid
+              ? 'Your rules, funding, duration, and resolution path are ready for confirmation.'
+              : 'Return to edit and complete the required terms before creating this DARE.'}
+          </Text>
         </View>
       </View>
 
@@ -81,13 +107,18 @@ export default function CreateReviewScreen() {
         draft={draft}
         escrowKobo={escrowKobo}
         platformFeeKobo={platformFeeKobo}
+        rewardKobo={rewardKobo}
         stakeKobo={stakeKobo}
       />
 
       <EscrowBreakdown
+        platformFeeLabel="Estimated settlement fee"
         platformFeeKobo={platformFeeKobo}
-        stakeKobo={stakeKobo}
-        title="Creator escrow"
+        stakeKobo={draft.dareType === 'task' ? rewardKobo : stakeKobo}
+        stakeLabel={draft.dareType === 'task' ? 'Darer reward' : 'Creator stake'}
+        title={draft.dareType === 'task' ? 'Reward escrow' : 'Creator escrow'}
+        totalKobo={escrowKobo}
+        totalLabel={draft.dareType === 'task' ? 'Reward to lock' : 'Creator stake to lock'}
       />
 
       <InlineAlert
@@ -118,6 +149,8 @@ export default function CreateReviewScreen() {
   );
 
   async function handleCreateDare() {
+    if (!canCreate) return;
+
     setSubmitting(true);
     setSubmitError(null);
 
@@ -134,14 +167,29 @@ export default function CreateReviewScreen() {
       params: {
         category: draft.category,
         dareId: result.data.dareId,
-        opponent: draft.opponent || 'Open challenge',
+        dareType: result.data.dareType,
+        opponent: draft.opponent || (draft.dareType === 'task' ? 'Open task' : 'Open challenge'),
         resolutionType: draft.resolutionType,
+        rewardAmount: String(result.data.rewardAmount),
         stakeAmount: String(result.data.stakeAmount),
         status: result.data.status,
         title: draft.title,
       },
     });
   }
+}
+
+function getFirstValidationError(errors: ReturnType<typeof validateCreateDareDraft>['errors']) {
+  return errors.title
+    ?? errors.description
+    ?? errors.rules
+    ?? errors.answerKey
+    ?? errors.answerKeyRules
+    ?? errors.stakeNaira
+    ?? errors.rewardNaira
+    ?? errors.durationSeconds
+    ?? errors.opponent
+    ?? null;
 }
 
 const styles = StyleSheet.create({

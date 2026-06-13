@@ -1,13 +1,19 @@
-export type DareCategory = 'knowledge' | 'sports' | 'music' | 'finance' | 'creative' | 'other';
+export type DareCategory = 'knowledge' | 'physical' | 'verbal' | 'sports' | 'creative' | 'other';
 
-export type ResolutionType = 'algorithmic' | 'jury' | 'evidence';
+export type ResolutionType = 'answer_key' | 'witnessed' | 'evidence';
+export type DareType = 'skill' | 'task';
 
 export type CreateDareDraft = {
+  answerKey: string;
+  answerKeyRules: string;
   category: DareCategory;
+  description: string;
+  dareType: DareType;
   durationSeconds: number;
   opponent: string;
   resolutionType: ResolutionType;
   rules: string;
+  rewardNaira: string;
   stakeNaira: string;
   title: string;
 };

@@ -26,16 +26,16 @@
 
 ## 1. Executive Summary
 
-DARE — Challenge Everything is a hyper-local social wagering and challenge platform purpose-built for the 2026 African digital economy. It sits at the convergence of three macro-trends: the maturation of mobile money infrastructure (70% of global mobile money transactions originate in Africa), the AfCFTA-driven reduction of cross-border friction, and a 600 million+ smartphone base hungry for skill-based peer competition.
+DARE — Challenge Everything is a hyper-local social challenge and task-reward platform purpose-built for the 2026 African digital economy. It sits at the convergence of three macro-trends: the maturation of mobile money infrastructure (70% of global mobile money transactions originate in Africa), the AfCFTA-driven reduction of cross-border friction, and a 600 million+ smartphone base hungry for skill-based peer competition.
 
-The platform's core loop is a **challenge economy**: two participants (or teams) wager on a skill-based outcome — physical feats, knowledge tests, creative tasks, or real-world errands — with automated escrow, community jury resolution, and instant mobile money payouts. DARE is not a betting app; it is a jobtech-meets-entertainment infrastructure layer.
+The platform's core loop is a **challenge economy**: users either compete in Skill-Based DAREs with two-sided stakes or create Task-Based DAREs where the Darer funds a reward for valid completion. Physical feats, knowledge contests, creative tasks, and real-world errands all use creator-authored rules, automated escrow, witnessed or evidence-based resolution, community jury review, and mobile money payouts. DARE is not a betting app; it is a jobtech-meets-entertainment infrastructure layer.
 
 **The 2026 strategic imperative distills into five pillars:**
 
 1. **USSD-First Compatibility** — Bridging the usage gap to serve millions on legacy devices.
 2. **Ubuntu-Based Community Governance** — Customary mediation for P2P trust.
 3. **Financial Rail Abstraction** — A unified gateway for fragmented mobile money networks.
-4. **Skill-Based Regulatory Shielding** — Distinguishing social wagers from gambling via ability-based outcomes.
+4. **Skill-Based Regulatory Shielding** — Distinguishing paid skill challenges from gambling via ability-based outcomes.
 5. **Localized AI Engagement** — Voice-to-action technology for digital inclusion in Swahili, Yoruba, Wolof, and more.
 
 **Key market indicators:**
@@ -58,7 +58,7 @@ The platform's core loop is a **challenge economy**: two participants (or teams)
 
 ### AfCFTA and the Digital Supply Chain
 
-The structural realignment of African logistics and social commerce in 2026 is anchored by the maturation of the AfCFTA framework. This policy has fundamentally altered the friction involved in cross-border trade, reducing customs clearance times by 30–50% in digitized markets. For a pan-African application like DARE, this macro-level efficiency provides the "plumbing" to scale wagering services beyond domestic borders.
+The structural realignment of African logistics and social commerce in 2026 is anchored by the maturation of the AfCFTA framework. This policy has fundamentally altered the friction involved in cross-border trade, reducing customs clearance times by 30–50% in digitized markets. For a pan-African application like DARE, this macro-level efficiency provides the "plumbing" to scale paid challenge and task-reward services beyond domestic borders.
 
 The digitization of customs manifests and the adoption of e-payments under AfCFTA have enabled a "leapfrog" effect, where agile, cloud-based platforms are displacing heavy, legacy ERP implementations. A social challenge app in this context is not merely a tool for convenience but a critical node in a broader supply chain that connects users through competitive tasks and peer-to-peer (P2P) economic activity.
 
@@ -111,7 +111,7 @@ DARE's success is determined by its "lite" cost strategy — engineering the app
 
 USSD (Unstructured Supplementary Service Data) is a non-negotiable feature for mass-market reach. It requires zero data cost for the customer and functions on any GSM phone. DARE implements the "M-Pesa model":
 
-- **USSD** as the accessible foundation for wagering volume.
+- **USSD** as the accessible foundation for paid challenge volume.
 - **Mobile app** as the engagement layer for depth and social features.
 
 Users dial a shortcode (e.g., `*923#`) to check their DARE balance, accept a pending challenge, or confirm a payout — all without a data plan.
@@ -122,7 +122,7 @@ Users dial a shortcode (e.g., `*923#`) to check their DARE balance, accept a pen
   [1] Check balance
   [2] Accept pending DARE
   [3] View my active DAREs
-  [4] Withdraw winnings
+  [4] Withdraw payouts
   [5] Support
 ```
 
@@ -132,7 +132,7 @@ Users dial a shortcode (e.g., `*923#`) to check their DARE balance, accept a pen
 
 ### Payment Fragmentation Reality
 
-The success of any social wagering application is linked to its ability to handle the extreme fragmentation of African payments. Consumers rely on mobile money (M-Pesa, MTN MoMo, Orange Money), localized wallets, and bank transfers — often within the same transaction session.
+The success of any paid social challenge application is linked to its ability to handle the extreme fragmentation of African payments. Consumers rely on mobile money (M-Pesa, MTN MoMo, Orange Money), localized wallets, and bank transfers — often within the same transaction session.
 
 **Payment channel landscape:**
 
@@ -156,9 +156,9 @@ To scale, DARE utilizes a **unified payment layer** — an abstraction model pio
 ### Escrow Architecture
 
 The escrow model is DARE's trust cornerstone:
-1. Both challenger and opponent lock funds on acceptance.
+1. Skill-Based DAREs lock both participants' stakes; Task-Based DAREs lock only the Darer-funded reward.
 2. Funds are held in a double-entry ledger — never in a mutable balance field.
-3. Resolution releases funds to winner minus platform rake (suggested: 5–8%).
+3. Resolution releases funds to the eligible Skill-Based winner or Task-Based performer minus platform rake (suggested: 5–8%).
 4. Disputed outcomes freeze escrow pending jury verdict.
 5. All ledger events are immutable and audit-logged.
 
@@ -166,7 +166,7 @@ The escrow model is DARE's trust cornerstone:
 
 ## 5. Trust Psychology & the Ubuntu Nexus
 
-Trust is the primary currency in the African gig and wagering economies. Perceived security is the most influential determinant of adoption for P2P services.
+Trust is the primary currency in the African gig, task, and paid challenge economies. Perceived security is the most influential determinant of adoption for P2P services.
 
 ### Community Juries and Ubuntu Models
 
@@ -241,8 +241,8 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 - DARE's wallet is a financial tool (withdraw, save, transact), not just a betting bankroll.
 
 **DARE's risk from Bet9ja:**
-- If Bet9ja launches a "social challenge" product (they have the capital and user base), they could capture the casual segment quickly.
-- Retail agents could be weaponized against any new entrant's cash-in flow.
+- If Bet9ja launches a "social challenge" product (they have the capital and user base), they can capture the casual segment quickly.
+- Retail agents can be weaponized against any new entrant's cash-in flow.
 
 ---
 
@@ -264,7 +264,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 - No jury/dispute system — disputes resolved by customer service only.
 - No jobtech/income dimension.
 
-**The "Copy Bet" Parallel:** SportyBet's copy bet is functionally similar to DARE's "Replicate Wager" feature. This is the most direct feature overlap in the market. DARE's differentiation is that **the wager is between users**, not against a bookmaker — shifting the regulatory and social dynamic entirely.
+**The "Copy Bet" Parallel:** SportyBet's copy bet validates consumer appetite for social replication mechanics. DARE's equivalent is Replicate DARE: users copy a challenge format and fund their own Skill-Based stake or Task-Based reward under DARE's escrow and settlement rules.
 
 **DARE advantage over SportyBet:**
 - P2P (user vs user) eliminates the bookmaker margin, creating better expected value for participants.
@@ -273,7 +273,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 
 **DARE's risk from SportyBet:**
 - SportyBet has the infrastructure to launch "friendly P2P bets" quickly; they have the wallet rails.
-- Their user base is already primed for wagering behaviors — lower acquisition friction.
+- Their user base is already primed for paid competitive behavior — lower acquisition friction.
 
 ---
 
@@ -292,7 +292,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 - Trust deficit: international operator perceived as less accountable than local champions.
 - Bookmaker model: the house always wins — fundamentally misaligned with DARE's P2P value proposition.
 - Cultural disconnect: product was built for Eastern European market and localized superficially.
-- No community features, no social wagering, no errand economy.
+- No community features, no social challenge layer, no errand economy.
 
 **DARE advantage over 1xBet:**
 - DARE is hyper-local by design: local agents, local languages, cultural resonance.
@@ -300,8 +300,8 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 - DARE's Ubuntu jury model is the antithesis of 1xBet's opaque dispute resolution ("contact support").
 
 **DARE's risk from 1xBet:**
-- 1xBet's marketing budget dwarfs any startup's. If they pivot to P2P social features, distribution could be massive.
-- Their affiliate network could be repurposed to acquire DARE's target demographic.
+- 1xBet's marketing budget dwarfs any startup's. If they pivot to P2P social features, distribution can be massive.
+- Their affiliate network can be repurposed to acquire DARE's target demographic.
 
 ---
 
@@ -369,7 +369,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 **Weaknesses:**
 - Gig worker model faces increasing regulatory pressure and labor activism (see: Glovo riders Kenya Reddit complaints, 2026).
 - Rider earnings are low and inconsistent — declining supply quality.
-- No social/wagering layer — Glovo is a utility, not entertainment.
+- No social challenge layer — Glovo is a utility, not entertainment.
 - High data usage app — not lite-optimized.
 - No community, trust system, or Ubuntu model.
 
@@ -379,7 +379,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 - Ubuntu jury creates dispute resolution infrastructure that Glovo lacks entirely.
 
 **DARE's risk from Glovo:**
-- If Glovo adds a competitive/gamified layer to runner rewards, they could activate their existing fleet against DARE's physical challenge participants.
+- If Glovo adds a competitive/gamified layer to runner rewards, they can activate their existing fleet against DARE's physical challenge participants.
 
 ---
 
@@ -401,7 +401,7 @@ DARE implements **Ubuntu-based trust models**, aligning the app's governance wit
 | Lite mode / low data | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Physical errand challenges | ✅ | ❌ | ❌ | ❌ | ❌ | Partial | ✅ |
 | Tournament / Arena mode | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Replicate / copy wager | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Replicate / copy challenge | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -415,17 +415,17 @@ DARE leverages the "skill-based" legal distinction in markets like Nigeria and K
 
 | Challenge Type | Resolution Mechanism | Skill Basis | Regulatory Risk |
 |---|---|---|---|
-| Algorithmic (Quiz/Trivia) | Platform-scored — no human subjectivity | Knowledge | Low |
+| Answer Key | Creator-authored questions/tasks with committed answers | Knowledge/objective skill | Low-Medium |
 | Physical (Errand/Feat) | Evidence + Jury | Athletic ability | Low-Medium |
 | Creative (Design/Content) | Community vote + Jury | Artistic skill | Medium |
 | Witnessed (Sport/Game) | Spectator vote majority | Athletic/game skill | Medium |
-| Honour (Trust-based) | Mutual agreement | N/A (social contract) | Medium-High |
+| Witnessed (Trust-assisted) | Mutual agreement | N/A (social contract) | Medium-High |
 
-### Social Replications and Episodic Betting
+### Social Replications and Episodic Challenges
 
 Following the "Netflix model," DARE focuses on **Episodic Content** — serialized challenges that keep users coming back. Core social features:
 
-- **Replicate Wager:** One-tap following of successful social bettors. A user can see that "Chidi has won 8 out of 10 sprint dares" and replicate his next stake automatically.
+- **Replicate DARE:** One-tap replication of successful public challenge formats. A user can see that "Chidi has won 8 out of 10 sprint dares" and create a matching Skill-Based stake or Task-Based reward instance.
 - **DARE Streaks:** Consecutive daily challenge completions unlock higher XP multipliers.
 - **Challenge Seasons:** Thematic 30-day seasons (e.g., "Ramadan Trivia Season," "AFCON Prediction Season") create appointment viewing behavior.
 - **Creator Challenges:** High-trust users ("DARE Masters") can create public challenge templates others use, earning a creator fee on each instance.
@@ -435,7 +435,7 @@ Following the "Netflix model," DARE focuses on **Episodic Content** — serializ
 | Feature Type | Specific African Innovation |
 |---|---|
 | Community Juries | P2P dispute resolution based on Ubuntu values |
-| Replicate Wager | One-tap following of successful social challengers |
+| Replicate DARE | One-tap replication of successful social challenge formats |
 | Skill Certification | Technical RNG and software certification for skill games |
 | Localized AI | Voice-to-action commands in indigenous languages |
 | USSD DARE | Zero-data challenge acceptance via shortcode |
@@ -457,7 +457,7 @@ The individuals participating in challenges — the "challengers" — often lack
 
 Unlike Glovo's rider model, DARE's physical participants:
 - Set their own rates and challenge terms.
-- Earn full stake (minus platform rake) — no algorithmic wage-setting.
+- Earn the agreed stake or reward after valid settlement, minus platform rake.
 - Build a portable reputation (trust score) that they own and take to any future platform.
 - Have dispute recourse via the jury system, not just "contact support."
 
@@ -468,8 +468,8 @@ Unlike Glovo's rider model, DARE's physical participants:
 By 2026, 40% of organizational applications integrate task-specific AI agents. DARE uses AI across three layers:
 
 ### Linguistic Localization
-- **Voice-to-action:** Users speak wagers in Swahili, Yoruba, Wolof, Igbo, or Hausa — the AI transcribes, interprets intent, and confirms the challenge in text.
-- **Auto-translation:** Challenge constitutions auto-translate between user language pairs (Yoruba issuer ↔ Swahili opponent).
+- **Voice-to-action:** Users speak DARE terms in Swahili, Yoruba, Wolof, Igbo, or Hausa — the AI transcribes, interprets intent, and confirms the challenge in text.
+- **Auto-translation:** Challenge constitutions auto-translate between user language pairs.
 - **Sentiment moderation:** Chat messages flagged for abuse in local slang and language patterns, not just English keywords.
 
 ### Fraud and Anomaly Detection
@@ -480,11 +480,11 @@ By 2026, 40% of organizational applications integrate task-specific AI agents. D
 ### Predictive Matchmaking
 - Using real-time data to match challengers based on skill level, location proximity, and historical performance.
 - "Balanced DARE" suggestion: AI recommends stake levels that maximize both participants' willingness to accept.
-- Time-to-match optimization: surface challenges likely to be accepted within 30 minutes during peak hours.
+- Time-to-match optimization: surface challenges with high acceptance probability within 30 minutes during peak hours.
 
 ### AI-Powered Challenge Generation
 - Suggest challenge types and constitutions based on a user's specialty (selected at registration) and historical performance.
-- Auto-generate quiz questions for trivia dares, verified against knowledge graph and difficulty-calibrated.
+- Help users draft clearer constitutions, proof rules, and edge-case handling. The platform does not own the primary challenge content or auto-generate the production question set for money-backed DAREs.
 
 ---
 
@@ -527,8 +527,8 @@ Full specification: [`docs/13-directional-ux-principles.md`](docs/13-directional
 
 **Feature: 5-Step Constitution Builder**
 - Research driver: Trust psychology — structured constitution reduces dispute ambiguity.
-- Step 1: Type selection (Algorithmic / Physical / Creative / Witnessed / Honour) + Category.
-- Step 2: Define test, proof method, duration, opponent targeting (open or specific user).
+- Step 1: Resolution selection (Answer Key / Witnessed / Evidence) + Category.
+- Step 2: Define test, proof method, duration, DARE type, and target participant if not open.
 - Step 3: Set stake — show fee breakdown and payout preview in real-time.
 - Step 4: Write rules/constitution (plain language; AI suggests if user blank).
 - Step 5: Review and issue — confirm all terms before escrow lock.
@@ -543,14 +543,14 @@ Full specification: [`docs/13-directional-ux-principles.md`](docs/13-directional
 - Research driver: Trust — users must see full constitution before committing.
 - Show full challenge constitution, issuer trust score, and tier badge.
 - Display exact funds that will be escrowed and when they release.
-- "Counter" option for Honour-type dares (propose modified terms).
+- "Counter" option for Mutual-confirmation dares (propose modified terms).
 
 ### 11.2 Court (Live Match Arena)
 
 **Feature: Real-Time Court**
-- Research driver: Social wagering loop — spectator economy drives virality.
+- Research driver: Social challenge loop — spectator economy drives virality.
 - Server-authoritative match clock (client syncs to server time, not local device).
-- Quiz panel: question delivery, answer collection, instant scoring.
+- Challenge panel: creator-authored prompts/tasks, answer/proof collection, and result status.
 - Vote panel: spectator voting with eligibility gating (account age, trust score minimum).
 - Chat: live messages, viewer count (Supabase Realtime broadcast + presence).
 - Proof panel: in-app capture, retake rules, upload progress, submission receipt with hash.
@@ -593,21 +593,21 @@ Full specification: [`docs/13-directional-ux-principles.md`](docs/13-directional
 **Feature: Voice-to-DARE**
 - Research driver: AI localization for digital inclusion.
 - Microphone button on challenge creation — speak the challenge in Yoruba/Swahili/Hausa.
-- AI transcribes + parses: extracts type, category, stake, and opponent from natural speech.
+- AI transcribes + parses: extracts DARE type, category, stake or reward, and target participant from natural speech.
 - Confirmation step shows parsed interpretation before submission.
 
 **Feature: Predictive Matchmaking**
 - Research driver: AI integration — maximize acceptance rate.
-- After creating a challenge, show "Top 5 likely opponents" based on skill history.
+- After creating a challenge, show "Top 5 high-fit participants" based on skill history and task eligibility.
 - Show predicted time-to-match if opened publicly.
 
 ### 11.6 Social & Retention Features
 
-**Feature: Replicate Wager**
-- Research driver: SportyBet copy-bet validation + social replication model.
+**Feature: Replicate DARE**
+- Research driver: social replication model from proven consumer behavior.
 - Any user can follow a "DARE Master" (user with 70%+ win rate over 20+ challenges).
 - One tap to replicate their current active challenge at your chosen stake level.
-- The original issuer earns a 0.5% creator fee on replicated wager volume.
+- The original issuer earns a 0.5% creator fee on replicated settled volume.
 
 **Feature: Challenge Seasons**
 - Research driver: Episodic Netflix model.
@@ -637,7 +637,7 @@ escrow_holds      — per-dare escrow records
 jury_cases        — dispute case entity
 jury_votes        — individual juror decisions
 dare_votes        — spectator votes
-dare_quiz_answers — quiz answer records
+court_events      — answer, proof, result claim, and witness events
 court_chat        — real-time chat messages
 notifications     — event-driven inbox
 ```
@@ -657,11 +657,11 @@ open → accepted → active → completed → settled
 - `PATCH /profiles/me`
 
 **Dares**
-- `POST /dares` — create (escrow hold on issuer immediately)
-- `POST /dares/{id}/accept` — escrow hold on opponent; dare → active
+- `POST /dares` — create; escrow holds issuer stake for Skill-Based DAREs or Darer reward for Task-Based DAREs
+- `POST /dares/{id}/accept` — Skill-Based challenger escrow hold or Task-Based performer acceptance; dare → active/accepted
 - `POST /dares/{id}/decline`
-- `POST /dares/{id}/ready` — both players confirm; match starts
-- `POST /dares/{id}/submit_answer` — quiz answer recording
+- `POST /dares/{id}/ready` — required participants confirm; match or performance window starts
+- `POST /dares/{id}/submit_answer` — creator-authored answer-key response
 - `POST /dares/{id}/vote` — spectator vote
 - `POST /dares/{id}/submit_proof` — evidence upload
 - `POST /dares/{id}/complete` — server-only; triggers payout
@@ -743,8 +743,8 @@ open → accepted → active → completed → settled
 - Split: platform fee (4%), payment processing (~1.5%), juror reward pool (0.5–1%), green corridor fund (0.5%).
 - Example: ₦10,000 dare → ₦9,200–₦9,500 to winner; ₦500–₦800 to platform.
 
-**2. Creator Economy (Replicate Wager)**
-- DARE Masters earn 0.5% of all wagered volume on their replicated challenges.
+**2. Creator Economy (Replicate DARE)**
+- DARE Masters earn 0.5% of all replicated settled volume on their replicated challenges.
 - Platform earns the other 4.5–7.5% rake.
 - This incentivizes high-skill users to stay on platform (they earn passively).
 
@@ -784,7 +784,7 @@ open → accepted → active → completed → settled
 
 ### MVP Framing
 
-A risk-optimized MVP should ship **one adjudication type** first with strong payments + dispute + fraud controls. Recommended MVP adjudication type: **Algorithmic (Quiz/Trivia)** — lowest regulatory risk, fully automated resolution, no jury required for most outcomes.
+A risk-optimized MVP ships **one creator-authored Court flow** first with strong payments + dispute + fraud controls. MVP path: user-authored knowledge/live-skill DAREs with answer-key commitment where objective answers exist, plus witnessed/evidence review when there is disagreement.
 
 ### Roadmap
 
@@ -793,12 +793,12 @@ A risk-optimized MVP should ship **one adjudication type** first with strong pay
 | Compliance & payments readiness | Paystack approval; LSLGA consultation; ToS/Responsible Gaming; KYC tier design | Legal counsel; Paystack review | Medium | Very High | Approval obtained; payment flows accepted |
 | Secure wallet + ledger | Double-entry ledger; deposit verification; withdrawal queue; audit trails | Paystack server integration | High | High | <0.1% ledger inconsistencies; webhook idempotency |
 | DARE core (create + accept + escrow) | Create/accept APIs; dare state machine; escrow holds | Wallet ledger | High | High | Create→accept conversion; escrow locked 100% |
-| Algorithmic resolution (MVP) | Quiz dare type end-to-end; auto-scoring; auto-payout | Core DARE APIs | High | Medium | Dispute rate <5%; resolution time <60s |
+| Creator-authored Court resolution (MVP) | Answer-key commitment; witness/evidence capture; result claims; dispute-ready settlement | Core DARE APIs | High | Medium | Dispute rate <5%; clear result path; settlement reconciliation |
 | Real-time Court layer | Chat; presence; vote/score broadcast; reconnect | Supabase Realtime | Medium | Medium | Latency p95 <300ms; no desync |
 | Jury + dispute system | Juror assignment; blind packets; vote tally | Trust score system; KYC tiers | Medium | High | Time to verdict <24h; juror completion >80% |
 | USSD gateway | *923# shortcode; balance/accept/withdraw | Telecom USSD provider agreement | Medium | Medium | USSD acceptance rate vs app acceptance rate |
 | Fraud & risk instrumentation | Collusion rules; multi-account detection; velocity limits; admin console | Analytics + ledger | Medium | High | Fraud rate <0.5% of GMV |
-| Social & growth layer | Replicate wager; streaks; leaderboard; referrals; share cards | Stable core | Low | Low | D7 retention >30%; referral k-factor >0.3 |
+| Social & growth layer | Replicate DARE; streaks; leaderboard; referrals; share cards | Stable core | Low | Low | D7 retention >30%; referral k-factor >0.3 |
 | Physical dare category | Evidence capture; what3words integration; expanded jury | Jury system stable | High | Medium | Physical dare completion rate >70% |
 | AI voice & matchmaking | Voice-to-DARE; predictive matchmaking | NLP model integration | High | Medium | Voice adoption rate; time-to-match reduction |
 | Tournament / Arena | Bracket viewer; tournament creation; sponsor integration | Core stable | Medium | Low | Tournaments hosted/month; GMV per tournament |
@@ -815,21 +815,21 @@ A risk-optimized MVP should ship **one adjudication type** first with strong pay
 - Time-to-match: open → accepted (target: <4 hours for trivia; <24 hours for physical).
 
 **Economics**
-- Gross wagered volume (GWV) — total value of all stakes.
+- Gross challenge volume (GCV) — total value of all stakes and rewards.
 - Net revenue (rake collected).
 - Payout failure rate (target: <0.1%).
 - Chargeback rate (target: <0.5%).
 
 **Integrity**
 - Dispute rate (target: <5% of completed dares).
-- Dispute upheld rate (target: <50% — high upheld rate signals platform scoring errors).
+- Dispute upheld rate (target: <50% — high upheld rate signals result verification errors).
 - Jury completion time (target: median <6 hours).
 - Collusion flags per 1,000 matches (target: <2).
 
 **Retention**
 - D1 / D7 / D30 by cohort.
 - % users completing first dare within 48 hours of first deposit.
-- Replicate wager adoption rate (target: >15% of active users replicate at least once/week).
+- Replicate DARE adoption rate (target: >15% of active users replicate at least once/week).
 
 **Trust Score Health**
 - Trust score distribution over time (watch for inflation).

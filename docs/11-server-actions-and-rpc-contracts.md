@@ -26,7 +26,7 @@ For the first build, use Supabase as the backend platform:
 - Edge Functions for authenticated HTTP actions and provider webhooks.
 - Postgres functions for short, transactional state changes that must lock rows and write multiple tables atomically.
 
-The mobile app should call Edge Functions for sensitive workflows. Edge Functions can call Postgres functions using a service-role client when the workflow needs privileged writes.
+The mobile app calls Edge Functions for sensitive workflows. Edge Functions call Postgres functions using a service-role client when the workflow needs privileged writes.
 
 Useful current primary references:
 
@@ -48,11 +48,37 @@ Useful current primary references:
 9. Service-role keys and payment secrets are stored only as Supabase secrets.
 10. Errors returned to the app are typed and safe; internal provider details stay in logs and audit tables.
 
+## Product Resolution Boundary
+
+DARE is a creator-authored skill challenge platform. The backend must not treat the platform as the owner or generator of primary challenge content.
+
+Every production DARE has two independent classifications:
+
+- `dareType`: `skill` or `task`
+- `resolutionType`: `answer_key`, `witnessed`, or `evidence`
+
+`dareType = skill` uses two-sided stake escrow: issuer stake plus challenger stake.
+
+`dareType = task` uses Darer-funded reward escrow: issuer/Darer funds the reward and the performer does not stake money.
+
+The old platform-authored challenge path is legacy scaffolding. Production work follows [`16-dare-resolution-model.md`](16-dare-resolution-model.md):
+
+- Answer Key: issuer-authored prompts/answers committed before Court.
+- Witnessed: live audience/witness signals captured during Court.
+- Evidence: proof capture/upload with jury/admin review.
+
+Settlement must follow a server-authoritative confirmed result, answer-key verification, jury/admin verdict, or void/refund policy. The client never decides the winner.
+
+Settlement behavior by DARE type:
+
+- Skill-Based: winner receives the eligible escrow payout after fees; void/tie policy refunds according to the constitution.
+- Task-Based: performer receives the eligible reward after valid completion; expiry, cancellation before acceptance, or void policy refunds the Darer according to the constitution.
+
 ## Implementation Shape
 
 ### Edge Function Layout
 
-Recommended initial function shape:
+Initial function shape:
 
 ```text
 supabase/functions/
@@ -71,18 +97,21 @@ supabase/functions/
 
 Use one `actions` function with internal routing for MVP speed and shared middleware. Split into separate functions only when deployment, ownership, or scaling needs justify it.
 
-Provider webhooks should be separate functions:
+Provider webhooks are separate functions:
 
 ```text
 supabase/functions/
   paystack-webhook/
     index.ts
     deno.json
+  livekit-webhook/
+    index.ts
+    deno.json
 ```
 
 ### Edge Function Responsibilities
 
-Edge Functions should handle:
+Edge Functions handle:
 
 - JWT validation and user lookup.
 - Request parsing and schema validation.
@@ -94,7 +123,7 @@ Edge Functions should handle:
 
 ### Postgres Function Responsibilities
 
-Postgres functions should handle:
+Postgres functions handle:
 
 - Row locks.
 - State transition validation.
@@ -104,11 +133,11 @@ Postgres functions should handle:
 - Audit log writes.
 - Notification inserts when coupled to a transaction.
 
-Do not use `SECURITY DEFINER` casually. When required, keep functions in a private schema where possible, set an explicit `search_path`, revoke public execution, and grant only to `service_role` or tightly scoped roles.
+Do not use `SECURITY DEFINER` casually. When required, keep functions outside exposed schemas, set an explicit `search_path`, revoke public execution, and grant only to `service_role` or tightly scoped roles.
 
 ## Standard Request Envelope
 
-All authenticated action requests should include:
+All authenticated action requests include:
 
 ```json
 {
@@ -174,7 +203,7 @@ Use stable app-level codes:
 
 ## Authenticated Action Routes
 
-The mobile app should call these through the `actions` Edge Function. The route names below are logical; exact routing can be path-based or action-name based.
+The mobile app calls these through the routed `actions` Edge Function. The route names below are the canonical path-based routes.
 
 ### `GET /me`
 
@@ -277,7 +306,7 @@ Input:
 Validation:
 
 - authenticated active account
-- new limits may only be lower than current limits immediately; increases require a 24-hour cooling-off delay before taking effect
+- new limits can only be lower than current limits immediately; increases require a 24-hour cooling-off delay before taking effect
 - limits must be positive integers
 - idempotency key
 
@@ -306,7 +335,7 @@ Input:
 
 Validation:
 
-- authenticated user (even restricted accounts may self-exclude)
+- authenticated user; restricted accounts can self-exclude
 - duration within allowed range (minimum 1 day; maximum platform-defined)
 - account not already self-excluded
 
@@ -322,7 +351,7 @@ Self-exclusion cannot be shortened by the user. Only an admin process can lift i
 
 Implemented Edge action: `POST /responsible-gaming/self-exclude`.
 
-Implemented Postgres function: `public.self_exclude_action(...)`, executable only by `service_role`. It accepts a 1-365 day duration and optional reason, creates/locks the user's responsible gaming settings, rejects already-active self-exclusion, marks the account `limited`, disables jury opt-in, clears pending limit increases, cancels issuer open/targeted-pending DAREs with escrow refunds, declines targeted pending DAREs addressed to the user, forfeits accepted/ready/active/awaiting-result DAREs to the opponent, writes notifications, and returns cleanup counts. The Edge action requires idempotency and writes `responsible_gaming.self_excluded` to `audit_logs`.
+Implemented Postgres function: `public.self_exclude_action(...)`, executable only by `service_role`. It accepts a 1-365 day duration and optional reason, creates/locks the user's responsible gaming settings, rejects already-active self-exclusion, marks the account `limited`, disables jury opt-in, clears pending limit increases, cancels issuer open/targeted-pending DAREs with escrow refunds, declines targeted pending DAREs addressed to the user, applies the relevant Skill-Based or Task-Based forfeit/refund rule to accepted/ready/active/awaiting-result DAREs, writes notifications, and returns cleanup counts. The Edge action requires idempotency and writes `responsible_gaming.self_excluded` to `audit_logs`.
 
 ### `POST /wallet/deposits/init`
 
@@ -399,27 +428,29 @@ Transactional writes:
 - `notifications`
 - `audit_logs`
 
-Provider payout should run through an operations queue or a separate payout action, not directly from the mobile request.
+Provider payout runs through an operations queue or a separate payout action, not directly from the mobile request.
 
 ### `POST /dares`
 
-Purpose: create an open or targeted Algorithmic DARE.
+Purpose: create an open or targeted creator-authored DARE.
 
 Input:
 
 ```json
 {
-  "title": "Name 20 African capitals in 60 seconds",
+  "title": "Answer 10 Nigerian fintech questions live",
   "category": "knowledge",
+  "dareType": "skill",
+  "resolutionType": "answer_key",
   "stakeAmount": 50000,
   "currency": "NGN",
-  "durationSeconds": 60,
+  "durationSeconds": 600,
   "targetUsername": null,
   "constitution": {
-    "test": "Name 20 African capitals in 60 seconds",
-    "rules": "Answers must be submitted before the server timer ends.",
-    "proofMethod": "Platform scoring",
-    "edgeCases": "Tie refunds both players."
+    "test": "Issuer asks 10 live questions. Challenger wins with 7 or more correct answers.",
+    "rules": "No external help. Each answer has 15 seconds. The issuer commits answers before Court.",
+    "proofMethod": "Committed answer key plus Court recording and witness signals.",
+    "edgeCases": "Tie or contested answer enters dispute review."
   }
 }
 ```
@@ -429,9 +460,10 @@ Validation:
 - active account
 - KYC and risk checks
 - age/responsible gaming eligibility
+- `dareType` is `skill` or `task`
 - category active
 - stake limits
-- available balance
+- available balance for issuer stake or Darer reward
 - constitution field lengths
 - target user eligibility when targeted
 - idempotency key
@@ -440,12 +472,25 @@ Transactional writes:
 
 - `dares`
 - `dare_constitutions`
-- issuer `escrow_holds`
+- issuer/Darer `escrow_holds`
 - issuer `ledger_entries` with `escrow_hold`
 - `audit_logs`
-- optional `notifications`
+- targeted DARE `notifications` when a challenger is specified
+
+Skill-Based create behavior:
+
+- lock the issuer stake immediately
+- calculate projected settlement payout from both expected stakes
+
+Task-Based create behavior:
+
+- lock the Darer reward immediately
+- calculate performer reward payout from the funded reward
+- store that no performer stake is required
 
 Implemented Postgres function: `public.create_dare_action(...)`, executable only by `service_role`.
+
+Implementation note: `resolutionType = answer_key` is the canonical value for creator-authored objective challenges. Answer Key creation stores issuer-authored prompt instructions and a committed answer key before Court starts; clients never receive the answer key.
 
 ### `POST /dares/{id}/accept`
 
@@ -457,16 +502,16 @@ Validation:
 - DARE exists and is acceptable
 - user is not issuer
 - targeted DARE is addressed to user when applicable
-- challenger KYC/risk/limits
-- challenger available balance
+- challenger/performer KYC/risk/limits
+- challenger available balance for Skill-Based DAREs
 - idempotency key
 
 Transactional behavior:
 
 - lock the DARE row
 - re-check status under lock
-- create challenger escrow hold
-- create challenger ledger entry
+- create challenger escrow hold and ledger entry for Skill-Based DAREs
+- create no performer escrow hold for Task-Based DAREs
 - update DARE challenger/status
 - create `court_sessions`
 - create notifications
@@ -520,7 +565,7 @@ Transactional behavior:
 
 - update DARE status to `forfeited`
 - record forfeiting party
-- call settlement path (winner is the non-forfeiting participant)
+- call settlement path; Skill-Based forfeit pays the non-forfeiting participant, Task-Based forfeit refunds or pays according to the task constitution and whether valid completion evidence exists
 - apply trust penalty for forfeiting participant
 - create notifications
 - write audit log
@@ -529,7 +574,7 @@ Implemented Postgres function: `public.forfeit_dare_action(...)`, executable onl
 
 ### `POST /dares/{id}/ready`
 
-Purpose: mark participant ready and start Court when both players are ready.
+Purpose: mark participant ready and start Court when all required participants are ready.
 
 Validation:
 
@@ -544,24 +589,130 @@ Transactional behavior:
 - when both ready, set server start time
 - update court phase
 - update DARE status to active
-- create notification or realtime event record if needed
+- create notification and realtime event records for participant-visible phase changes
 - write audit log
 
-The client may display countdown, but the server timestamp is canonical.
+The client displays countdown from server timestamps; the server timestamp is canonical.
 
-Implemented Postgres function: `public.ready_dare_action(...)`, executable only by `service_role`. It marks the caller ready, assigns quiz questions once when both players are ready, and starts the Court with server-owned timestamps.
+Implemented Postgres function: `public.ready_dare_action(...)`, executable only by `service_role`. It marks the caller ready and starts the Court with server-owned timestamps. It does not assign platform-authored challenge rounds; Answer Key prompts come from creator-authored `dare_prompts`.
+
+### Live Court Video Actions
+
+Production provider: LiveKit Cloud.
+
+Routes:
+
+- `GET /court/{dareId}/live-room`
+- `POST /court/{dareId}/live-room/enter`
+- `POST /court/{dareId}/live-room/presence`
+
+Purpose:
+
+- create or read the provider-backed live Court room
+- return the viewer role and live-room state to mobile
+- track participant/spectator presence and recording consent
+- expose whether the backend live Court requirement is satisfied
+- generate LiveKit room tokens, process verified LiveKit webhooks, and record egress metadata
+
+Current contract:
+
+```json
+{
+  "audioEnabled": true,
+  "recordingConsent": true,
+  "videoEnabled": true
+}
+```
+
+Presence update input:
+
+```json
+{
+  "audioEnabled": true,
+  "connectionStatus": "joined",
+  "recordingConsent": true,
+  "videoEnabled": true
+}
+```
+
+Response shape:
+
+```json
+{
+  "challengerLive": true,
+  "courtSessionId": "uuid",
+  "dareId": "uuid",
+  "issuerLive": true,
+  "liveCourtRoomId": "uuid",
+  "liveRequirementMet": true,
+  "participantCount": 2,
+  "provider": "livekit",
+  "providerRoomId": "dare-room-id",
+  "providerToken": "short-lived-token-or-null",
+  "providerUrl": "wss://project.livekit.cloud",
+  "recordingRequired": true,
+  "recordingStatus": "recording",
+  "roomStatus": "live",
+  "spectatorCount": 12,
+  "viewerJoined": true,
+  "viewerRole": "participant_a"
+}
+```
+
+Implementation rules:
+
+- `provider_pending` is allowed only before LiveKit room/token creation is wired or when the provider room has not yet been provisioned.
+- Production Court rooms should use `provider = 'livekit'`.
+- LiveKit tokens must be generated server-side only and short-lived.
+- LiveKit webhook signatures must be verified before provider events are stored.
+- Idempotency storage must never persist returned LiveKit tokens.
+- Provider events are audit/evidence signals; they never directly settle money.
+- Result-bearing actions must require both required participants to be live with video and recording consent.
+
+LiveKit environment:
+
+```powershell
+supabase secrets set LIVEKIT_URL="wss://your-project.livekit.cloud" LIVEKIT_API_KEY="..." LIVEKIT_API_SECRET="..." --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+LiveKit RoomComposite egress output:
+
+```powershell
+supabase secrets set LIVEKIT_EGRESS_S3_BUCKET="..." LIVEKIT_EGRESS_S3_ACCESS_KEY="..." LIVEKIT_EGRESS_S3_SECRET_KEY="..." LIVEKIT_EGRESS_S3_REGION="..." LIVEKIT_EGRESS_S3_ENDPOINT="..." LIVEKIT_EGRESS_S3_FORCE_PATH_STYLE="true" --project-ref dhzcoywgiyrbsiiwlstw
+```
+
+If the egress storage secrets are missing, live video can still run, but recording remains `not_started` and the room metadata records `egressSkippedReason = s3_output_not_configured`.
+
+LiveKit webhook URL:
+
+```text
+https://dhzcoywgiyrbsiiwlstw.supabase.co/functions/v1/livekit-webhook
+```
+
+Implemented Postgres functions:
+
+- `public.get_live_court_state_action(...)`
+- `public.enter_live_court_action(...)`
+- `public.record_live_court_presence_action(...)`
+- `public.live_court_requirement_met(...)`
+- `public.livekit_spectator_presence_verified(...)`
+
+Implemented database enforcement:
+
+- answer submissions require the live Court requirement
+- result claims require the live Court requirement
+- winner-bearing completion from active/awaiting result requires the live Court requirement
 
 ### `POST /dares/{id}/answers`
 
-Purpose: submit an Algorithmic DARE answer.
+Purpose: submit an answer for a creator-authored Answer Key DARE.
 
 Input:
 
 ```json
 {
-  "roundIndex": 0,
   "questionId": "uuid",
-  "selectedOption": 2
+  "answerText": "Flutterwave"
 }
 ```
 
@@ -569,25 +720,61 @@ Validation:
 
 - user is participant
 - Court is active
-- question was assigned to this DARE
-- question window is open
-- answer not already submitted for this user/question
+- prompt belongs to this DARE
+- answer window is open
+- answer not already submitted for this user/prompt
+- answer key or review rule was committed before Court
 
 Transactional behavior:
 
-- compute server-side response time
-- read correct option server-side
-- insert `dare_quiz_answers`
-- update score counters/read model if used
+- normalize and hash the submitted answer
+- compare against the committed answer key when exact matching is allowed
+- insert append-only answer and Court event records
+- update result counters/read model if used
 - write audit log only for unusual or terminal events
 
 Never trust a client-provided `isCorrect`, score, or response time.
 
-Implemented Postgres function: `public.submit_dare_answer_action(...)`, executable only by `service_role`. It verifies the assigned question, reads the correct option server-side, computes response time from server delivery timestamps, inserts one answer per user/question, and updates Court score counters.
+### `POST /court/{dareId}/witness-votes`
+
+Purpose: capture eligible audience/witness signals during or immediately after a live Court session.
+
+Validation:
+
+- authenticated eligible witness
+- Court is active or within witness window
+- witness is not a participant
+- anti-sybil/device/risk checks
+- one vote per eligible witness per DARE
+
+Transactional behavior:
+
+- insert immutable witness vote/event
+- update witness tally read model if used
+- include witness signal in dispute packet
+- never settle money directly from an unaudited witness vote without policy checks
+
+### `POST /court/{dareId}/result-claims`
+
+Purpose: allow participants to submit or confirm the result after a live Court DARE.
+
+Validation:
+
+- caller is participant
+- Court is completed or awaiting result
+- claim shape matches resolution mode
+- no already-final verdict or settlement
+
+Transactional behavior:
+
+- insert participant result claim
+- if both participants agree, move to completed/dispute-window state
+- if claims conflict, open dispute review
+- write audit log
 
 ### `POST /dares/{id}/complete`
 
-Purpose: complete an Algorithmic DARE after the server determines the match is over.
+Purpose: complete a DARE after the server determines the Court has ended and a result path is available.
 
 Caller:
 
@@ -595,25 +782,25 @@ Caller:
 - last answer submission (when all rounds are complete and a winner can be determined immediately)
 - admin repair action
 
-Timer trigger: a `pg_cron` job should run every minute, select DAREs where `court_sessions.started_at + dare.duration_seconds < now()` and status is `active`, and call this action for each. This is the server-authoritative completion mechanism; clients never call this route directly.
+Timer trigger: a `pg_cron` job runs every minute, selects DAREs where `court_sessions.started_at + dare.duration_seconds < now()` and status is `active`, and calls this action for each. This is the server-authoritative completion mechanism; clients never call this route directly.
 
 Validation:
 
 - DARE is active or awaiting result
-- Court timer has ended or all required answers are submitted
+- Court timer has ended, both participants confirmed, answer-key verification completed, or jury/admin verdict exists
 - no existing terminal settlement
 
 Transactional behavior:
 
-- compute score from authoritative answer rows
+- compute result from authoritative answer-key submissions, witnessed/evidence verdicts, jury/admin decision, or forfeit policy
 - determine winner/tie/void/forfeit
 - update `dares`
 - update `court_sessions`
 - set dispute deadline when policy requires a window
-- optionally call settlement immediately
+- call settlement immediately only for forfeits and no-dispute-window void/refund policy; otherwise wait for dispute-window expiry or jury/admin verdict
 - write audit log
 
-Implemented Postgres function: `public.complete_dare_action(...)`, executable only by `service_role`. It recomputes scores from `dare_quiz_answers`, determines winner/tie, updates DARE/Court completion state, and sets a dispute deadline.
+Implementation note: `public.complete_dare_action(...)` computes Answer Key outcomes from `dare_answer_submissions`, while witnessed and evidence paths complete through result claims, dispute review, jury/admin verdicts, or void/refund policy.
 
 ### `POST /dares/{id}/settle`
 
@@ -644,6 +831,11 @@ Transactional behavior:
 
 Settlement must be all-or-nothing.
 
+Settlement must branch on `dareType`:
+
+- `skill`: reconcile issuer and challenger escrow holds.
+- `task`: reconcile only Darer reward escrow unless admin policy added a separate hold.
+
 Implemented Postgres function: `public.settle_dare_action(...)`, executable only by `service_role`. It settles after the dispute window, releases escrow to the winner net of the platform fee or refunds tied matches, records payout/refund/platform-fee ledger entries, updates profile counters/trust events, and returns safely on already-settled DAREs.
 
 ### `POST /dares/{id}/disputes`
@@ -673,12 +865,12 @@ Transactional behavior:
 - create `jury_cases`
 - link evidence if provided
 - move DARE to dispute state
-- update Court phase if needed
+- update Court phase to `dispute`
 - keep escrow held
-- notify opponent/admins
+- notify counterparty/admins
 - write audit log
 
-Implemented Postgres function: `public.file_dispute_action(...)`, executable only by `service_role`. It allows one active dispute per completed DARE during the dispute window, creates the `jury_cases` record, links at most one MVP evidence object for the filing side, moves the DARE/Court to dispute state, freezes escrow with `hold_reason = 'dispute_pending'`, increments the filer's dispute counter, notifies the opponent, and writes an audit log through the Edge action.
+Implemented Postgres function: `public.file_dispute_action(...)`, executable only by `service_role`. It allows one active dispute per completed DARE during the dispute window, creates the `jury_cases` record, links at most one MVP evidence object for the filing side, moves the DARE/Court to dispute state, freezes escrow with `hold_reason = 'dispute_pending'`, increments the filer's dispute counter, notifies the counterparty, and writes an audit log through the Edge action.
 
 ### `POST /dares/{id}/evidence`
 
@@ -794,10 +986,10 @@ Validation:
 
 Writes:
 
-- update `dare_quiz_rounds` or a dedicated presence column with `last_seen_at`
+- update Court participant presence columns or a dedicated presence event with `last_seen_at`
 - no audit log required for normal heartbeats; log only on abandonment detection
 
-Abandonment logic: if a participant's last heartbeat is older than a policy threshold (e.g. 60 seconds after a question window opens), the timer handler marks that participant's round as `timed_out` and may trigger a forfeit.
+Abandonment logic: if a participant's last heartbeat is older than the configured policy threshold, the timer handler marks that participant's round as `timed_out` and triggers the configured forfeit path.
 
 Implemented Postgres function: `public.record_court_heartbeat_action(...)`, executable only by `service_role`. It validates an active participant/Court, enforces a 10-second per-player heartbeat limit, updates the participant heartbeat column and `reconnect_deadline`, and intentionally skips audit logs for normal presence pings.
 
@@ -847,7 +1039,7 @@ Validation:
 - event type allowlist
 - provider reference exists or can be matched
 - amount/currency matches internal transaction
-- provider status verified when needed
+- provider status verified for every money-moving event
 
 Transactional behavior:
 
@@ -861,7 +1053,15 @@ Provider webhook handlers must be replay-safe.
 
 ## KYC Routes
 
-KYC provider integration is deferred to the first market launch decision. The current action layer implements the internal KYC request/status/admin decision flow so the mobile app and admin console can integrate against stable contracts before a provider is selected.
+Phase decision: the current KYC implementation is accepted for this phase as private document intake plus internal/manual review. The app can receive KYC documents, upload them to private Supabase Storage, store a redacted storage reference in `kyc_verifications`, return user status through the safe KYC status route, and let an admin approve or reject the submission. Automated third-party verification through Dojah, Prembly, Smile Identity, or another provider is deferred until the first-market provider is selected.
+
+Deferred future work:
+
+- third-party KYC API initiation and callback/webhook handling
+- provider-specific liveness, BVN/NIN/passport checks, sanctions/PEP checks, and provider risk flags
+- file magic-byte validation, malware scanning, and orphan-upload cleanup jobs
+
+These deferred items must be revisited before treating KYC as fully automated identity verification. They are not blockers for the current phase, where the required capability is secure document receipt and storage for review.
 
 ### `POST /kyc/submit`
 
@@ -873,7 +1073,20 @@ Input:
 {
   "kycTierRequested": "kyc1",
   "documents": {
-    "providerReference": "optional-provider-token"
+    "contract": "private_storage_v1",
+    "documentType": "nin",
+    "documentNumberLast4": "1234",
+    "legalName": {
+      "firstInitial": "A",
+      "lastInitial": "O"
+    },
+    "documentImage": {
+      "storageBucket": "kyc-documents",
+      "storagePath": "<auth-user-id>/<upload-id>.jpg",
+      "mimeType": "image/jpeg",
+      "byteSize": 120000,
+      "originalFileName": "identity.jpg"
+    }
   }
 }
 ```
@@ -882,7 +1095,9 @@ Validation:
 
 - authenticated active account
 - requested tier is `kyc1`, `kyc2`, or `kyc3`
-- documents payload is an object; raw ID images must not be stored in the database
+- documents payload follows `private_storage_v1` or future `provider_reference_v1`
+- raw identity numbers, legal names, base64 images, and raw ID images must not be stored in the database
+- private-storage payload references the authenticated user's own `kyc-documents` object path
 - no duplicate pending submission for the same tier
 - idempotency key
 
@@ -893,7 +1108,7 @@ Returns:
 
 Implemented Edge action: `POST /kyc/submit`.
 
-Implemented Postgres function: `public.submit_kyc_action(...)`, executable only by `service_role`. It validates the account, tier, and document payload, prevents duplicate pending submissions for the same tier, creates a `kyc_verifications` row, and writes `kyc.verification_submitted` to `audit_logs`.
+Implemented Postgres function: `public.submit_kyc_action(...)`, executable only by `service_role`. It validates the account, tier, and document payload, prevents duplicate pending submissions for the same tier, creates a `kyc_verifications` row, and writes `kyc.verification_submitted` to `audit_logs`. Direct `anon` and `authenticated` table access to `kyc_verifications` is revoked; client status reads go through `GET /kyc/status`.
 
 ### `GET /kyc/status`
 
@@ -958,11 +1173,11 @@ Transactional behavior:
 - write audit log
 - notify user
 
-Provider webhooks remain deferred until the first KYC provider is chosen.
+Provider webhooks are added only after the first KYC provider is chosen.
 
 ## Admin Routes
 
-Admin routes should require:
+Admin routes require:
 
 - authenticated user
 - `profiles.is_admin = true`
@@ -998,7 +1213,7 @@ Direct Supabase reads are acceptable for:
 - participant Court state
 - assigned jury cases
 
-But the app should not directly write sensitive tables.
+The app does not directly write sensitive tables.
 
 Before mobile implementation, define typed read queries for:
 
@@ -1011,7 +1226,7 @@ Before mobile implementation, define typed read queries for:
 - `getJuryAssignment`
 - `getCategories` — reads active `dare_categories` rows; safe for public anon read
 
-These can start as Supabase direct reads and later move behind API endpoints if RLS/read-model complexity grows.
+These start as Supabase direct reads protected by RLS. They move behind API endpoints only when a specific read model requires privileged joins or sensitive filtering.
 
 ## Realtime Events
 
@@ -1024,7 +1239,8 @@ Required MVP events:
 | `wallet_updated` | `user:{userId}` | server action/webhook |
 | `dare_updated` | `user:{userId}` and feed | DARE action |
 | `court_started` | `court:{dareId}` | ready action |
-| `score_updated` | `court:{dareId}` | answer action |
+| `court_event_created` | `court:{dareId}` | answer/proof/witness action |
+| `witness_vote_cast` | `court:{dareId}` | witness action |
 | `court_completed` | `court:{dareId}` | complete action |
 | `settlement_completed` | `user:{issuerId}` and `user:{challengerId}` | settlement action |
 | `notification_created` | `user:{userId}` | any server action |
@@ -1040,7 +1256,8 @@ Minimum MVP limits:
 | --- | --- |
 | create DARE | 5 per user per minute; 20 per user per day |
 | accept DARE | 10 per user per minute |
-| answer submission | 1 per user per question (unique); 30 per user per minute burst |
+| answer submission | 1 per user per prompt (unique); 30 per user per minute burst |
+| witness vote | 1 per eligible witness per DARE |
 | Court chat | 20 messages per user per Court per minute |
 | deposit init | 5 per user per hour; 10 per user per day |
 | withdrawal request | 3 per user per day |
@@ -1049,13 +1266,13 @@ Minimum MVP limits:
 | KYC session init | 3 per user per 24 hours |
 | self-exclusion | 1 per user per session (no undo) |
 
-Implementation can begin with Postgres-backed counters or an external low-latency limiter. High-risk money actions should use database checks even if an external limiter is added.
+Implementation uses the Postgres-backed limiter for MVP. High-risk money actions keep database checks even if an external limiter is added later.
 
 Implemented Postgres-backed limiter: `public.consume_action_rate_limit(...)` stores per-user action counters in `action_rate_limits`. The action handler enforces the MVP limits for DARE creation, DARE acceptance, answer submission, deposit init, withdrawal requests, dispute filing, and KYC submission before dispatching the mutation route. Heartbeat keeps its tighter RPC-level limiter.
 
 ## Observability And Audit
 
-Every action should log:
+Every action logs:
 
 - request id
 - authenticated user id when available
@@ -1085,7 +1302,8 @@ Before mobile depends on these actions, write tests for:
 - Duplicate create request with same idempotency key returns same result.
 - Accept locks DARE and prevents two challengers.
 - Ready-up starts only when both participants are ready.
-- Answer scoring ignores client-provided correctness.
+- Answer-key verification ignores client-provided correctness.
+- Witness voting enforces one eligible vote per user/device policy.
 - Settlement reconciles total escrow to payout/refund/fee entries.
 - Settlement cannot run twice.
 - Paystack webhook replay does not double-credit.
@@ -1104,18 +1322,18 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 - Item 3: `POST /wallet/deposits/init` initializes a real Paystack transaction from the configured secret key without crediting the wallet. `paystack-webhook` verifies `x-paystack-signature`, confirms matching successful charges, and writes one `deposit_confirmed` ledger entry per provider reference.
 - Item 4: `POST /wallet/withdrawals` queues a pending withdrawal through `request_withdrawal`, an atomic service-role RPC that locks the wallet account, checks withdrawable balance, inserts `withdrawal_pending` ledger state, and creates the operational queue row. `withdrawal-processor` claims pending requests through `claim_paystack_withdrawals`, creates Paystack transfer recipients, and initiates Paystack transfers. Paystack transfer webhooks process `transfer.success`, `transfer.failed`, and `transfer.reversed` for queued provider payouts; pending balance projections only reserve withdrawals whose request status is still `pending` or `processing`.
 - Item 5: `POST /dares` and `POST /dares/{id}/accept` are backed by service-role RPCs that atomically create DARE rows, constitutions, escrow holds, posted `escrow_hold` ledger entries, and the initial `ready_check` Court session on acceptance.
-- Item 6: `POST /dares/{id}/ready` marks participant readiness and, when both players are ready, atomically assigns quiz rounds and moves the Court/DARE to `active` with server timestamps.
-- Item 7: `POST /dares/{id}/answers` submits a quiz answer through a service-role RPC that computes correctness and response time server-side and updates Court score counters.
-- Item 8: `POST /dares/{id}/complete` recomputes final scores and marks completion; `POST /dares/{id}/settle` reconciles escrow after the dispute window with idempotent payout/refund ledger entries.
+- Item 6: `POST /dares/{id}/ready` marks participant readiness and moves the Court/DARE to `active` with server timestamps. Answer Key prompts are creator-authored records, not platform-assigned rounds.
+- Item 7: `POST /dares/{id}/answers` submits creator-authored Answer Key responses and scores them against committed answer-key records; witnessed/evidence paths use result-claim and review events.
+- Item 8: `POST /dares/{id}/complete` computes answer-key/witness/evidence result completion from authoritative records. `POST /dares/{id}/settle` reconciles escrow after the dispute window with idempotent payout/refund ledger entries.
 - Item 9: `POST /dares/{id}/disputes` files a dispute and freezes settlement; `POST /admin/jury-cases/{id}/resolve` records an admin verdict and returns the DARE to the normal settlement path.
 - Item 10: `POST /admin/jury-cases/{id}/assign` assigns eligible jurors while excluding participants and colluding device clusters, and `POST /jury-cases/{id}/votes` records DB-immutable juror votes, tallies quorum, and returns resolved verdicts to the settlement path.
 - Item 11: `PATCH /profiles/me/jury` lets eligible users opt into the jury pool and set preferred jury categories through the action layer.
 - Item 12: `POST /dares/{id}/cancel` cancels open or targeted-pending DAREs and refunds the issuer escrow with a compensating ledger entry.
-- Item 13: `POST /dares/{id}/forfeit` records active-match forfeits, assigns the opponent as winner, applies trust events, and immediately settles escrow to the winner.
+- Item 13: `POST /dares/{id}/forfeit` records active-match forfeits, applies trust events, and settles escrow according to the DARE type and constitution.
 - Item 14: `POST /court/{dareId}/heartbeat` records active participant presence with server-side rate limiting and reconnect deadline updates.
 - Item 15: `PATCH /notifications/{id}/read` and `POST /notifications/read-all` update notification read state through ownership-checked RPCs.
 - Item 16: `PATCH /responsible-gaming/settings` applies stricter user limits immediately and stages limit increases behind a 24-hour effective timestamp.
-- Item 17: `POST /responsible-gaming/self-exclude` activates self-exclusion, limits the account, cancels open issuer DAREs with refunds, and forfeits active participant DAREs to the opponent.
+- Item 17: `POST /responsible-gaming/self-exclude` activates self-exclusion, limits the account, cancels open issuer DAREs with refunds, and applies the relevant Skill-Based or Task-Based forfeit/refund rule to active participant DAREs.
 - Item 18: `POST /dares/{id}/evidence` creates signed upload targets and `POST /dares/{id}/evidence/confirm` attaches uploaded evidence to the active jury case.
 - Item 19: `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide` implement the internal/manual KYC review flow.
 - Item 20: `pg_cron` maintenance jobs are explicitly rescheduled by migration and can be verified with `verify_required_cron_jobs()`. They purge expired idempotency/rate-limit records, expire active Court sessions, forfeit stale heartbeat sessions, expire no-quorum jury cases, and auto-settle completed/forfeited DAREs after the dispute window or jury verdict.
@@ -1125,8 +1343,8 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 3. Implement wallet deposit initialization through Paystack and webhook-backed wallet crediting.
 4. Implement withdrawal request queue, Paystack transfer execution, and transfer webhook reconciliation.
 5. Implement `create_dare` and `accept_dare` transactional functions.
-6. Implement Court ready-up and question assignment.
-7. Implement answer submission and scoring.
+6. Implement Court ready-up and creator-authored resolution setup.
+7. Implement answer-key, witness, evidence, and result-claim event submission.
 8. Implement completion and settlement.
 9. Implement dispute filing and manual admin resolution.
 10. Implement jury assignment/voting after manual dispute path is stable.
@@ -1141,10 +1359,10 @@ Status: items 1 through 20 are implemented under `supabase/functions/`.
 19. Implement KYC submit/status/admin decision flow.
 20. Implement maintenance and settlement cron jobs.
 
-## Open Decisions
+## Fixed Decisions
 
-1. Whether to expose actions as one routed Edge Function or multiple per-domain Edge Functions after MVP.
-2. Whether settlement should happen immediately after algorithmic completion or after a short dispute window.
-3. Which payment provider is legally approved for the first market.
-4. Whether withdrawals are manual-review only in beta.
-5. Whether `public_dare_feed` needs a dedicated public profile card read model before mobile feed implementation.
+1. MVP actions use one routed Edge Function named `actions`. Provider webhooks remain separate functions.
+2. Settlement waits for the configured dispute window except forfeits, no-dispute-window void/refund policy, or final jury/admin verdict.
+3. Paystack is the implemented NGN payment provider for deposits and withdrawals.
+4. Withdrawals require admin approval before payout processor claim.
+5. `public_dare_feed` is the current mobile feed read model; a dedicated profile-card read model is added only if a measured query or privacy issue requires it.

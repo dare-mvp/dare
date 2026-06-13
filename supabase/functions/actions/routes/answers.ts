@@ -20,9 +20,9 @@ type SubmitAnswerRpcRow = {
   dare_id: string;
   question_id: string;
   round_index: number;
-  selected_option: number;
+  selected_option: number | null;
   correct: boolean;
-  response_ms: number;
+  response_ms: number | null;
   score_a: number;
   score_b: number;
   phase: "active";
@@ -33,9 +33,9 @@ type SubmitAnswerResponse = {
   dareId: string;
   questionId: string;
   roundIndex: number;
-  selectedOption: number;
+  selectedOption: number | null;
   correct: boolean;
-  responseMs: number;
+  responseMs: number | null;
   scoreA: number;
   scoreB: number;
   phase: "active";
@@ -102,9 +102,8 @@ async function callSubmitAnswerRpc(
     {
       p_user_id: userId,
       p_dare_id: dareId,
-      p_round_index: payload.roundIndex,
-      p_question_id: payload.questionId,
-      p_selected_option: payload.selectedOption,
+      p_prompt_id: payload.questionId,
+      p_answer_text: payload.answerText,
     },
   );
 

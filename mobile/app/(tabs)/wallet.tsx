@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, ReceiptText } from 'lucide-react-native';
+import { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
@@ -12,12 +13,22 @@ import { useMe } from '../../src/features/me/useMe';
 import { TransactionRow } from '../../src/features/wallet/components/TransactionRow';
 import { WalletHero } from '../../src/features/wallet/components/WalletHero';
 import { WalletMetricCard } from '../../src/features/wallet/components/WalletMetricCard';
+import { useWalletLedger } from '../../src/features/wallet/useWalletLedger';
+import { useWalletRealtimeRefresh } from '../../src/features/wallet/useWalletRealtimeRefresh';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function WalletScreen() {
   const router = useRouter();
-  const { data, error, loading } = useMe();
+  const { data, error, loading, refresh } = useMe();
+  const ledger = useWalletLedger();
+  const refreshLedger = ledger.refresh;
+  const refreshWallet = useCallback(() => {
+    void refresh();
+    void refreshLedger();
+  }, [refresh, refreshLedger]);
+  useWalletRealtimeRefresh(refreshWallet);
   const summary = data.wallet;
+  const transactions = ledger.source === 'server' ? ledger.transactions : summary.transactions;
 
   return (
     <Screen>
@@ -28,7 +39,7 @@ export default function WalletScreen() {
         title="Wallet"
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {data.source === 'mock' && !error ? (
+        {(data.source === 'mock' || ledger.source === 'mock') && !error ? (
           <InlineAlert
             tone="info"
             title={loading ? 'Syncing account' : 'Preview data'}
@@ -44,7 +55,22 @@ export default function WalletScreen() {
           />
         ) : null}
 
-        <WalletHero summary={summary} />
+        {ledger.error ? (
+          <InlineAlert
+            tone="danger"
+            title="Ledger sync failed"
+            message={ledger.error}
+          />
+        ) : null}
+
+        <WalletHero
+          canDeposit={data.capabilities.canDeposit}
+          canWithdraw={data.capabilities.canWithdraw}
+          onCoinsPress={() => router.push('/wallet/coins')}
+          onDepositPress={() => router.push('/wallet/deposit')}
+          onWithdrawPress={() => router.push('/wallet/withdraw')}
+          summary={summary}
+        />
 
         <View style={styles.metricGrid}>
           <WalletMetricCard
@@ -54,6 +80,14 @@ export default function WalletScreen() {
             progressValue={32}
             tone="money"
             value={summary.escrowKobo}
+          />
+          <WalletMetricCard
+            label="Dispute hold"
+            meta="Frozen until jury or admin resolution"
+            progressColor={colors.danger}
+            progressValue={summary.heldKobo > 0 ? 100 : 0}
+            tone="pending"
+            value={summary.heldKobo}
           />
           <WalletMetricCard
             label="Trust score"
@@ -118,8 +152,8 @@ export default function WalletScreen() {
             <Text style={styles.panelTitle}>Transaction history</Text>
             <Text style={styles.mutedLabel}>Last 20</Text>
           </View>
-          {summary.transactions.length > 0 ? (
-            summary.transactions.map((transaction) => (
+          {transactions.length > 0 ? (
+            transactions.map((transaction) => (
               <TransactionRow
                 key={transaction.id}
                 onPress={() => router.push(`/wallet/transaction/${transaction.id}`)}
@@ -129,9 +163,11 @@ export default function WalletScreen() {
           ) : (
             <View style={styles.emptyTransactions}>
               <ReceiptText color={colors.textMuted} size={26} />
-              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptyTitle}>{ledger.loading ? 'Loading transactions' : 'No transactions yet'}</Text>
               <Text style={styles.emptyText}>
-                Confirmed wallet activity will appear here after deposits, withdrawals, escrow, and payouts.
+                {ledger.loading
+                  ? 'Fetching confirmed ledger entries from the backend.'
+                  : 'Confirmed wallet activity will appear here after deposits, withdrawals, escrow, and payouts.'}
               </Text>
             </View>
           )}
@@ -155,6 +191,7 @@ const styles = StyleSheet.create({
   },
   metricGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing[12],
   },
   actionPanel: {

@@ -1,7 +1,16 @@
 import { ActionError } from "./_shared/errors.ts";
-import { corsPreflightResponse, isCorsPreflight } from "./_shared/cors.ts";
+import {
+  corsPreflightResponse,
+  isAllowedCorsRequest,
+  isCorsPreflight,
+  withCorsHeaders,
+} from "./_shared/cors.ts";
 import { enforceActionRateLimit } from "./_shared/rate_limit.ts";
 import { errorResponse, successResponse } from "./_shared/response.ts";
+import {
+  createLiveKitGateway,
+  type LiveKitGateway,
+} from "./_shared/livekit.ts";
 import {
   createServiceClient,
   createUserClient,
@@ -12,6 +21,10 @@ import {
   freezeUser,
   rejectWithdrawal,
 } from "./routes/admin.ts";
+import {
+  acceptDareWithQuote,
+  getAcceptDareQuote,
+} from "./routes/accept_quote.ts";
 import { submitAnswer } from "./routes/answers.ts";
 import {
   getCurrentCourtQuestion,
@@ -31,6 +44,12 @@ import {
   requestEvidenceUpload,
 } from "./routes/evidence.ts";
 import { assignJuryCase, castJuryVote } from "./routes/jury.ts";
+import { getJuryEvidencePacket } from "./routes/jury_evidence.ts";
+import {
+  enterLiveCourt,
+  getLiveCourtState,
+  recordLiveCourtPresence,
+} from "./routes/live_court.ts";
 import { getMe, updateMyProfile } from "./routes/me.ts";
 import {
   decideKycVerification,
@@ -51,8 +70,14 @@ import {
   selfExclude,
   updateResponsibleGamingSettings,
 } from "./routes/responsible_gaming.ts";
+import {
+  recordWitnessAttendance,
+  submitResultClaim,
+  submitWitnessVote,
+} from "./routes/result_claims.ts";
 import { requestWithdrawal } from "./routes/withdrawals.ts";
 import { completeDare, settleDare } from "./routes/settlement.ts";
+import { getSettlementStatus } from "./routes/settlement_status.ts";
 
 type RouteContext = {
   request: Request;
@@ -60,17 +85,20 @@ type RouteContext = {
   pathname: string;
   getClient: () => SupabaseActionClient;
   getServiceClient: () => SupabaseActionClient;
+  getLiveKitGateway: () => LiveKitGateway;
   paystackInitializer?: PaystackInitializer;
 };
 
 type HandlerDependencies = {
   createClient: (request: Request) => SupabaseActionClient;
   createServiceClient?: () => SupabaseActionClient;
+  createLiveKitGateway?: () => LiveKitGateway;
   paystackInitializer?: PaystackInitializer;
 };
 
 const defaultDependencies: HandlerDependencies = {
   createClient: createUserClient,
+  createLiveKitGateway,
   createServiceClient,
 };
 
@@ -79,13 +107,17 @@ export function createHandler(
 ): (request: Request) => Promise<Response> {
   return async function handler(request: Request): Promise<Response> {
     if (isCorsPreflight(request)) {
-      return corsPreflightResponse();
+      return corsPreflightResponse(request);
     }
 
     const requestId = request.headers.get("x-request-id") ??
       crypto.randomUUID();
 
     try {
+      if (!isAllowedCorsRequest(request)) {
+        throw new ActionError("FORBIDDEN");
+      }
+
       const url = new URL(request.url);
       const context = {
         request,
@@ -97,13 +129,18 @@ export function createHandler(
             defaultDependencies.createServiceClient!;
           return factory();
         },
+        getLiveKitGateway: () => {
+          const factory = dependencies.createLiveKitGateway ??
+            defaultDependencies.createLiveKitGateway!;
+          return factory();
+        },
         paystackInitializer: dependencies.paystackInitializer,
       };
       const response = await route(context);
       await maybeFlushPushNotifications(request.method, response, context);
-      return response;
+      return withCorsHeaders(response, request);
     } catch (error) {
-      return errorResponse(error, requestId);
+      return withCorsHeaders(errorResponse(error, requestId), request);
     }
   };
 }
@@ -321,6 +358,57 @@ async function route(context: RouteContext): Promise<Response> {
     context.request.method === "GET" &&
     actionPath.length === 3 &&
     actionPath[0] === "court" &&
+    actionPath[2] === "live-room"
+  ) {
+    return successResponse(
+      await getLiveCourtState(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+        context.getLiveKitGateway(),
+      ),
+      context.requestId,
+    );
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "live-room" &&
+    actionPath[3] === "enter"
+  ) {
+    const result = await enterLiveCourt(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+      context.getLiveKitGateway(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "court" &&
+    actionPath[2] === "live-room" &&
+    actionPath[3] === "presence"
+  ) {
+    const result = await recordLiveCourtPresence(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+      context.getLiveKitGateway(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "court" &&
     actionPath[2] === "question"
   ) {
     return successResponse(
@@ -379,6 +467,37 @@ async function route(context: RouteContext): Promise<Response> {
   }
 
   if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "accept-quote"
+  ) {
+    return successResponse(
+      await getAcceptDareQuote(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+      ),
+      context.requestId,
+    );
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "accept-quote"
+  ) {
+    const result = await acceptDareWithQuote(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
     context.request.method === "POST" &&
     actionPath.length === 3 &&
     actionPath[0] === "dares" &&
@@ -391,6 +510,22 @@ async function route(context: RouteContext): Promise<Response> {
       context.getServiceClient(),
     );
     return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "settlement-status"
+  ) {
+    return successResponse(
+      await getSettlementStatus(
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+      ),
+      context.requestId,
+    );
   }
 
   if (
@@ -475,6 +610,54 @@ async function route(context: RouteContext): Promise<Response> {
     actionPath[2] === "evidence"
   ) {
     const result = await requestEvidenceUpload(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "claims"
+  ) {
+    const result = await submitResultClaim(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "witness-attendance"
+  ) {
+    const result = await recordWitnessAttendance(
+      context.request,
+      actionPath[1],
+      context.getClient(),
+      context.getServiceClient(),
+    );
+    return successResponse(result.data, result.requestId);
+  }
+
+  if (
+    context.request.method === "POST" &&
+    actionPath.length === 4 &&
+    actionPath[0] === "dares" &&
+    actionPath[2] === "results" &&
+    actionPath[3] === "witness-votes"
+  ) {
+    const result = await submitWitnessVote(
       context.request,
       actionPath[1],
       context.getClient(),
@@ -594,6 +777,23 @@ async function route(context: RouteContext): Promise<Response> {
     return successResponse(result.data, result.requestId);
   }
 
+  if (
+    context.request.method === "GET" &&
+    actionPath.length === 3 &&
+    actionPath[0] === "jury-cases" &&
+    actionPath[2] === "evidence"
+  ) {
+    return successResponse(
+      await getJuryEvidencePacket(
+        context.request,
+        actionPath[1],
+        context.getClient(),
+        context.getServiceClient(),
+      ),
+      context.requestId,
+    );
+  }
+
   if (!["DELETE", "GET", "POST", "PATCH"].includes(context.request.method)) {
     throw new ActionError("METHOD_NOT_ALLOWED");
   }
@@ -628,8 +828,10 @@ async function maybeFlushPushNotifications(
 
 function canAccessRuntimeEnv(): boolean {
   try {
-    Deno.env.get("SUPABASE_URL");
-    return true;
+    return Boolean(
+      Deno.env.get("SUPABASE_URL") &&
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    );
   } catch {
     return false;
   }

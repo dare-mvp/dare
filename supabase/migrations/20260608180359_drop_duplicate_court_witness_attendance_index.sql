@@ -1,0 +1,1 @@
+drop index if exists public.court_witness_attendance_dare_witness_uidx;

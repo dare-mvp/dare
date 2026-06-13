@@ -1,48 +1,54 @@
 ---
 title: "How Escrow Works on DARE"
 date: "2025-11-10"
-excerpt: "Your money is safe from the moment you accept a DARE. Here's exactly how DARE's escrow system protects both players until the winner is confirmed."
+excerpt: "How DARE escrow protects Skill-Based stakes and Task-Based rewards until Answer Key, Witnessed, Evidence, or review settlement."
 author: "DARE Team"
 category: "How it works"
 ---
 
-One of the most common questions we get is: *what happens to my money after I accept a challenge?*
+One of the most common questions we get is: what happens to the money once a DARE is funded?
 
-The answer is escrow — and it's the foundation everything else on DARE is built on.
+The answer is escrow. It is the foundation for both Skill-Based competitions and Task-Based rewards.
 
 ## What is escrow?
 
-Escrow is a holding state where funds are locked away from both players the moment a DARE is confirmed. Neither player can access the money. It can only be released when a verified outcome is reached.
+Escrow is a locked holding state for DARE funds. In Skill-Based DAREs, both participants' stakes are locked. In Task-Based DAREs, only the Darer's reward is locked because the Performer does not stake money.
 
-Think of it as a neutral safe that only opens when the game is decided.
+Escrow is released only through settlement, refund, or void rules.
 
 ## The escrow lifecycle on DARE
 
-### 1. Challenge created
-The challenger sets the stake amount and sends the invite. No money moves yet.
+### 1. DARE created
 
-### 2. Opponent accepts
-The moment your opponent taps "Accept", both players' stakes are deducted from their wallets simultaneously and held in escrow. This is irreversible. Neither player can back out without triggering a forfeit.
+The Darer writes the constitution, chooses Skill-Based or Task-Based, sets the stake or reward, and selects the resolution path.
 
-### 3. Challenge in progress
-While the DARE is live, the escrow is frozen. No admin, no platform, no third party can touch the funds. It's yours and your opponent's — locked until the game ends.
+### 2. Escrow funds
 
-### 4. Evidence submitted
-Both players submit their proof clips or timestamps. DARE attaches geo-location data and hashes the evidence to prevent tampering.
+For Skill-Based DAREs, the Darer's stake locks at creation and the Challenger's matching stake locks on accept. For Task-Based DAREs, the Darer's reward locks at creation and the Performer accepts or claims the task without staking money.
+
+### 3. Court or proof flow starts
+
+While the DARE is live, escrow is frozen. Participants follow the constitution: live answers, witnessed performance, or evidence submission.
+
+### 4. Proof is captured
+
+Answer Key DAREs use committed answers. Witnessed DAREs use live presence and eligible witness signals. Evidence DAREs use approved proof such as clips, photos, screen recordings, metadata, and content hashes where supported.
 
 ### 5. Settlement
-If evidence is clear-cut, the system auto-settles. If there's a dispute, the blind jury reviews the evidence (without seeing player identities) and renders a verdict. The winning side receives the escrow minus the platform fee. The ledger entry is permanent.
 
-## What protects the escrow?
+If all required parties accept the result, settlement can proceed. If there is disagreement, a blinded jury or admin review uses the constitution and proof packet. Skill-Based winners receive the eligible escrow pool. Task-Based performers receive the eligible reward after valid completion. Refunds follow the constitution and platform policy.
 
-- **Database-level atomicity** — both stakes lock together or neither does. Partial locks aren't possible.
-- **Immutable ledger** — every wallet transaction is append-only. Nothing can be deleted or altered after the fact.
-- **No admin override** — DARE staff cannot unilaterally release or redirect escrow funds. Only a verified verdict can do that.
+## What protects escrow?
+
+- **Server-side transactions**: escrow locks and releases happen through controlled settlement paths.
+- **Immutable ledger**: wallet transactions are append-only.
+- **No unilateral staff release**: DARE staff cannot redirect escrow outside settlement, refund, void, or fraud-review policy.
+- **Proof packet review**: disputed outcomes use the constitution, evidence, answer events, witness signals, and participant claims.
 
 ## Forfeit rules
 
-If a player fails to submit evidence before the deadline, or abandons the challenge, the escrow releases to their opponent. Forfeits also reduce the forfeiting player's trust score, making it harder to find opponents for future DAREs.
+If a participant fails to submit required proof before the deadline, abandons the DARE, or breaks the constitution, settlement follows the DARE's forfeit, refund, or review rules. Skill-Based forfeits can award the opponent. Task-Based failures can refund the Darer or pay the Performer when valid completion is already proven.
 
 ## The result
 
-When you accept a DARE, you know the money is safe. Your opponent knows it too. That's the foundation of trust that makes real-money skill challenges possible.
+Before escrow locks, everyone can see what is funded, what must be proven, and how settlement happens. That is the trust layer DARE provides.

@@ -26,7 +26,7 @@ export const notifications: AppNotification[] = [
     title: 'New jury assignment',
   },
   {
-    body: 'Evidence was received for Premier League quiz in court mode.',
+    body: 'Evidence was received for Premier League knowledge DARE in court mode.',
     createdLabel: 'Yesterday',
     id: 'ntf-4',
     kind: 'dispute',

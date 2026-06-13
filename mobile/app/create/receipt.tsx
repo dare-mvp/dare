@@ -5,27 +5,34 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../src/components/ui/ActionButton';
 import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { formatDareTypeLabel, formatResolutionLabel } from '../../src/features/create/createLabels';
 import { CreateFlowFrame } from '../../src/features/create/components/CreateFlowFrame';
+import { isUuid } from '../../src/lib/ids';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 
 export default function CreateReceiptScreen() {
   const router = useRouter();
-  const { category, dareId, opponent, resolutionType, stakeAmount, status, title } = useLocalSearchParams<{
+  const { category, dareId, dareType, opponent, resolutionType, rewardAmount, stakeAmount, status, title } = useLocalSearchParams<{
     category?: string;
     dareId?: string;
+    dareType?: string;
     opponent?: string;
     resolutionType?: string;
+    rewardAmount?: string;
     stakeAmount?: string;
     status?: string;
     title?: string;
   }>();
   const stakeKobo = stakeAmount ? Number.parseInt(stakeAmount, 10) : 0;
-  const platformFeeKobo = Math.round(stakeKobo * 0.05);
-  const escrowKobo = stakeKobo + platformFeeKobo;
+  const rewardKobo = rewardAmount ? Number.parseInt(rewardAmount, 10) : 0;
+  const isTask = dareType === 'task';
+  const lockedAmountKobo = Number.isFinite(isTask ? rewardKobo : stakeKobo) ? Math.max(0, isTask ? rewardKobo : stakeKobo) : 0;
+  const statusLabel = formatStatus(status);
   const receiptLines = [
     { label: 'Category', value: (category ?? 'knowledge').toUpperCase() },
-    { label: 'Resolution', value: (resolutionType ?? 'algorithmic').toUpperCase() },
-    { label: 'Opponent', value: opponent ?? 'Open challenge' },
+    { label: 'DARE type', value: formatDareTypeLabel(isTask ? 'task' : 'skill') },
+    { label: 'Resolution', value: formatResolutionLabel(resolutionType ?? 'answer_key') },
+    { label: isTask ? 'Performer' : 'Opponent', value: opponent ?? (isTask ? 'Open task' : 'Open challenge') },
     { label: 'Reference', value: dareId ?? 'Pending reference' },
   ];
 
@@ -34,13 +41,13 @@ export default function CreateReceiptScreen() {
       eyebrow="Receipt"
       onBack={() => router.back()}
       title="DARE created."
-      subtitle="Escrow remains pending until creation and wallet confirmation are complete."
+      subtitle={isTask ? 'Your reward is locked. The performer does not stake money.' : 'Your creator stake is locked. The challenger stake locks on accept.'}
     >
       <View style={styles.hero}>
         <CheckCircle2 color={colors.warning} size={32} />
-        <StatusBadge label={(status ?? 'PENDING ESCROW').toUpperCase()} tone="warning" />
+        <StatusBadge label={statusLabel} tone={status === 'open' ? 'success' : 'warning'} />
         <Text style={styles.heroTitle}>Challenge submitted</Text>
-        <Text style={styles.heroText}>The DARE becomes open after escrow and eligibility checks are confirmed.</Text>
+        <Text style={styles.heroText}>{getHeroText(status, isTask)}</Text>
       </View>
 
       <View style={styles.receipt}>
@@ -49,16 +56,24 @@ export default function CreateReceiptScreen() {
           <ReceiptLine key={line.label} label={line.label} value={line.value} />
         ))}
         <View style={styles.moneyLine}>
-          <Text style={styles.label}>Escrow requested</Text>
-          <MoneyAmount amountKobo={escrowKobo} tone="locked" />
+          <Text style={styles.label}>{isTask ? 'Reward locked' : 'Creator stake locked'}</Text>
+          <MoneyAmount amountKobo={lockedAmountKobo} tone="locked" />
         </View>
       </View>
 
       <View style={styles.actions}>
+        {isUuid(dareId) ? (
+          <ActionButton
+            accessibilityLabel="View created DARE"
+            label="View DARE"
+            onPress={() => router.replace(`/dare/${dareId}`)}
+          />
+        ) : null}
         <ActionButton
           accessibilityLabel="View feed"
           label="View feed"
           onPress={() => router.replace('/(tabs)')}
+          variant={isUuid(dareId) ? 'secondary' : 'primary'}
         />
         <ActionButton
           accessibilityLabel="Create another DARE"
@@ -69,6 +84,24 @@ export default function CreateReceiptScreen() {
       </View>
     </CreateFlowFrame>
   );
+}
+
+function formatStatus(status?: string) {
+  if (status === 'targeted_pending') return 'TARGETED PENDING';
+  if (status === 'open') return 'OPEN';
+  return (status ?? 'CREATED').replace(/[_-]/g, ' ').toUpperCase();
+}
+
+function getHeroText(status: string | undefined, isTask: boolean) {
+  if (status === 'targeted_pending') {
+    return isTask
+      ? 'The targeted performer has been notified. Your reward stays locked unless the DARE is accepted, cancelled, or expires.'
+      : 'The targeted player has been notified. Your stake stays locked unless the DARE is accepted, cancelled, or expires.';
+  }
+
+  return isTask
+    ? 'The task is open and your reward is locked unless the DARE is accepted, cancelled, or expires.'
+    : 'The DARE is open and your stake is locked unless the challenge is accepted, cancelled, or expires.';
 }
 
 function ReceiptLine({ label, value }: { label: string; value: string }) {

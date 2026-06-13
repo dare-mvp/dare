@@ -30,14 +30,14 @@ export function HeroSection() {
 
         {/* Headline */}
         <h1 className="font-syne text-5xl font-extrabold leading-tight tracking-tight text-foreground sm:text-7xl">
-          Challenge.{' '}
-          <span className="text-brand-primary">Wager.</span>{' '}
-          Win.
+          Create the DARE.{' '}
+          <span className="text-brand-primary">Prove it.</span>{' '}
+          Settle it.
         </h1>
 
         <p className="mx-auto max-w-xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-          DARE lets you challenge friends to real-money skill competitions, verified and settled in
-          minutes. Your proof. Your prize.
+          DARE lets users author Skill-Based competitions or Task-Based rewards, lock funds in
+          escrow, and settle outcomes through Answer Key, Witnessed, or Evidence review.
         </p>
 
         {/* CTAs */}

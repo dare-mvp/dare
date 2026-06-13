@@ -70,13 +70,13 @@ Recommended mobile modules:
 
 ### 4. State Machines Over Flags
 
-DARE lifecycle, Court lifecycle, payment lifecycle, and dispute lifecycle should be explicit state machines.
+DARE lifecycle, Court lifecycle, payment lifecycle, and dispute lifecycle are explicit state machines.
 
 Avoid scattered boolean flags such as `is_live`, `is_ready`, `is_disputed` without a canonical state.
 
 ### 5. Append-Only Financial Records
 
-Financial systems should use immutable ledger entries and reconciliation. Direct balance mutation can exist as a cached projection, not the source of truth.
+Financial systems use immutable ledger entries and reconciliation. Direct balance mutation can exist as a cached projection, not the source of truth.
 
 ### 6. Idempotency Everywhere Money Moves
 
@@ -92,11 +92,11 @@ Examples:
 
 ### 7. Private Evidence By Default
 
-Evidence media should be stored in private buckets. Access should be granted through short-lived signed URLs and logged.
+Evidence media is stored in private buckets. Access is granted through short-lived signed URLs and logged.
 
 ### 8. Realtime Is A Delivery Mechanism
 
-Realtime channels should not become the authority for business logic. They broadcast server-approved events.
+Realtime channels are not the authority for business logic. They broadcast server-approved events.
 
 Examples:
 
@@ -109,7 +109,7 @@ Examples:
 
 ### 9. Risk And Compliance Are Product Requirements
 
-KYC, AML, age gating, limits, responsible play controls, and audit logs should be included in product architecture, not added after launch.
+KYC, AML, age gating, limits, responsible play controls, and audit logs are included in product architecture, not added after launch.
 
 ### 10. Test Core Logic First
 
@@ -134,7 +134,7 @@ Architecture requirements:
 - Every success state must define a next action — auto-scroll, redirect, or button reveal.
 - Every error state must include a recovery action, not just a message.
 - Deep links must be resolved server-side and embedded in buttons, not shown as copyable text.
-- Share/action flows must pre-fill content — the user should never need to compose, copy, or remember anything.
+- Share/action flows must pre-fill content; the user never needs to compose, copy, or remember anything.
 - Server actions must return next-step context alongside success/error states.
 
 See [`docs/13-directional-ux-principles.md`](13-directional-ux-principles.md) for the full principle specification.
@@ -147,12 +147,36 @@ The final stack decision is still open, but the prototype points toward:
 - Backend: Supabase plus server functions, or a dedicated API service with Supabase/Postgres.
 - Database: Postgres with migrations committed.
 - Realtime: Supabase Realtime or equivalent broadcast/presence layer.
+- Live Court video: LiveKit Cloud for WebRTC rooms, mobile video calls, audience viewing, server-side recording/egress, and provider webhooks.
 - Storage: private object storage for evidence.
 - Payments: provider abstraction layer with Paystack first if approved.
 
+## Live Court Video Provider
+
+DARE will use LiveKit Cloud as the production live Court video provider.
+
+Provider responsibilities:
+
+- create or reuse one LiveKit room per accepted Court DARE
+- issue short-lived participant and spectator tokens from the backend only
+- stream two active participants with low-latency WebRTC
+- allow eligible audience viewing without granting settlement authority
+- emit webhook events for room lifecycle, participant join/leave, and recording/egress lifecycle
+- record Court sessions through LiveKit egress for dispute and evidence review
+
+DARE responsibilities:
+
+- store LiveKit room id, participant consent, provider event ids, and recording metadata in the live Court tables
+- treat LiveKit webhooks as provider signals, not final settlement decisions
+- require both required participants to join with video and recording consent before answer/result actions
+- keep evidence and recordings private by default, with signed access for jurors/admins
+- keep `provider_pending` only as a transitional state before LiveKit room creation succeeds
+
+Mux is not the primary provider for live Court because DARE needs two-way low-latency video, not RTMP/HLS broadcast. Daily and Agora remain alternatives only if LiveKit Cloud becomes unsuitable.
+
 ## Repository Expectations
 
-The rebuild repo should include:
+The rebuild repo includes:
 
 - `apps/mobile`
 - `apps/admin` or `apps/web`
@@ -168,7 +192,7 @@ The rebuild repo should include:
 
 ## API Surface Principles
 
-APIs should be action-oriented for sensitive workflows.
+APIs are action-oriented for sensitive workflows.
 
 Examples:
 
@@ -218,4 +242,3 @@ Do not keep:
 - Client-side outcome settlement
 - Direct browser control over sensitive DB writes
 - `innerHTML`-heavy rendering patterns
-

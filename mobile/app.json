@@ -40,13 +40,26 @@
       "expo-router",
       "expo-font",
       [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          },
+          "ios": {
+            "enableMultitaskingCameraAccess": false
+          }
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
+      [
         "expo-notifications",
         {
           "color": "#FF5500",
           "icon": "./assets/notification-icon.png",
           "defaultChannel": "dare-alerts"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "owner": "dare-mobile-organization"
   }

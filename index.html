@@ -954,11 +954,11 @@ async function markAllNotificationsRead() {
           <p style="font-size:13px;color:var(--ash);">Choose how this challenge will be resolved</p>
         </div>
         <div class="type-grid" id="typeSelector">
-          <div class="type-card" data-type="1" onclick="selectChallengeType(1,'Algorithmic','Automated scoring — system decides winner','Trivia, Math, Speed typing, Reaction time')">
+          <div class="type-card" data-type="1" onclick="selectChallengeType(1,'Answer Key','Creator-authored task with committed answer key','Trivia, Math, Speed typing, Reaction time')">
             <div class="type-card-ico">🤖</div>
-            <div class="type-card-name">Type 1 — Algorithmic</div>
-            <div class="type-card-desc">Platform scores automatically. Fastest, most objective resolution.</div>
-            <div class="type-card-res">Auto-scored by platform</div>
+            <div class="type-card-name">Type 1 — Answer Key</div>
+            <div class="type-card-desc">Creator writes the objective task and commits the answer before play.</div>
+            <div class="type-card-res">Committed answer key</div>
           </div>
           <div class="type-card" data-type="2" onclick="selectChallengeType(2,'Witnessed','Live audience vote (min 10, 60s window)','Freestyle, Dance, Debate, Cooking')">
             <div class="type-card-ico">👁</div>
@@ -966,17 +966,11 @@ async function markAllNotificationsRead() {
             <div class="type-card-desc">Live audience votes in real time. Min 10 watchers required.</div>
             <div class="type-card-res">Live audience vote</div>
           </div>
-          <div class="type-card" data-type="3" onclick="selectChallengeType(3,'Evidenced','5-person blind jury, majority rules','Pushups, Drawing, Cooking, Rubik Cube')">
+          <div class="type-card" data-type="3" onclick="selectChallengeType(3,'Evidence','5-person blind jury, majority rules','Pushups, Drawing, Cooking, Rubik Cube')">
             <div class="type-card-ico">📹</div>
-            <div class="type-card-name">Type 3 — Evidenced</div>
+            <div class="type-card-name">Type 3 — Evidence</div>
             <div class="type-card-desc">Submit video proof. 5-person blind jury decides majority rules.</div>
             <div class="type-card-res">5-person blind jury</div>
-          </div>
-          <div class="type-card" id="typeOption4" data-type="4" onclick="selectChallengeType(4,'Honour','Both parties honour the outcome','Boxing, 1v1 basketball, Golf')">
-            <div class="type-card-ico">🤝</div>
-            <div class="type-card-name">Type 4 — Honour</div>
-            <div class="type-card-desc">Trust-based. Both parties must agree on outcome. Legend tier only.</div>
-            <div class="type-card-res">🔒 Requires Trust Score 800+</div>
           </div>
         </div>
         <!-- Category picker — shown after type selected -->
@@ -2473,7 +2467,7 @@ function timeAgo(isoString) {
 const categoryEmoji = { knowledge:'🧠', sports:'🏅', physical:'💪', creative:'🎨', verbal:'🎙', other:'⚡' };
 
 // Resolution type label
-const resolutionLabel = { algorithmic:'Algorithmic', witnessed:'Witnessed', evidenced:'Evidenced', honour:'Honour' };
+const resolutionLabel = { answer_key:'Answer Key', witnessed:'Witnessed', evidence:'Evidence' };
 
 // ─── AUTH ────────────────────────────────────────────────
 
@@ -3392,12 +3386,7 @@ function createStep(step) {
 }
 
 function selectChallengeType(type, label, resolution, examples) {
-  // Honour system (type 4) requires Challenger tier (trust_score >= 400)
-  if(type === 4 && (currentUser?.trust_score || 0) < 400) {
-    showToast('⚠️ Honour DARE requires Challenger tier (400+ trust score). Your score: ' + (currentUser?.trust_score || 0));
-    return;
-  }
-  challengeData.type = type;
+challengeData.type = type;
   challengeData.typeLabel = label;
   challengeData.resolution = resolution;
   document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
@@ -3415,11 +3404,11 @@ function selectChallengeType(type, label, resolution, examples) {
   const proofInp  = $('c_proof');
   if(proofWrap) {
     if(type === 1) {
-      // Algorithmic — no proof needed
+      // Answer Key — no proof needed
       proofWrap.style.display = 'none';
-      if(proofInp) proofInp.value = 'Automated (platform scoring)';
+      if(proofInp) proofInp.value = 'Committed answer key';
     } else if(type === 3) {
-      // Evidenced — proof required
+      // Evidence — proof required
       proofWrap.style.display = 'block';
       if(proofReq) proofReq.style.display = 'inline';
       if(proofHint) { proofHint.style.display = 'block'; proofHint.textContent = '📹 Both players must submit video evidence. Jury will review and decide.'; }
@@ -3430,12 +3419,6 @@ function selectChallengeType(type, label, resolution, examples) {
       if(proofReq) proofReq.style.display = 'none';
       if(proofHint) { proofHint.style.display = 'block'; proofHint.textContent = '👁 Live audience will vote in real time. Minimum 10 viewers required.'; }
       if(proofInp) { proofInp.placeholder = 'Optional: any specific instructions for audience'; proofInp.value = ''; }
-    } else if(type === 4) {
-      // Honour — mutual agreement
-      proofWrap.style.display = 'block';
-      if(proofReq) proofReq.style.display = 'none';
-      if(proofHint) { proofHint.style.display = 'block'; proofHint.textContent = '🤝 Both parties must agree on outcome. Your reputation is on the line.'; }
-      if(proofInp) { proofInp.placeholder = 'Optional: agreed evidence format'; proofInp.value = ''; }
     }
   }
 
@@ -3551,12 +3534,7 @@ async function issueDare() {
   if(!challengeData.stake) { showToast('Please set a stake amount'); return; }
   if(!challengeData.test)  { showToast('Please define the challenge'); return; }
   if(!currentUser)          { showToast('Please log in first'); return; }
-  if(challengeData.type === 4 && (currentUser?.trust_score || 0) < 400) {
-    showToast('⚠️ Honour DARE requires Challenger tier (400+ trust score)');
-    return;
-  }
-
-  // Ensure profile exists in DB (handles "last resort" minimal users)
+// Ensure profile exists in DB (handles "last resort" minimal users)
   const { data: profileCheck, error: profileErr } = await db.from('profiles')
     .select('id').eq('id', currentUser.id).single();
   if(!profileCheck) {
@@ -3584,8 +3562,8 @@ async function issueDare() {
   // }
 
   // Map challenge type to resolution enum
-  const resolutionMap = { 1:'algorithmic', 2:'witnessed', 3:'evidenced', 4:'honour' };
-  const categoryMap = { 1:'knowledge', 2:'verbal', 3:'sports', 4:'sports' };
+  const resolutionMap = { 1:'answer_key', 2:'witnessed', 3:'evidence' };
+  const categoryMap = { 1:'knowledge', 2:'verbal', 3:'sports' };
   const categoryGuess = challengeData.category || categoryMap[challengeData.type] || 'other';
 
   showToast('Issuing DARE...');
@@ -3846,7 +3824,7 @@ function setupCourt(c) {
   courtReady = true;
 
   // For Evidence DARE, initialize the camera feed for the player
-  if(c.resolution_type === 'evidenced') {
+  if(c.resolution_type === 'evidence') {
     try {
       startCamera().catch(() => {});
     } catch(e) {
@@ -3979,7 +3957,7 @@ function updateTimer() {
   clearInterval(courtTimer); courtTimer = null;
 
   // Timer finished – handle evidence and non-evidence separately
-  if (dare && dare.resolution_type === 'evidenced') {
+  if (dare && dare.resolution_type === 'evidence') {
     // Auto-stop recording for evidence dares and upload the video before enabling proof submission.
     // Recording upload will trigger jury submission logic in stopRecordingAndUpload().
     if (currentUser && (currentUser.id === dare.player_a || currentUser.id === dare.player_b)) {
@@ -4165,7 +4143,7 @@ async function autoSubmitProof() {
  */
 async function startCamera() {
   const dare = window._activeDare;
-  if(!dare || dare.resolution_type !== 'evidenced' || cameraInitialized) return;
+  if(!dare || dare.resolution_type !== 'evidence' || cameraInitialized) return;
   if(!currentUser) return;
   const isA = currentUser.id === dare.player_a;
   const isB = currentUser.id === dare.player_b;
@@ -4199,7 +4177,7 @@ async function startCamera() {
  */
 function startRecording() {
   const dare = window._activeDare;
-  if(!dare || dare.resolution_type !== 'evidenced') return { ok: false, reason: 'not-evidenced' };
+  if(!dare || dare.resolution_type !== 'evidence') return { ok: false, reason: 'not-evidence' };
   if(!localStream || mediaRecorder) return;
   try {
     recordedChunks = [];
@@ -4225,7 +4203,7 @@ function startRecording() {
  */
 async function stopRecordingAndUpload() {
   const dare = window._activeDare;
-  if(!dare || dare.resolution_type !== 'evidenced') return;
+  if(!dare || dare.resolution_type !== 'evidence') return;
   if(!mediaRecorder) return;
 
   setEvidenceDebug({ phase: 'stop_recorder', http: '—', kind: '—', message: 'Stopping recorder…' });
@@ -4310,7 +4288,7 @@ async function stopRecordingAndUpload() {
   console.log('Evidence uploaded:', filename);
   showToast('✅ Evidence uploaded.');
 
-  if(dare && dare.resolution_type === 'evidenced') {
+  if(dare && dare.resolution_type === 'evidence') {
     try {
       await submitEvidenceToJury(dare, filename);
     } catch(e) {
@@ -4812,7 +4790,7 @@ function launchChallenge() {
   const secs = courtTime % 60;
   set('courtTimer', mins + ':' + String(secs).padStart(2, '0'));
 
-  if(dare.resolution_type === 'algorithmic') {
+  if(dare.resolution_type === 'answer_key') {
     const qp = $('courtQuizPanel');
     if(qp) qp.style.display = 'block';
     loadCourtQuestions(dare);
@@ -4836,7 +4814,7 @@ function launchChallenge() {
 
   startCourtTimer();
   // For Evidence DARE: start recording when the challenge begins (only players)
-  if(dare.resolution_type === 'evidenced') {
+  if(dare.resolution_type === 'evidence') {
     startRecording();
   }
   if(window._activeDare) startChatPoll(window._activeDare);
@@ -5065,7 +5043,7 @@ async function showCourtResult() {
   // Evidence-based dares should not announce a winner until a jury verdict.
   // If this dare is an evidence resolution and no winner is set yet and no forfeit occurred,
   // show a waiting overlay and return early.
-  if(dare && dare.resolution_type === 'evidenced' && !dare.winner && !dare.forfeit) {
+  if(dare && dare.resolution_type === 'evidence' && !dare.winner && !dare.forfeit) {
     const overlay = $('resultOverlay');
     if(overlay) {
       set('resultEmoji', '⏳');
@@ -5144,7 +5122,7 @@ async function showCourtResult() {
     votedA = vA; votedB = vB;
     forcedWinnerId = winnerId;
   } else {
-    // Algorithmic / other — use local scores
+    // Answer Key / other — use local scores
     didWin = isPlayerA ? courtScoreA > courtScoreB : courtScoreB > courtScoreA;
     if(courtScoreA === courtScoreB) didWin = !isPlayerA; // tie: challenger wins
     winnerName = didWin ? (currentUser?.username || 'You') : 'Opponent';
@@ -5197,7 +5175,7 @@ async function showCourtResult() {
 
   // If this is a real DARE and user is a player, record result
   if(dare && currentUser && (dare.player_a === currentUser.id || dare.player_b === currentUser.id)) {
-    // Determine the winner: respect forfeit or vote/algorithmic outcome
+    // Determine the winner: respect forfeit or vote/answer_key outcome
     let winnerId = null;
     if(dare?.forfeit) {
       winnerId = dare.forfeit_winner || ((dare.player_a === currentUser.id) ? dare.player_b : dare.player_a);
@@ -5206,7 +5184,7 @@ async function showCourtResult() {
     } else if(forcedWinnerId) {
       winnerId = forcedWinnerId;
     } else {
-      // fallback: whichever side scored higher in algorithmic challenge
+      // fallback: whichever side scored higher in answer_key challenge
       winnerId = didWin ? currentUser.id :
         (dare.player_a === currentUser.id ? dare.player_b : dare.player_a);
     }

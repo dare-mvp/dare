@@ -76,7 +76,7 @@ create index court_chat_messages_user_created_idx
   on court_chat_messages (user_id, created_at desc);
 
 -- ── quiz_questions ───────────────────────────────────────────
--- Controlled question bank for Algorithmic DARE MVP.
+-- Controlled question bank for Answer Key DARE MVP.
 -- correct_option must never be exposed to clients via direct table read.
 -- Serve question payloads through API/RPC only.
 create table quiz_questions (

@@ -14,7 +14,10 @@ function ShareButton({ referralLink }: { referralLink: string }) {
   const [canNativeShare, setCanNativeShare] = useState(false);
 
   useEffect(() => {
-    setCanNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
+    const timer = window.setTimeout(() => {
+      setCanNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function handleShare() {

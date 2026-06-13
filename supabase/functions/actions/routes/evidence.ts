@@ -44,7 +44,7 @@ type EvidenceUploadRpcRow = {
 
 type EvidenceConfirmRpcRow = {
   evidence_object_id: string;
-  jury_case_id: string;
+  jury_case_id: string | null;
   dare_id: string;
   side: "A" | "B";
   status: "uploaded";
@@ -75,7 +75,7 @@ export type EvidenceUploadResponse = {
 
 export type EvidenceConfirmResponse = {
   evidenceObjectId: string;
-  juryCaseId: string;
+  juryCaseId: string | null;
   dareId: string;
   side: "A" | "B";
   status: "uploaded";
@@ -107,9 +107,20 @@ export async function requestEvidenceUpload(
   );
 
   if (stored) {
+    const storedData = stored.responseBody as EvidenceUploadResponse;
+    const upload = await createSignedUpload(serviceClient, {
+      byte_size: storedData.byteSize,
+      dare_id: storedData.dareId,
+      evidence_object_id: storedData.evidenceObjectId,
+      media_type: storedData.mediaType,
+      status: storedData.status,
+      storage_bucket: storedData.storageBucket,
+      storage_path: storedData.storagePath,
+      user_id: storedData.userId,
+    });
     return {
       requestId: envelope.requestId,
-      data: stored.responseBody as EvidenceUploadResponse,
+      data: { ...storedData, upload },
     };
   }
 
@@ -127,14 +138,14 @@ export async function requestEvidenceUpload(
     authUser.id,
     "evidence.upload_requested",
     data.evidenceObjectId,
-    data,
+    redactEvidenceUploadResponse(data),
   );
   await storeIdempotencyResult(
     keyHash,
     bodyHash,
     authUser.id,
     200,
-    data,
+    redactEvidenceUploadResponse(data),
     serviceClient,
   );
 
@@ -384,6 +395,19 @@ function mapEvidenceUploadResponse(
     byteSize: row.byte_size,
     status: row.status,
     upload,
+  };
+}
+
+function redactEvidenceUploadResponse(
+  data: EvidenceUploadResponse,
+): EvidenceUploadResponse {
+  return {
+    ...data,
+    upload: {
+      path: data.upload.path,
+      signedUrl: "",
+      token: "",
+    },
   };
 }
 

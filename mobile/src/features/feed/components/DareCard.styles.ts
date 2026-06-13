@@ -178,6 +178,12 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     gap: spacing[4],
   },
+  stakeLabel: {
+    color: colors.warning,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    textTransform: 'uppercase',
+  },
   statusRail: {
     height: 2,
     left: 0,

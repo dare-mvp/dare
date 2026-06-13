@@ -126,7 +126,9 @@ export default function DepositScreen() {
     try {
       await Linking.openURL(result.data.authorizationUrl);
     } catch {
-      setSubmitError('Payment checkout could not be opened. Use the pending screen reference to retry safely.');
+      setSubmitError('Payment checkout could not be opened. Try again from this screen.');
+      setSubmitting(false);
+      return;
     }
 
     setSubmitting(false);

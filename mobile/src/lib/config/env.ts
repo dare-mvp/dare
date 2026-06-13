@@ -1,8 +1,12 @@
-type EnvKey = 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_ANON_KEY';
+type EnvKey =
+  | 'EXPO_PUBLIC_LIVEKIT_WS_URL'
+  | 'EXPO_PUBLIC_SUPABASE_URL'
+  | 'EXPO_PUBLIC_SUPABASE_ANON_KEY';
 
 export type BackendConfig = {
   actionsFunctionUrl: string | null;
   isConfigured: boolean;
+  liveKitWsUrl: string | null;
   missing: string[];
   supabaseAnonKey: string | null;
   supabaseUrl: string | null;
@@ -19,11 +23,26 @@ function normalizeUrl(value: string | undefined) {
   }
 }
 
+function normalizeWebSocketUrl(value: string | null) {
+  if (!value) return null;
+  const normalized = normalizeUrl(value);
+  if (!normalized) return null;
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== 'wss:' && parsed.protocol !== 'ws:') return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
 function readEnv(key: EnvKey) {
   const value = process.env[key]?.trim();
   return value ? value : null;
 }
 
+const liveKitWsUrl = normalizeWebSocketUrl(readEnv('EXPO_PUBLIC_LIVEKIT_WS_URL'));
 const supabaseUrl = normalizeUrl(readEnv('EXPO_PUBLIC_SUPABASE_URL') ?? undefined);
 const supabaseAnonKey = readEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
 const explicitActionsUrl = normalizeUrl(process.env.EXPO_PUBLIC_ACTIONS_FUNCTION_URL);
@@ -37,6 +56,7 @@ const missing = [
 export const backendConfig: BackendConfig = {
   actionsFunctionUrl,
   isConfigured: missing.length === 0 && Boolean(actionsFunctionUrl),
+  liveKitWsUrl,
   missing,
   supabaseAnonKey,
   supabaseUrl,

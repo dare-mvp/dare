@@ -63,6 +63,7 @@ export default function SignUpScreen() {
   return (
     <AuthFrame
       eyebrow="Create account"
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/age-gate'))}
       title="Create secure sign-in."
       subtitle="Use accurate details. KYC, limits, and withdrawals depend on account identity."
       footer={<AuthFooterLink label="Already registered? Sign in" onPress={() => router.push('/sign-in')} />}

@@ -40,7 +40,7 @@ export default function AuthCallbackScreen() {
       }
 
       setStatus('success');
-      router.replace('/profile-setup');
+      router.replace(result.passwordRecovery ? '/update-password' : '/profile-setup');
     }
 
     void confirm();
@@ -52,15 +52,15 @@ export default function AuthCallbackScreen() {
 
   return (
     <AuthFrame
-      eyebrow="Account confirmation"
-      title={status === 'success' ? 'Email confirmed.' : 'Confirming your email.'}
+      eyebrow="Secure link"
+      title={status === 'success' ? 'Link confirmed.' : 'Checking your link.'}
       subtitle="This only takes a moment."
     >
       {status === 'checking' ? (
         <InlineAlert
           tone="info"
           title="Checking link"
-          message="Keep this screen open while we finish account confirmation."
+          message="Keep this screen open while we finish the secure handoff."
         />
       ) : null}
 
@@ -71,8 +71,8 @@ export default function AuthCallbackScreen() {
       {status === 'success' ? (
         <InlineAlert
           tone="success"
-          title="Account confirmed"
-          message="Finish your profile to continue."
+          title="Link confirmed"
+          message="Continue in DARE to finish."
         />
       ) : null}
 

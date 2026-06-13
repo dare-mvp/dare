@@ -33,7 +33,7 @@ export const profileSummary: ProfileSummary = {
       opponent: 'Tomi',
       result: 'win',
       stakeLabel: 'NGN 5,000',
-      title: 'Premier League quiz in court mode',
+      title: 'Premier League knowledge DARE in court mode',
       when: 'Today',
     },
     {

@@ -5,11 +5,11 @@ import { MarketingFooter } from '@/components/marketing/footer';
 export const metadata: Metadata = {
   title: 'FAQ',
   description:
-    'Answers to common questions about DARE — payouts, disputes, jury system, trust score, and supported banks.',
+    'Answers to common questions about Skill-Based DAREs, Task-Based rewards, Answer Key, Witnessed, Evidence, payouts, disputes, and trust score.',
   openGraph: {
     title: 'FAQ | DARE',
     description:
-      'Answers to common questions about DARE — payouts, disputes, jury system, trust score, and supported banks.',
+      'Answers to common questions about Skill-Based DAREs, Task-Based rewards, Answer Key, Witnessed, Evidence, payouts, disputes, and trust score.',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
 };
@@ -21,7 +21,7 @@ export default function FaqPage() {
         <div className="mx-auto max-w-3xl px-6 py-16">
           <h1 className="font-syne text-5xl font-extrabold text-foreground sm:text-6xl">FAQ</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Everything you need to know before your first DARE.
+            The practical details before you create, accept, complete, or review a DARE.
           </p>
         </div>
         <FaqSection />

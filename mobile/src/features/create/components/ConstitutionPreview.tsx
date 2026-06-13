@@ -2,12 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { MoneyAmount } from '../../../components/ui/MoneyAmount';
 import { colors, fonts, radius, spacing, typography } from '../../../theme/tokens';
+import { formatDareTypeLabel, formatResolutionLabel } from '../createLabels';
 import { CreateDareDraft } from '../types';
 
 type ConstitutionPreviewProps = {
   draft: CreateDareDraft;
   escrowKobo: number;
   platformFeeKobo: number;
+  rewardKobo: number;
   stakeKobo: number;
 };
 
@@ -15,22 +17,25 @@ export function ConstitutionPreview({
   draft,
   escrowKobo,
   platformFeeKobo,
+  rewardKobo,
   stakeKobo,
 }: ConstitutionPreviewProps) {
   return (
     <View style={styles.card}>
       <Text style={styles.title}>DARE Constitution</Text>
       <PreviewRow label="Challenge" value={draft.title || 'Not set'} />
+      <PreviewRow label={draft.dareType === 'task' ? 'Task description' : 'DARE description'} value={draft.description || 'Description not set'} />
+      <PreviewRow label="DARE type" value={formatDareTypeLabel(draft.dareType)} />
       <PreviewRow label="Category" value={draft.category.toUpperCase()} />
-      <PreviewRow label="Resolution" value={draft.resolutionType.toUpperCase()} />
+      <PreviewRow label="Resolution" value={formatResolutionLabel(draft.resolutionType)} />
       <PreviewRow label="Duration" value={formatDuration(draft.durationSeconds)} />
-      <PreviewRow label="Opponent" value={draft.opponent || 'Open challenge'} />
+      <PreviewRow label={draft.dareType === 'task' ? 'Performer' : 'Opponent'} value={draft.opponent || (draft.dareType === 'task' ? 'Open performer slot' : 'Open challenge')} />
       <PreviewRow label="Rules" value={draft.rules || 'Rules not set'} />
 
       <View style={styles.moneyPanel}>
-        <MoneyLine label="Stake" value={stakeKobo} />
-        <MoneyLine label="Platform fee" value={platformFeeKobo} />
-        <MoneyLine emphasis label="Escrow required" value={escrowKobo} />
+        <MoneyLine label={draft.dareType === 'task' ? 'Darer reward' : 'Creator stake'} value={draft.dareType === 'task' ? rewardKobo : stakeKobo} />
+        <MoneyLine label="Estimated settlement fee" value={platformFeeKobo} />
+        <MoneyLine emphasis label={draft.dareType === 'task' ? 'Reward to lock' : 'Creator stake to lock'} value={escrowKobo} />
       </View>
     </View>
   );

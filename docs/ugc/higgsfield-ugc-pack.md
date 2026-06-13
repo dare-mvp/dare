@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Create UGC-style vertical videos that show the exact look and product feel of the DARE mobile app. The creative should feel like a real person demonstrating a regulated, skill-first challenge app, not a betting app, crypto app, casino ad, or generic fintech mockup.
+Create UGC-style vertical videos that show the exact look and product feel of the DARE mobile app. The creative feels like a real person demonstrating a regulated, skill-first challenge app, not a betting app, crypto app, casino ad, or generic fintech mockup.
 
 Primary format:
 
@@ -75,8 +75,8 @@ UI structure:
 Core product screens to show:
 
 - Feed: "DARE Feed", preview data alerts, filter chips, live pulse, "Got something to prove?" issue CTA, top players.
-- Create: "Issue a DARE", type/category choices, algorithmic selected, review escrow flow.
-- Court: "The Court", live player-vs-player arena, timer, score, pot, active status.
+- Create: "Issue a DARE", resolution/category choices, creator-authored rules, review escrow flow.
+- Court: "The Court", live participant arena, timer, score or proof status, stake/reward summary, active status.
 - Wallet: "Wallet", available balance, DARE coins, escrow, trust score, deposit/withdraw actions, pending confirmation copy.
 - Profile: "My Profile", Kade profile, Champion trust score, win rate, earnings, disputes.
 
@@ -95,7 +95,7 @@ Approved product language:
 
 - "Challenge friends."
 - "Set clear rules."
-- "Lock stakes in escrow."
+- "Lock stakes or rewards in escrow."
 - "Skill decides the outcome."
 - "Submit proof."
 - "Settlement stays pending until confirmed."
@@ -121,7 +121,7 @@ Story:
 1. Creator speaks to camera with phone in hand.
 2. Quick close-up of Feed screen.
 3. Show Create screen and point to challenge type/category.
-4. Show Court screen with timer, players, score, and pot.
+4. Show Court screen with timer, participants, score or proof status, and stake/reward summary.
 5. Show Wallet screen and mention escrow/pending confirmation.
 6. End on Profile or Feed with a direct but responsible CTA.
 
@@ -135,12 +135,12 @@ Tone:
 
 Spoken:
 
-"This is DARE. You create a challenge, set the rules, and the stake sits in escrow. Then both players enter Court mode, the timer runs, and skill decides the result. I like that the wallet shows what is available, what is locked, and what is still pending."
+"This is DARE. You create a challenge, set the rules, and the stake or reward sits in escrow. Then participants enter Court mode or submit proof, the timer runs, and skill decides the result. I like that the wallet shows what is available, what is locked, and what is still pending."
 
 On-screen captions:
 
 - "Set the rules"
-- "Stake stays in escrow"
+- "Stake or reward stays in escrow"
 - "Play in Court mode"
 - "Settlement stays clear"
 
@@ -148,7 +148,7 @@ Shot list:
 
 1. 0-2s: Presenter holds phone, direct-to-camera hook.
 2. 2-5s: Feed screen close-up, thumb scroll or tap near Issue CTA.
-3. 5-8s: Create screen, highlight Algorithmic and Category.
+3. 5-8s: Create screen, highlight rules, category, and proof method.
 4. 8-12s: Court screen, timer and score visible.
 5. 12-15s: Wallet/Profile screen, escrow and trust visible.
 
@@ -156,7 +156,7 @@ Shot list:
 
 Spoken:
 
-"I found an app for those friendly challenges that always end in arguments. It is called DARE. First you issue a DARE and write the rules. Then the stake is shown clearly before anything moves. If both players accept, you go into Court mode with a timer, score, and pot visible. The important part is the wallet: it separates available balance, escrow, and pending confirmations, so the app does not pretend money moved before settlement. It feels like a challenge app built with guardrails."
+"I found an app for those friendly challenges that always end in arguments. It is called DARE. First you issue a DARE and write the rules. Then the stake or reward is shown clearly before anything moves. Skill-Based DAREs match two participants; Task-Based DAREs let the Darer fund a reward for valid completion. The important part is the wallet: it separates available balance, escrow, and pending confirmations, so the app does not pretend money moved before settlement. It feels like a challenge app built with guardrails."
 
 On-screen captions:
 
@@ -171,7 +171,7 @@ Shot list:
 
 1. 0-3s: Creator selfie hook.
 2. 3-7s: Auth or Feed screen in phone.
-3. 7-12s: Create screen, point to Algorithmic, Jury, Evidence cards.
+3. 7-12s: Create screen, point to Answer Key, Witnessed, Evidence cards.
 4. 12-18s: Court screen with active timer and player scores.
 5. 18-24s: Wallet screen, show Available Balance, In escrow, Trust Score.
 6. 24-30s: Profile screen, creator closes with responsible CTA.
@@ -181,7 +181,7 @@ Shot list:
 Use with Marketing Studio video, mode `ugc`, aspect `9:16`, duration `15`.
 
 ```text
-Vertical UGC phone-demo ad for DARE, a skill-first challenge mobile app. A confident young creator speaks naturally to camera while holding a phone. The phone screen must match the provided DARE mobile screenshots exactly: near-black background, orange DARE logo and buttons, white heavy angular display headings, dark navy cards, bottom tabs Feed Create Court Wallet Profile, compact mono labels, escrow and wallet states. Show quick close-ups of the real app screens: DARE Feed, Issue a DARE, The Court with timer and player scores, Wallet with available balance and escrow. Tone is practical and trustworthy, not hype. The creator says that users set rules, lock stakes in escrow, play in Court mode, and see available versus pending money clearly. No casino imagery, no betting language, no crypto visuals, no fake UI redesigns.
+Vertical UGC phone-demo ad for DARE, a skill-first challenge mobile app. A confident young creator speaks naturally to camera while holding a phone. The phone screen must match the provided DARE mobile screenshots exactly: near-black background, orange DARE logo and buttons, white heavy angular display headings, dark navy cards, bottom tabs Feed Create Court Wallet Profile, compact mono labels, escrow and wallet states. Show quick close-ups of the real app screens: DARE Feed, Issue a DARE, The Court with timer and participant scores or proof status, Wallet with available balance and escrow. Tone is practical and trustworthy, not hype. The creator says that users set rules, lock Skill-Based stakes or Task-Based rewards in escrow, play or submit proof, and see available versus pending money clearly. No casino imagery, no betting language, no crypto visuals, no fake UI redesigns.
 ```
 
 ## Higgsfield Prompt: 30s UGC
@@ -189,7 +189,7 @@ Vertical UGC phone-demo ad for DARE, a skill-first challenge mobile app. A confi
 Use with Marketing Studio video, mode `ugc_how_to`, aspect `9:16`, duration `30`.
 
 ```text
-Vertical how-to UGC video for DARE, a mobile app for skill-based challenges with escrow and dispute-ready settlement. A relatable creator demonstrates the app on a phone in a clean everyday setting. The app UI must match the supplied DARE mobile screenshots exactly: black #050509 background, orange #FF5500 primary actions and DARE mark, white angular DARE wordmark, dark card panels, bottom tab bar with Feed Create Court Wallet Profile, mono labels, visible wallet escrow and pending confirmation language. Sequence: open Feed, tap Issue, show Create screen with Algorithmic selected, show Court mode with timer score pot and ACTIVE NOW badge, show Wallet with available balance and escrow, end on Profile trust score. Spoken tone is clear and accountable. Emphasize rules, skill, escrow, proof, and confirmed settlement. Avoid casino, gambling, jackpot, odds, slot machines, crypto coins, money rain, exaggerated earnings, or any UI that does not match the screenshots.
+Vertical how-to UGC video for DARE, a mobile app for skill-based challenges and task rewards with escrow and dispute-ready settlement. A relatable creator demonstrates the app on a phone in a clean everyday setting. The app UI must match the supplied DARE mobile screenshots exactly: black #050509 background, orange #FF5500 primary actions and DARE mark, white angular DARE wordmark, dark card panels, bottom tab bar with Feed Create Court Wallet Profile, mono labels, visible wallet escrow and pending confirmation language. Sequence: open Feed, tap Issue, show Create screen with creator-authored rules, DARE type, and proof method, show Court mode with timer score or proof status and ACTIVE NOW badge, show Wallet with available balance and escrow, end on Profile trust score. Spoken tone is clear and accountable. Emphasize rules, skill, escrow, proof, and confirmed settlement. Avoid casino, gambling, jackpot, odds, slot machines, crypto coins, money rain, exaggerated earnings, or any UI that does not match the screenshots.
 ```
 
 ## Negative Prompt / Guardrails
@@ -209,13 +209,13 @@ Phone close-up showing the DARE Feed screen exactly like the reference: orange D
 Create close-up:
 
 ```text
-Phone close-up showing Issue a DARE screen exactly like the reference: preview data alert, four-step progress row, Type section, Algorithmic selected card with orange border, Jury and Evidence dark cards, Category chips, orange Create tab active.
+Phone close-up showing Issue a DARE screen exactly like the reference: preview data alert, progress row, resolution/proof section, creator-authored rules, Witnessed and Evidence dark cards, Category chips, orange Create tab active.
 ```
 
 Court close-up:
 
 ```text
-Phone close-up showing The Court screen exactly like the reference: Premier League quiz in court mode, timer 1:12, Kade versus Tomi player cards, scores 3 and 2, pot NGN 5,000, ACTIVE NOW badge, bottom Court tab active.
+Phone close-up showing The Court screen exactly like the reference: live challenge in court mode, timer 1:12, Kade versus Tomi participant cards, result/proof status, stake or reward NGN 5,000, ACTIVE NOW badge, bottom Court tab active.
 ```
 
 Wallet close-up:

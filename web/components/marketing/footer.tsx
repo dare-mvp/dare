@@ -38,7 +38,7 @@ export function MarketingFooter() {
           <div className="space-y-2">
             <DareLogo size="md" />
             <p className="text-sm text-muted-foreground leading-relaxed">
-              The hyper-local P2P skill wagering platform for Africa.
+              User-authored Skill-Based competitions and Task-Based rewards with escrow-backed settlement.
             </p>
           </div>
 
@@ -100,8 +100,9 @@ export function MarketingFooter() {
 
         <div className="mt-10 border-t border-white/8 pt-6 text-xs text-muted-foreground">
           <p>
-            DARE is a skill-based challenges platform. Outcomes are determined by player performance,
-            not chance. Available to users 18 and over in supported regions.
+            DARE is a skill-based challenges platform for user-authored DAREs. Outcomes settle
+            through Answer Key, Witnessed, Evidence, or blinded review flows. Available to users 18
+            and over in supported regions.
           </p>
           <p className="mt-3">&copy; {new Date().getFullYear()} DARE. All rights reserved.</p>
         </div>

@@ -2,7 +2,7 @@
 
 ## Brand Position
 
-DARE is a skill-first challenge platform for friends and local communities. The brand should feel competitive, direct, secure, and fast. It should not feel like a casino, a generic crypto app, or a playful toy.
+DARE is a skill-first challenge platform for friends and local communities. The brand feels competitive, direct, secure, and fast. It does not feel like a casino, a generic crypto app, or a playful toy.
 
 Primary brand idea:
 
@@ -95,7 +95,7 @@ Rules:
 
 ## Voice And Messaging
 
-DARE should sound confident, precise, and accountable.
+DARE sounds confident, precise, and accountable.
 
 Use:
 
@@ -123,7 +123,7 @@ Use these exact handles and URLs in marketing surfaces, decks, app-store copy, a
 
 ## Product UI Rules
 
-Primary actions should use brand orange. Secondary actions should use dark surfaces with subtle borders. Destructive actions must use the blocked color and explicit confirmation.
+Primary actions use brand orange. Secondary actions use dark surfaces with subtle borders. Destructive actions must use the blocked color and explicit confirmation.
 
 For admin screens, prioritize trust and scanning:
 
@@ -152,7 +152,7 @@ For consumer screens, emphasize:
 
 ## Implementation Notes
 
-Current web tokens live in `web/app/globals.css`. New UI should use existing tokens before adding colors. If a new color is needed, document its role here before adding it to CSS.
+Current web tokens live in `web/app/globals.css`. New UI uses existing tokens before adding colors. Any new color must have its role documented here before it is added to CSS.
 
 Logo component usage:
 

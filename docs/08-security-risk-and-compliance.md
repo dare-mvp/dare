@@ -36,6 +36,10 @@ Confirms deposits and executes withdrawals or payouts.
 
 Stores evidence media privately with signed access.
 
+### LiveKit Cloud
+
+Provides live Court WebRTC rooms, participant/audience media transport, and server-side recording/egress signals. LiveKit provider events are inputs to DARE's audit and evidence model; they do not directly decide winners, payouts, or settlements.
+
 ### Admin Console
 
 High-risk interface that requires strong authentication, role controls, and complete audit logging.
@@ -106,11 +110,16 @@ Risks:
 - Upload substitution
 - Unauthorized evidence access
 - Metadata leakage
+- Recording consent gaps
+- Provider webhook spoofing or replay
 
 Controls:
 
 - In-app capture for high-trust evidence
-- Server-stamped sessions
+- Server-stamped LiveKit Court sessions
+- Backend-only LiveKit room/token generation
+- Verified and idempotent LiveKit webhooks
+- Recorded consent version and timestamp for participants
 - Private buckets
 - Signed URLs with short TTL
 - Content hash
@@ -156,7 +165,7 @@ Controls:
 
 ### Payment Provider Policy
 
-The support research flags that payment providers may restrict gambling, gaming, or games of skill with entry fees and prizes. DARE must obtain provider approval before real-money launch.
+The support research flags that payment providers can restrict gambling, gaming, or games of skill with entry fees and prizes. DARE must obtain provider approval before real-money launch.
 
 Validation required:
 
@@ -172,14 +181,21 @@ DARE must validate how each launch jurisdiction classifies:
 
 - Skill competitions
 - Prize competitions
-- Peer-to-peer wagers
+- Paid peer-to-peer skill challenges and task rewards
 - Platform rake
 - Tournaments
 - Promotions
 
-Do not assume "skill-based" removes regulatory obligations.
+Skill-based classification does not remove regulatory obligations.
 
 ### KYC / AML
+
+Current phase decision:
+
+- DARE can receive KYC document uploads into private storage and store only redacted document metadata plus a private storage reference.
+- Internal/manual KYC review through the admin action is acceptable for this phase.
+- Automated vendor verification through Dojah, Prembly, Smile Identity, or another KYC provider is deferred until the first-market provider is selected.
+- Magic-byte validation, malware scanning, and orphan-upload cleanup are future hardening items, not current-phase blockers.
 
 Required planning:
 
@@ -222,9 +238,22 @@ Required planning:
 - Authorization/RLS tests
 - DARE state machine tests
 - Evidence access tests
+- LiveKit token authorization and webhook verification tests
 - Juror eligibility tests
 - Admin permission tests
 - Rate limit tests
+
+## Production Reviewer Account Control
+
+DARE maintains one production-phase reviewer account for mobile UI/UX testing. Account metadata is documented in `13-mobile-backend-integration.md`.
+
+Controls:
+
+- Do not store the reviewer password in the repository, docs, issue tracker, or chat transcripts.
+- Rotate reviewer credentials through Supabase Auth Admin or the app password-reset flow when access is lost.
+- Send temporary credentials only through the verified `daregamesapp.com` email channel.
+- Keep the reviewer account clearly labeled and use it only for app review, not real customer activity.
+- Review and disable the account before public launch if it is no longer needed.
 
 ## Launch Blockers
 

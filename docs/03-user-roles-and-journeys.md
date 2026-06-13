@@ -22,13 +22,21 @@ Authenticated user who can create, accept, and participate in DAREs.
 
 Player who creates a DARE. In the prototype this maps to Player A.
 
+### Darer
+
+Player who creates and funds a Task-Based DARE reward.
+
 ### Challenger
 
-Player who accepts a DARE. In the prototype this maps to Player B.
+Player who accepts a Skill-Based DARE and commits a matching stake. In the prototype this maps to Player B.
+
+### Performer
+
+Player who accepts or claims a Task-Based DARE and attempts to complete the Darer's task without staking their own money.
 
 ### Spectator
 
-User who watches live Court sessions, chats, reacts, and may vote when eligible.
+User who watches LiveKit-powered live Court sessions, chats, reacts, and votes only when eligible.
 
 ### Juror
 
@@ -60,19 +68,21 @@ Open decisions:
 ## Journey 2: Create A DARE
 
 1. Issuer taps Create.
-2. Selects DARE type and category.
-3. Defines the test.
-4. Sets duration.
-5. Sets proof method.
-6. Chooses open challenge or specific opponent.
-7. Sets stake.
-8. Reviews fee, payout, and escrow terms.
-9. Writes rules and edge-case handling.
-10. Reviews constitution.
-11. Submits.
-12. Server validates eligibility, balance, limits, and risk.
-13. Server creates DARE and locks issuer stake when required.
-14. DARE appears in Feed or targeted opponent inbox.
+2. Selects DARE type: Skill-Based or Task-Based.
+3. Selects category and resolution mode.
+4. Defines the creator-authored challenge.
+5. Writes rules, win condition, tie handling, and edge cases.
+6. Chooses one resolution mode: Answer Key, Witnessed, or Evidence.
+7. If using Answer Key, commits private prompts/answers or answer rules before Court.
+8. Sets duration.
+9. Chooses open challenge/task or a specific target participant.
+10. Sets stake for Skill-Based DARE or reward for Task-Based DARE.
+11. Reviews fee, payout/refund, and escrow terms.
+12. Reviews constitution.
+13. Submits.
+14. Server validates eligibility, balance, limits, and risk.
+15. Server creates DARE and locks issuer stake or Darer reward when required.
+16. DARE appears in Feed or targeted participant inbox.
 
 Required states:
 
@@ -80,19 +90,19 @@ Required states:
 - Validation failed
 - Awaiting deposit
 - Created
-- Awaiting opponent
+- Awaiting participant
 - Expired
 
 ## Journey 3: Accept A DARE
 
-1. Challenger opens DARE detail.
+1. Challenger or Performer opens DARE detail.
 2. Reviews issuer profile and trust score.
-3. Reviews constitution, stake, fee, and payout.
+3. Reviews constitution, stake or reward, fee, and payout.
 4. Reviews dispute and cancellation terms.
 5. Accepts.
 6. Server validates DARE is still available.
-7. Server validates challenger eligibility, KYC, stake limits, and wallet balance.
-8. Server locks challenger stake.
+7. Server validates challenger/performer eligibility, KYC, limits, and wallet balance when a stake is required.
+8. Server locks challenger stake for Skill-Based DAREs; Task-Based DAREs lock no performer stake.
 9. DARE moves into ready-up state.
 10. Both users are routed to Court.
 
@@ -107,15 +117,17 @@ Failure states:
 
 ## Journey 4: Court Match
 
-1. Both players enter Court.
-2. Court loads constitution, player cards, stake summary, and timer.
-3. Players mark ready.
+1. Both participants enter Court.
+2. Court loads constitution, participant cards, stake/reward summary, and timer.
+3. Participants mark ready.
 4. Server starts match and broadcasts server time.
-5. Match runs according to DARE type.
-6. Spectators can watch, chat, and vote if eligible.
-7. Result is computed by the server.
-8. Result overlay is shown.
-9. Escrow settles or is held for dispute window.
+5. Match runs according to the creator-authored constitution.
+6. For Answer Key DAREs, prompts/answers are checked against the pre-committed answer key for exact-match answer types. Non-exact or contested answers enter jury/admin review.
+7. For witnessed/evidence DAREs, LiveKit spectators, recordings, evidence, and participant claims produce the result packet.
+8. Spectators can watch, chat, and vote if eligible.
+9. Result is confirmed by answer-key verification, witness signals, evidence review, or jury/admin verdict.
+10. Result overlay is shown.
+11. Escrow settles or is held for dispute window.
 
 Court must support reconnects:
 
@@ -127,13 +139,13 @@ Court must support reconnects:
 ## Journey 5: Evidence-Based DARE
 
 1. Players enter Court.
-2. App requests camera/microphone permission only when needed.
+2. App requests camera/microphone permission only when the user enters capture or a LiveKit live Court.
 3. Recording session is server-stamped.
 4. Evidence is captured in-app.
 5. Upload shows progress and failure recovery.
 6. Evidence object is stored privately.
 7. Hash and metadata are stored.
-8. Evidence packet is sent to jury when needed.
+8. Evidence packet is sent to jury when a dispute or evidence-resolution policy requires review.
 9. Users receive receipt and status.
 
 Required evidence metadata:
@@ -154,7 +166,7 @@ Required evidence metadata:
 4. Server freezes or maintains escrow hold.
 5. Jury case is created.
 6. Jurors are assigned.
-7. Both players see case status.
+7. Both participants see case status.
 8. Verdict is reached.
 9. Settlement executes.
 10. Trust score and dispute record update.
@@ -197,6 +209,8 @@ Wallet must distinguish:
 
 - Available balance
 - Escrowed funds
+- Skill-Based stake holds
+- Task-Based reward holds
 - Pending deposits
 - Pending withdrawals
 - Held funds under review
@@ -209,4 +223,3 @@ Wallet must distinguish:
 3. Admin reviews evidence, ledger, device/risk signals, and prior history.
 4. Admin can escalate, limit accounts, resolve cases, or request more information.
 5. Every admin action is audit-logged.
-

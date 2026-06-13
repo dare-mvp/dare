@@ -66,11 +66,11 @@ export function CategoriesSection() {
             Challenge types
           </div>
           <h2 className="font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
-            Any skill. Any place. Any amount.
+            Two funding models. Three resolution paths.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Create a DARE in any category. Stakes are locked in escrow until the winner is
-            independently verified.
+            Create a DARE in any category. Skill-Based uses two-sided stakes; Task-Based uses a
+            Darer-funded reward. Results settle by Answer Key, Witnessed, or Evidence review.
           </p>
         </div>
 

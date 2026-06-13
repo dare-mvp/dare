@@ -4,17 +4,8 @@ import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { walletSummary } from '../../mocks/wallet';
 import { useAuth } from '../auth/AuthProvider';
-import { WalletTransaction, WalletTransactionType } from './types';
-
-type LedgerEntryRow = {
-  amount: number;
-  created_at: string;
-  direction: 'credit' | 'debit';
-  id: string;
-  metadata: Record<string, unknown> | null;
-  status: string;
-  type: string;
-};
+import { LedgerEntryRow, mapLedgerEntry } from './ledgerEntries';
+import { WalletTransaction } from './types';
 
 type WalletTransactionState = {
   error: string | null;
@@ -27,9 +18,9 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
   const auth = useAuth();
   const [state, setState] = useState<WalletTransactionState>(() => ({
     error: null,
-    loading: false,
-    source: 'mock',
-    transaction: getPreviewTransaction(id),
+    loading: auth.status === 'loading',
+    source: auth.status === 'authenticated' || auth.status === 'loading' ? 'server' : 'mock',
+    transaction: auth.status === 'authenticated' || auth.status === 'loading' ? null : getPreviewTransaction(id),
   }));
 
   useEffect(() => {
@@ -43,7 +34,19 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
         return;
       }
 
-      if (!supabaseClient || auth.status !== 'authenticated' || !isUuid(id)) {
+      if (auth.status === 'authenticated' && (!supabaseClient || !isUuid(id))) {
+        if (mounted) {
+          setState({
+            error: isUuid(id) ? getLoadUserMessage('transaction details') : null,
+            loading: false,
+            source: 'server',
+            transaction: null,
+          });
+        }
+        return;
+      }
+
+      if (auth.status !== 'authenticated') {
         if (mounted) {
           setState({
             error: null,
@@ -55,11 +58,24 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
         return;
       }
 
+      const client = supabaseClient;
+      if (!client) {
+        if (mounted) {
+          setState({
+            error: getLoadUserMessage('transaction details'),
+            loading: false,
+            source: 'server',
+            transaction: null,
+          });
+        }
+        return;
+      }
+
       setState((current) => ({ ...current, loading: true }));
 
-      const { data, error } = await supabaseClient
+      const { data, error } = await client
         .from('ledger_entries')
-        .select('id,type,direction,amount,status,metadata,created_at')
+        .select('id,type,direction,amount,status,metadata,created_at,dare_id,currency')
         .eq('id', id)
         .maybeSingle();
 
@@ -95,47 +111,6 @@ export function useWalletTransaction(id?: string): WalletTransactionState {
 
 function getPreviewTransaction(id?: string) {
   return walletSummary.transactions.find((item) => item.id === id) ?? null;
-}
-
-function mapLedgerEntry(row: LedgerEntryRow): WalletTransaction {
-  return {
-    amountKobo: row.amount,
-    createdLabel: formatCreatedLabel(row.created_at),
-    direction: row.direction,
-    id: row.id,
-    label: getLedgerLabel(row),
-    status: mapLedgerStatus(row.status),
-    type: mapLedgerType(row.type),
-  };
-}
-
-function getLedgerLabel(row: LedgerEntryRow) {
-  const metadataLabel = typeof row.metadata?.label === 'string' ? row.metadata.label : null;
-  if (metadataLabel) return metadataLabel;
-
-  return row.type.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function mapLedgerStatus(status: string): WalletTransaction['status'] {
-  if (status === 'posted') return 'confirmed';
-  if (status === 'reversed') return 'reversed';
-  return 'pending';
-}
-
-function mapLedgerType(type: string): WalletTransactionType {
-  if (type === 'deposit_confirmed') return 'deposit';
-  if (type === 'withdrawal_pending' || type === 'withdrawal_completed') return 'withdrawal_pending';
-  if (type === 'escrow_hold') return 'stake_lock';
-  if (type === 'escrow_release') return 'stake_release';
-  if (type === 'juror_reward') return 'jury_reward';
-  return 'payout';
-}
-
-function formatCreatedLabel(value: string) {
-  return new Intl.DateTimeFormat('en-NG', {
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(value));
 }
 
 function isUuid(value: string) {

@@ -4,6 +4,7 @@ import { sendCourtMessage } from '../../lib/actions/endpoints';
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { isUuid } from '../../lib/ids';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { useAuth } from '../auth/AuthProvider';
 
 export type ChatMessage = {
@@ -82,7 +83,7 @@ export function useCourtChat(dareId?: string): CourtChatState {
       });
 
     const channel = supabaseClient
-      .channel(`court-chat-${dareId}`)
+      .channel(uniqueRealtimeChannelName(`court-chat-${dareId}`))
       .on(
         'postgres_changes',
         {

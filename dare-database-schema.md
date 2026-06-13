@@ -4,7 +4,9 @@
 
 This document defines the first production database schema direction for DARE. It is intended to drive Postgres/Supabase migrations, RLS policies, server functions, seed data, and database tests.
 
-The schema is designed for the MVP described in `docs/05-mvp-scope.md`: Algorithmic DAREs, wallet ledger, escrow, Court ready-up, quiz scoring, settlement, notifications, dispute foundation, admin review, and risk/audit logging.
+The schema is designed for the MVP described in `docs/05-mvp-scope.md`: creator-authored DAREs, wallet ledger, escrow, Court ready-up, proof/result capture, settlement, notifications, dispute foundation, admin review, and risk/audit logging.
+
+Product alignment note: platform-authored challenge questions are no longer the production direction. See `docs/16-dare-resolution-model.md`. Existing `quiz_*` tables and platform-authored question flows are legacy scaffolding until migrated to creator-authored answer-key, witnessed, evidence, and Court-event structures.
 
 Current implementation status: the initial Supabase migration set now exists under `supabase/migrations/`. Local migration filenames now match the remote Supabase migration history for project `dhzcoywgiyrbsiiwlstw`, including the post-deployment RLS/index performance cleanup; this document remains the product and architecture reference for why those tables, policies, and read models exist.
 
@@ -26,7 +28,7 @@ Current implementation status: the initial Supabase migration set now exists und
 - Auth references: `profiles.id` references `auth.users(id)`.
 - Money fields: integer minor units. For NGN, use kobo.
 - Currency fields: ISO 4217 string, default `NGN`.
-- Status fields: text with check constraints in early migrations; Postgres enums may be introduced later if stable.
+- Status fields: text with check constraints in current migrations.
 - Timestamps: `timestamptz`.
 - JSON data: `jsonb`.
 
@@ -101,10 +103,9 @@ declined
 ### Resolution Type
 
 ```text
-algorithmic
+answer_key
 witnessed
-evidenced
-honour
+evidence
 ```
 
 ### Court Phase
@@ -338,7 +339,7 @@ create index payment_transactions_provider_reference_idx on payment_transactions
 RLS intent:
 
 - Users can read their own payment transaction summaries.
-- Raw provider payload may need a private admin/service-only view if it contains sensitive data.
+- Raw provider payload uses a private admin/service-only view when it contains sensitive data.
 - Users cannot insert/update/delete payment transactions directly.
 
 ### ledger_entries
@@ -403,11 +404,11 @@ RLS intent:
 Immutability:
 
 - Add a trigger to block update/delete for non-service roles.
-- Prefer no updates at all for posted rows; corrections should be compensating entries.
+- Prefer no updates at all for posted rows; corrections use compensating entries.
 
 ### wallet_balance_projection
 
-View for available balance. Exact projection rules may evolve, but the first version should distinguish posted credits and debits.
+View for available balance. The first version distinguishes posted credits and debits.
 
 ```sql
 create view wallet_balance_projection as
@@ -423,8 +424,8 @@ group by wallet_account_id, user_id, currency;
 
 Note:
 
-- Escrow visibility should use `escrow_holds`, not only ledger projection.
-- Held and pending balances may need separate views.
+- Escrow visibility uses `escrow_holds`, not only ledger projection.
+- Held and pending balances use separate views when wallet UX needs separate display fields.
 
 ### dares
 
@@ -438,9 +439,12 @@ create table dares (
   title text not null,
   description text,
   category text not null,
+  dare_type text not null default 'skill',
+  funding_model text not null default 'two_sided_stake',
   resolution_type text not null,
   status text not null,
   stake_amount integer not null,
+  reward_amount integer,
   currency text not null default 'NGN',
   platform_fee integer not null default 0,
   winner_payout integer not null default 0,
@@ -456,7 +460,9 @@ create table dares (
   updated_at timestamptz not null default now(),
   constraint dares_title_len check (char_length(title) between 5 and 140),
   constraint dares_category_valid check (category in ('knowledge','physical','verbal','sports','creative','other')),
-  constraint dares_resolution_type_valid check (resolution_type in ('algorithmic','witnessed','evidenced','honour')),
+  constraint dares_dare_type_valid check (dare_type in ('skill','task')),
+  constraint dares_funding_model_valid check (funding_model in ('two_sided_stake','darer_reward')),
+  constraint dares_resolution_type_valid check (resolution_type in ('answer_key','witnessed','evidence')),
   constraint dares_status_valid check (
     status in (
       'draft',
@@ -479,6 +485,11 @@ create table dares (
     )
   ),
   constraint dares_stake_positive check (stake_amount > 0),
+  constraint dares_reward_positive check (reward_amount is null or reward_amount > 0),
+  constraint dares_type_funding_consistent check (
+    (dare_type = 'skill' and funding_model = 'two_sided_stake') or
+    (dare_type = 'task' and funding_model = 'darer_reward')
+  ),
   constraint dares_fee_nonnegative check (platform_fee >= 0 and winner_payout >= 0),
   constraint dares_duration_range check (duration_seconds between 30 and 3600),
   constraint dares_currency_valid check (char_length(currency) = 3),
@@ -507,6 +518,12 @@ RLS intent:
 - Targeted pending DAREs visible only to issuer, target challenger, and admins.
 - Users cannot directly update DARE state.
 - Service functions perform create/accept/ready/complete/settle transitions.
+
+Funding rules:
+
+- Skill-Based DAREs create issuer escrow on create and challenger escrow on accept.
+- Task-Based DAREs create Darer reward escrow on create and do not create performer escrow on accept.
+- `resolution_type` remains independent from `dare_type`.
 
 ### dare_constitutions
 
@@ -618,12 +635,12 @@ create index court_sessions_dare_id_idx on court_sessions (dare_id);
 RLS intent:
 
 - Participants can read their Court session.
-- Spectators may read limited active Court state through a view.
+- Spectators read limited active Court state through a view.
 - Users cannot directly update phase/readiness/heartbeats except via server functions.
 
 ### quiz_questions
 
-Controlled question bank for Algorithmic DARE MVP.
+Legacy controlled question bank for the old Answer Key challenge prototype. This table is not expanded as the production challenge model.
 
 ```sql
 create table quiz_questions (
@@ -651,7 +668,7 @@ create index quiz_questions_active_category_idx on quiz_questions (category, dif
 
 RLS intent:
 
-- Public read of active question prompt/options may be allowed only through server-selected match question API.
+- Public read of active question prompt/options is allowed only through the server-selected match question API.
 - Do not expose `correct_option` to clients through direct table reads.
 - Prefer no direct client read; serve quiz payloads through API/RPC.
 
@@ -686,7 +703,7 @@ RLS intent:
 
 - Participants can read their own answer records.
 - Admin/service role can read all.
-- Clients cannot insert answers directly; answers go through server scoring function.
+- Clients cannot insert answers directly; answers go through a server-authoritative verification function.
 
 ### court_chat_messages
 
@@ -757,7 +774,7 @@ RLS intent:
 
 ### evidence_objects
 
-Evidence is post-MVP for primary DARE type, but disputes and future evidence DAREs need a schema.
+Evidence review is part of the starting resolution model, and disputes also need private evidence packets.
 
 ```sql
 create table evidence_objects (
@@ -990,7 +1007,7 @@ Fields:
 - category
 - resolution type
 - status
-- stake amount
+- stake or reward amount
 - currency
 - created_at
 - expires_at
@@ -1020,7 +1037,7 @@ Fields:
 Implementation note:
 
 - Build from `ledger_entries`, `escrow_holds`, and withdrawal/payment status.
-- Keep as a view first; materialize later only if needed.
+- Keep as a view first; materialize only after a measured performance issue.
 
 ### active_court_public_state
 
@@ -1043,7 +1060,7 @@ Do not expose:
 
 ## Server Functions / RPC Boundaries
 
-These functions should be `security definer` or implemented in a backend API with service-role DB access. The exact location depends on final backend choice.
+Sensitive functions are implemented in the backend API with service-role DB access or as locked-down `security definer` RPCs with explicit grants.
 
 ### create_profile_after_auth
 
@@ -1056,7 +1073,7 @@ Triggered after auth signup or called during onboarding.
 
 ### initialize_deposit
 
-Creates payment transaction and calls provider from backend. This may live outside Postgres if provider call is in Node/Edge Function.
+Creates payment transaction and calls provider from the backend Edge Function.
 
 ### process_payment_webhook
 
@@ -1073,11 +1090,11 @@ Responsibilities:
 Responsibilities:
 
 - validate profile status/KYC/risk
-- validate stake limits
+- validate stake or reward limits
 - calculate fee and payout
 - insert DARE
 - insert constitution
-- create issuer escrow hold
+- create issuer stake escrow hold for Skill-Based DAREs or Darer reward escrow hold for Task-Based DAREs
 - create ledger debit for escrow hold
 - create audit log
 
@@ -1087,9 +1104,9 @@ Responsibilities:
 
 - lock DARE row
 - validate DARE availability
-- validate challenger status/KYC/risk
-- create challenger escrow hold
-- create ledger debit for escrow hold
+- validate challenger/performer status/KYC/risk
+- create challenger escrow hold and ledger debit only for Skill-Based DAREs
+- create no performer escrow hold for Task-Based DAREs
 - update DARE
 - create Court session
 - create notifications
@@ -1105,7 +1122,7 @@ Responsibilities:
 - update DARE status
 - broadcast realtime event
 
-### submit_algorithmic_answer
+### submit_answer_key_answer
 
 Responsibilities:
 
@@ -1116,7 +1133,7 @@ Responsibilities:
 - insert answer once
 - broadcast score update
 
-### complete_algorithmic_dare
+### complete_answer_key_dare
 
 Responsibilities:
 
@@ -1147,7 +1164,7 @@ Responsibilities:
 - create jury case
 - move DARE to dispute state
 - hold settlement
-- notify opponent/admins
+- notify the counterparty/admins
 - create audit log
 
 ### cast_jury_vote
@@ -1222,7 +1239,7 @@ Reject update/delete on `ledger_entries` for all roles except a privileged maint
 
 ### Audit Trigger For Admin Tables
 
-Admin actions should be explicit through API, but DB-level audit triggers can be added for defense-in-depth on:
+Admin actions are explicit through API. DB-level audit triggers can be added for defense-in-depth on:
 
 - profiles account/risk changes
 - wallet account status changes
@@ -1234,13 +1251,15 @@ Admin actions should be explicit through API, but DB-level audit triggers can be
 
 ### Quiz Questions
 
-Seed at least:
+Legacy prototype seed data only. Do not treat platform-authored challenge questions as required production seed data.
+
+If this legacy path remains enabled temporarily, seed at least:
 
 - 50 knowledge questions
 - 25 sports questions
 - 25 verbal/logic questions
 
-Each question should have:
+Each legacy question has:
 
 - category
 - prompt
@@ -1310,8 +1329,9 @@ Implemented migration sequence:
 40. `20260524030000_rate_limits_webhooks_cron_jury_guards.sql` - Postgres-backed action rate limits, idempotent required pg_cron scheduling with verification RPC, jury vote immutability and participant-assignment guards, and refreshed jury assignment filtering.
 41. `20260524031000_withdrawal_pending_projection_fix.sql` - pending withdrawal balances now follow `withdrawal_requests` state so completed, failed, reversed, or cancelled transfers stop reserving funds.
 42. `20260524032000_withdrawal_execution_rpc.sql` - atomic Paystack withdrawal claim RPC for execution workers.
+43. `20260608193720_private_kyc_storage.sql` - current-phase KYC document intake: private `kyc-documents` bucket, authenticated owner-prefix upload policy, hardened `submit_kyc_action`, and revoked direct client table access to `kyc_verifications`.
 
-Server functions/RPCs are now being implemented incrementally. The action layer currently covers profile reads/updates, automatic wallet provisioning, Postgres-backed rate limits for high-risk actions, jury opt-in preferences, notification read state, responsible gaming limit settings with delayed increases and cooling-off enforcement, cumulative deposit limit checks, self-exclusion with open/active DARE cleanup, Paystack deposit initialization and deposit/withdrawal webhook handling, withdrawal queue creation, Paystack withdrawal execution, and provider-state-aware pending balance projection, DARE create/accept/cancel with escrow and platform fee projection, active-match forfeit with immediate settlement, Court ready-up with KYC validation, quiz assignment, and heartbeat, authoritative answer scoring, escrow settlement after completion/forfeit with winner payout and platform fee ledgering, dispute filing, evidence upload/confirmation through the `dare-evidence` bucket, manual admin dispute resolution, jury assignment with blind-packet randomization, participant filtering, and device anti-collusion checks, immutable jury voting with quorum handling, KYC submit/status/admin decision, idempotency cleanup, verified scheduled active Court expiry, stale-heartbeat forfeit, jury quorum expiry, action-rate-limit cleanup, and scheduled post-dispute auto-settlement. Remaining functions should enforce deeper operational admin workflows.
+Server functions/RPCs are now being implemented incrementally. The action layer currently covers profile reads/updates, automatic wallet provisioning, Postgres-backed rate limits for high-risk actions, jury opt-in preferences, notification read state, responsible gaming limit settings with delayed increases and cooling-off enforcement, cumulative deposit limit checks, self-exclusion with open/active DARE cleanup, Paystack deposit initialization and deposit/withdrawal webhook handling, withdrawal queue creation, Paystack withdrawal execution, and provider-state-aware pending balance projection, DARE create/accept/cancel with escrow and platform fee projection, active-match forfeit with immediate settlement, Court ready-up with KYC validation, legacy quiz assignment/answer scoring, escrow settlement after completion/forfeit with settlement payout and platform fee ledgering, dispute filing, evidence upload/confirmation through the `dare-evidence` bucket, manual admin dispute resolution, jury assignment with blind-packet randomization, participant filtering, and device anti-collusion checks, immutable jury voting with quorum handling, private-storage KYC submit/status/admin decision, idempotency cleanup, verified scheduled active Court expiry, stale-heartbeat forfeit, jury quorum expiry, action-rate-limit cleanup, and scheduled post-dispute auto-settlement. Production work replaces legacy quiz behavior with creator-authored answer-key, witnessed, and evidence result flows. Third-party KYC vendor automation, file magic-byte validation, malware scanning, and orphan-upload cleanup are documented future hardening items, not current-phase blockers.
 
 ## Database Test Requirements
 
@@ -1347,9 +1367,11 @@ Test:
 
 - deposit webhook creates one ledger entry
 - duplicate webhook creates no duplicate credit
-- create DARE creates issuer escrow hold
-- accept DARE creates challenger escrow hold
-- insufficient funds blocks accept
+- create Skill-Based DARE creates issuer escrow hold
+- create Task-Based DARE creates Darer reward escrow hold
+- accept Skill-Based DARE creates challenger escrow hold
+- accept Task-Based DARE creates no performer escrow hold
+- insufficient funds blocks Skill-Based accept
 - completed DARE settles once
 - dispute blocks settlement
 - jury verdict triggers correct settlement path
@@ -1372,16 +1394,16 @@ The initial schema decision set is now resolved by the migration series and summ
 3. Platform fees use an internal wallet account created during secure setup.
 4. Settlement waits for the dispute window before final payout.
 5. Public feed reads use `public_dare_feed`; sensitive mutations stay behind server functions.
-6. Postgres enums are deferred; use text plus check constraints until values stabilize.
+6. Postgres enums are not part of MVP; use text plus check constraints.
 7. Evidence tables ship now because disputes need private evidence packets.
-8. Court selected questions are stored in `dare_quiz_rounds`.
+8. Legacy Court selected questions are stored in `dare_quiz_rounds`; production answer-key resolution must use creator-authored commitments instead of platform-authored questions.
 
 ---
 
 ## Schema Gap Analysis And Resolution Status
 ### Cross-referenced against: prototype (index.html), docs/01–10, dare-master-strategy.md, deep-research-report.md
 
-This section is retained as the audit trail behind the migration design. The Supabase migrations apply the recommended fixes for GAP-01 through GAP-23. GAP-24 is resolved by the implemented migration order above. The wording below describes the original gap, rationale, and fix, even where the fix is now present in `supabase/migrations/`.
+This section is retained as the historical audit trail behind the migration design. The Supabase migrations apply the documented fixes for GAP-01 through GAP-23. GAP-24 is resolved by the implemented migration order above. The wording below describes the original gap, rationale, and fix, even where the fix is now present in `supabase/migrations/`.
 
 ---
 
@@ -1418,16 +1440,16 @@ The counters are updated by server functions after each vote or answer. Individu
 
 ---
 
-#### GAP-02: `dare_quiz_rounds` table is missing (Open Decision #8 — resolve YES)
+#### GAP-02: `dare_quiz_rounds` table is missing (legacy prototype decision)
 
-`dare_quiz_answers` references `question_id` but there is no record of which questions were assigned to a given dare. Without this:
+This gap applies only to the legacy platform-authored quiz prototype. `dare_quiz_answers` references `question_id` but there is no record of which questions were assigned to a given dare. Without this:
 
-- Both players cannot be served identical questions simultaneously.
+- Participants cannot be served identical questions simultaneously.
 - Answer submission cannot be validated against the assigned question set.
 - The match cannot be audited or reconstructed.
-- A player could attempt to guess or probe the question bank before their match.
+- A player can attempt to guess or probe the question bank before their match.
 
-Open Decision #8 should be resolved in favour of the table. Add:
+Resolved decision: add the table:
 
 ```sql
 create table dare_quiz_rounds (
@@ -1514,7 +1536,7 @@ These are populated by the server function writing the entry, not computed later
 
 ### SIGNIFICANT — Required for documented features or compliance
 
-#### GAP-06: `trust_events` table missing (Open Decisions #1 and #2 — resolve YES for MVP)
+#### GAP-06: `trust_events` table missing (resolved YES for MVP)
 
 `doc/07-disputes-jury-and-trust` lists ten distinct positive and negative trust signals. `doc/04` marks this as Open Decision #1 and #2 with no resolution. Without an event log:
 
@@ -1695,7 +1717,7 @@ create index jury_flags_case_idx on jury_flags (jury_case_id);
 
 #### GAP-13: `evidence_objects` has no link to `jury_cases`
 
-A jury case reviews specific evidence objects. Currently the link is indirect: jury case → dare_id → evidence_objects. If both players submitted evidence, the server must know which is submission A and which is submission B for the blind packet. This mapping is not stored.
+A jury case reviews specific evidence objects. Currently the link is indirect: jury case → dare_id → evidence_objects. If both participants submitted evidence, the server must know which is submission A and which is submission B for the blind packet. This mapping is not stored.
 
 Add columns to `jury_cases`:
 
@@ -1717,7 +1739,7 @@ These are set when the case is created by the server, establishing the blind map
 alter table dares add column constitution_id uuid references dare_constitutions(id) on delete restrict;
 ```
 
-This creates a nullable back-reference set after constitution creation. This is a circular reference that should be handled carefully in migrations (nullable initially, then set after constitution insert).
+This creates a nullable back-reference set after constitution creation. The migration creates the column nullable first, inserts the constitution, then sets the back-reference.
 
 ---
 
@@ -1751,15 +1773,15 @@ alter table profiles
   add column avatar_color text default 'ember';
 ```
 
-`last_active_at` should be updated on every authenticated action (via application middleware, not a trigger, to avoid excessive writes).
+`last_active_at` is updated on every authenticated action via application middleware, not a trigger, to avoid excessive writes.
 
 ---
 
 #### GAP-17: `dare_quiz_answers.response_ms` is client-spoofable
 
-The field captures how quickly a player answered. If the client sends this value, it can be manipulated. It should be computed server-side from the time the question was delivered to the time the answer was received.
+The field captures how quickly a player answered. If the client sends this value, it can be manipulated. It is computed server-side from the time the question was delivered to the time the answer was received.
 
-To make this reliable, `dare_quiz_rounds` (GAP-02) should record `question_delivered_at` per player, and the server computes `response_ms = received_at - question_delivered_at`.
+To make this reliable, `dare_quiz_rounds` (GAP-02) records `question_delivered_at` per player, and the server computes `response_ms = received_at - question_delivered_at`.
 
 Either remove `response_ms` from client-submitted answer payloads and compute it server-side, or mark it as informational only (not used in scoring or trust decisions).
 
@@ -1769,12 +1791,12 @@ Either remove `response_ms` from client-submitted answer payloads and compute it
 
 `dares.status` has values like `ready_check`, `active`, and `awaiting_result`. `court_sessions.phase` has overlapping values: `ready_check`, `active`, `awaiting_result`. These two sources of truth can diverge.
 
-The intended authority should be explicit:
+The intended authority is explicit:
 
 - `dares.status` is the durable business record — updated by server functions at key transitions.
 - `court_sessions.phase` is the ephemeral operational state — updated frequently during a live match.
 
-Server functions should update both atomically. Document this in a comment or architecture note. Add:
+Server functions update both atomically. Add:
 
 ```sql
 comment on column court_sessions.phase is
@@ -1853,7 +1875,7 @@ create index audit_logs_created_idx on audit_logs (created_at desc);
 
 #### GAP-24: Migration order did not include applied gap tables
 
-`dare_quiz_rounds` (GAP-02) and `withdrawal_requests` (GAP-03) should appear in the migration order. The implemented sequence now includes them:
+`dare_quiz_rounds` (GAP-02) and `withdrawal_requests` (GAP-03) appear in the migration order. The implemented sequence now includes them:
 
 ```text
 0005_court_and_quiz.sql         -- add dare_quiz_rounds here
@@ -1865,9 +1887,9 @@ create index audit_logs_created_idx on audit_logs (created_at desc);
 
 ---
 
-## Resolved Open Decisions
+## Resolved Schema Decisions
 
-The following Open Schema Decisions are now resolved:
+The following schema decisions are resolved:
 
 | Decision | Resolution |
 |---|---|
@@ -1877,17 +1899,17 @@ The following Open Schema Decisions are now resolved:
 | #4 — dispute window vs immediate settlement | Settlement waits for dispute window (`dispute_deadline_at` on dare). Settles automatically after window expires with no dispute filed. Server job polls for expired windows. |
 | #5 — public feed view or API-only | View (`public_dare_feed`) is the right call for Supabase RLS-protected reads. Serve via Supabase direct client for the feed; use API for mutations. |
 | #6 — Postgres enums | Defer. Use text + check constraints now. Migrate to enums after status values have been stable for one full sprint cycle. |
-| #7 — evidence tables in MVP migration | Yes. Create the schema now even though evidence DAREs are excluded from MVP scope. Evidence tables will be referenced by disputes (juror evidence packets). |
-| #8 — dare_quiz_rounds table | Yes. Required for question assignment integrity. See GAP-02. |
+| #7 — evidence tables in MVP migration | Yes. Evidence review is part of the starting resolution model and disputes also rely on juror evidence packets. |
+| #8 — dare_quiz_rounds table | Yes for legacy prototype integrity only. Production answer-key resolution uses creator-authored commitments. |
 
 ---
 
-## Recommended Next Step
+## Next Database Step
 
-Validate the current migration set locally, then add the server function/RPC layer that performs all sensitive writes. The next database work should be:
+Validate the current migration set locally, then add the server function/RPC layer that performs all sensitive writes. The next database work is:
 
 1. Run a clean local Supabase reset against `supabase/migrations/`.
 2. Add database tests for constraints, RLS, ledger immutability, and payment idempotency.
-3. Implement service-role functions for DARE creation/acceptance, quiz scoring, settlement, withdrawals, disputes, and trust events.
+3. Implement service-role functions for DARE creation/acceptance, creator-authored result capture, settlement, withdrawals, disputes, and trust events.
 4. Add storage bucket policies for private evidence and signed URL access.
 5. Clean SQL comment encoding so migration comments render consistently across terminals.

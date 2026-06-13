@@ -26,34 +26,43 @@ Funds frozen due to dispute, risk review, chargeback, or compliance issue.
 
 Use an append-only ledger. Avoid direct mutable balance updates as the source of truth.
 
-Every financial event should produce ledger entries:
+Every financial event produces ledger entries:
 
 - Deposit confirmed
 - Escrow hold
 - Escrow release
-- Winner payout
+- Settlement payout
 - Platform fee
 - Withdrawal pending
 - Withdrawal completed
 - Reversal
 - Manual adjustment
 
-Balances should be derived or reconciled from ledger entries.
+Balances are derived or reconciled from ledger entries.
 
 ## Escrow Flow
 
-### Create DARE
+### Stake Models
 
-For open DAREs, the issuer stake can be locked at creation or when the DARE is first accepted. The product must decide this explicitly.
+DARE has two funding models:
+
+- `two_sided_stake`: Skill-Based DARE. The Darer and Challenger both fund escrow.
+- `darer_reward`: Task-Based DARE. Only the Darer funds escrow; the Performer does not stake money.
+
+Both models use the same escrow, dispute, evidence, and settlement infrastructure.
+
+### Create Skill-Based DARE
+
+For open Skill-Based DAREs, the issuer stake is locked at creation.
 
 Recommended for trust:
 
-1. Issuer creates DARE.
+1. Issuer creates Skill-Based DARE.
 2. Server validates available balance.
 3. Issuer stake is locked immediately.
 4. If DARE expires, escrow returns to issuer.
 
-### Accept DARE
+### Accept Skill-Based DARE
 
 1. Challenger accepts.
 2. Server verifies DARE is still open.
@@ -61,12 +70,27 @@ Recommended for trust:
 4. Challenger stake is locked.
 5. DARE moves to ready_check.
 
+### Create Task-Based DARE
+
+1. Darer creates Task-Based DARE.
+2. Server validates available balance.
+3. Darer's reward is locked immediately.
+4. If the task expires or is cancelled before acceptance, escrow returns to the Darer.
+
+### Accept Task-Based DARE
+
+1. Performer accepts or claims the task.
+2. Server verifies DARE is still open.
+3. Server verifies performer KYC, limits, and risk status.
+4. No performer stake is locked.
+5. DARE moves to ready_check or active according to the task constitution.
+
 ### Complete DARE
 
-1. Server computes winner.
+1. Server computes winner or validates task completion.
 2. Server calculates platform fee.
 3. Server releases escrow.
-4. Winner receives payout.
+4. Skill-Based winner receives payout or Task-Based performer receives reward.
 5. Platform receives fee.
 6. DARE moves to settled.
 
@@ -116,9 +140,9 @@ Do not credit wallet from a client callback alone.
 
 ## Fees
 
-The product should show fees before commitment.
+The product shows fees before commitment.
 
-Fee components may include:
+Fee components are:
 
 - Platform rake
 - Payment processing fee
@@ -129,7 +153,7 @@ The server must calculate canonical fees.
 
 ## Limits
 
-Limits should vary by KYC tier and risk status:
+Limits vary by KYC tier and risk status:
 
 - Max stake per DARE
 - Max daily stake volume

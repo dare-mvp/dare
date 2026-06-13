@@ -1,14 +1,14 @@
 import {
   BadgeHelp,
   Banknote,
-  Bot,
   Brain,
   Clock3,
+  Dumbbell,
   FileCheck2,
   Gavel,
-  Landmark,
+  KeyRound,
   ListChecks,
-  Mic2,
+  MessageCircle,
   Palette,
   Scale,
   Trophy,
@@ -17,6 +17,7 @@ import { ReactNode } from 'react';
 
 import { colors } from '../../theme/tokens';
 import { DareCategory, ResolutionType } from './types';
+import type { DareType } from './types';
 
 export type IconOption<T> = {
   body?: string;
@@ -27,30 +28,45 @@ export type IconOption<T> = {
 
 export const resolutionOptions: Array<IconOption<ResolutionType>> = [
   {
-    body: 'Auto-scored quiz or timed challenge.',
-    icon: <Bot color={colors.primary} size={20} />,
-    label: 'Algorithmic',
-    value: 'algorithmic',
+    body: 'Creator-provided prompt with a committed answer key for settlement.',
+    icon: <KeyRound color={colors.primary} size={20} />,
+    label: 'Answer Key',
+    value: 'answer_key',
   },
   {
-    body: 'Community verdict after evidence review.',
-    icon: <Gavel color={colors.purple} size={20} />,
-    label: 'Jury',
-    value: 'jury',
+    body: 'Live challenge judged by witness signals and jury review when needed.',
+    icon: <Gavel color={colors.warning} size={20} />,
+    label: 'Witnessed',
+    value: 'witnessed',
   },
   {
-    body: 'Proof upload, then opponent review.',
+    body: 'Proof upload and review for real-world tasks that need submitted evidence.',
     icon: <FileCheck2 color={colors.info} size={20} />,
     label: 'Evidence',
     value: 'evidence',
   },
 ];
 
+export const dareTypeOptions: Array<IconOption<DareType>> = [
+  {
+    body: 'Two participants compete. Both players lock matched stakes before Court.',
+    icon: <Trophy color={colors.primary} size={20} />,
+    label: 'Skill-Based',
+    value: 'skill',
+  },
+  {
+    body: 'The Darer locks the reward. The performer accepts without staking money.',
+    icon: <Banknote color={colors.warning} size={20} />,
+    label: 'Task-Based',
+    value: 'task',
+  },
+];
+
 export const categoryOptions: Array<IconOption<DareCategory>> = [
   { icon: <Brain color={colors.info} size={15} />, label: 'Knowledge', value: 'knowledge' },
+  { icon: <Dumbbell color={colors.warning} size={15} />, label: 'Physical', value: 'physical' },
+  { icon: <MessageCircle color={colors.success} size={15} />, label: 'Verbal', value: 'verbal' },
   { icon: <Trophy color={colors.warning} size={15} />, label: 'Sports', value: 'sports' },
-  { icon: <Mic2 color={colors.purple} size={15} />, label: 'Music', value: 'music' },
-  { icon: <Landmark color={colors.success} size={15} />, label: 'Finance', value: 'finance' },
   { icon: <Palette color={colors.danger} size={15} />, label: 'Creative', value: 'creative' },
   { icon: <BadgeHelp color={colors.textMuted} size={15} />, label: 'Other', value: 'other' },
 ];

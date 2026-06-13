@@ -28,7 +28,11 @@ type CreateDareRpcRow = {
   escrow_hold_id: string;
   ledger_entry_id: string;
   status: "open" | "targeted_pending";
+  dare_type: "skill" | "task";
+  funding_model: "two_sided_stake" | "darer_reward";
   stake_amount: number;
+  reward_amount: number;
+  escrow_amount: number;
   currency: "NGN";
   challenger_id: string | null;
 };
@@ -36,10 +40,14 @@ type CreateDareRpcRow = {
 type AcceptDareRpcRow = {
   dare_id: string;
   court_session_id: string;
-  escrow_hold_id: string;
-  ledger_entry_id: string;
+  escrow_hold_id: string | null;
+  ledger_entry_id: string | null;
   status: "ready_check";
+  dare_type: "skill" | "task";
+  funding_model: "two_sided_stake" | "darer_reward";
   stake_amount: number;
+  reward_amount: number;
+  escrow_amount: number;
   currency: "NGN";
 };
 
@@ -58,7 +66,11 @@ export type CreateDareResponse = {
   issuerEscrowHoldId: string;
   issuerLedgerEntryId: string;
   status: "open" | "targeted_pending";
+  dareType: "skill" | "task";
+  fundingModel: "two_sided_stake" | "darer_reward";
   stakeAmount: number;
+  rewardAmount: number;
+  escrowAmount: number;
   currency: "NGN";
   challengerId: string | null;
 };
@@ -66,10 +78,14 @@ export type CreateDareResponse = {
 export type AcceptDareResponse = {
   dareId: string;
   courtSessionId: string;
-  challengerEscrowHoldId: string;
-  challengerLedgerEntryId: string;
+  challengerEscrowHoldId: string | null;
+  challengerLedgerEntryId: string | null;
   status: "ready_check";
+  dareType: "skill" | "task";
+  fundingModel: "two_sided_stake" | "darer_reward";
   stakeAmount: number;
+  rewardAmount: number;
+  escrowAmount: number;
   currency: "NGN";
 };
 
@@ -241,7 +257,10 @@ async function callCreateDareRpc(
       p_title: payload.title,
       p_description: payload.description ?? null,
       p_category: payload.category,
+      p_dare_type: payload.dareType,
+      p_resolution_type: payload.resolutionType,
       p_stake_amount: payload.stakeAmount,
+      p_reward_amount: payload.rewardAmount ?? 0,
       p_currency: payload.currency,
       p_duration_seconds: payload.durationSeconds,
       p_target_username: payload.targetUsername ?? null,
@@ -249,6 +268,8 @@ async function callCreateDareRpc(
       p_constitution_rules: payload.constitution.rules,
       p_constitution_proof_method: payload.constitution.proofMethod ?? null,
       p_constitution_edge_cases: payload.constitution.edgeCases ?? null,
+      p_answer_key_text: payload.constitution.answerKey ?? null,
+      p_answer_key_rules: payload.constitution.answerKeyRules ?? null,
       p_ledger_idempotency_key: ledgerKey,
     },
   );
@@ -308,7 +329,11 @@ function mapCreateDareResponse(row: CreateDareRpcRow): CreateDareResponse {
     issuerEscrowHoldId: row.escrow_hold_id,
     issuerLedgerEntryId: row.ledger_entry_id,
     status: row.status,
+    dareType: row.dare_type,
+    fundingModel: row.funding_model,
     stakeAmount: row.stake_amount,
+    rewardAmount: row.reward_amount,
+    escrowAmount: row.escrow_amount,
     currency: row.currency,
     challengerId: row.challenger_id,
   };
@@ -321,7 +346,11 @@ function mapAcceptDareResponse(row: AcceptDareRpcRow): AcceptDareResponse {
     challengerEscrowHoldId: row.escrow_hold_id,
     challengerLedgerEntryId: row.ledger_entry_id,
     status: row.status,
+    dareType: row.dare_type,
+    fundingModel: row.funding_model,
     stakeAmount: row.stake_amount,
+    rewardAmount: row.reward_amount,
+    escrowAmount: row.escrow_amount,
     currency: row.currency,
   };
 }

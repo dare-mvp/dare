@@ -7,6 +7,7 @@ import {
 import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { formatRelativeTime } from '../../lib/format/time';
 import { supabaseClient } from '../../lib/supabase/client';
+import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { notifications as mockNotifications } from '../../mocks/notifications';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNotification, NotificationKind } from './types';
@@ -35,8 +36,13 @@ type NotificationsState = {
 
 export function useNotifications(): NotificationsState {
   const auth = useAuth();
-  const [items, setItems] = useState<AppNotification[]>(mockNotifications);
-  const [source, setSource] = useState<NotificationSource>('mock');
+  const userId = auth.user?.id ?? null;
+  const [items, setItems] = useState<AppNotification[]>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? [] : mockNotifications,
+  );
+  const [source, setSource] = useState<NotificationSource>(() =>
+    auth.status === 'authenticated' || auth.status === 'loading' ? 'server' : 'mock',
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(auth.status === 'loading');
   const [mutating, setMutating] = useState(false);
@@ -63,8 +69,8 @@ export function useNotifications(): NotificationsState {
       .limit(50);
 
     if (queryError) {
-      setItems(mockNotifications);
-      setSource('mock');
+      setItems([]);
+      setSource('server');
       setError(getLoadUserMessage('notifications'));
     } else {
       setItems(mapNotificationRows((data ?? []) as NotificationRow[]));
@@ -140,8 +146,8 @@ export function useNotifications(): NotificationsState {
       if (!mounted) return;
 
       if (queryError) {
-        setItems(mockNotifications);
-        setSource('mock');
+        setItems([]);
+        setSource('server');
         setError(getLoadUserMessage('notifications'));
       } else {
         setItems(mapNotificationRows((data ?? []) as NotificationRow[]));
@@ -158,6 +164,25 @@ export function useNotifications(): NotificationsState {
       mounted = false;
     };
   }, [auth.status]);
+
+  useEffect(() => {
+    if (auth.status !== 'authenticated' || !userId || !supabaseClient) return undefined;
+
+    const channel = supabaseClient
+      .channel(uniqueRealtimeChannelName(`notification-inbox-${userId}`))
+      .on(
+        'postgres_changes',
+        { event: '*', filter: `user_id=eq.${userId}`, schema: 'public', table: 'notifications' },
+        () => {
+          void loadNotifications();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabaseClient?.removeChannel(channel);
+    };
+  }, [auth.status, loadNotifications, userId]);
 
   return {
     error,

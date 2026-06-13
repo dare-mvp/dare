@@ -2,17 +2,17 @@
 
 ## Structure
 
-Build one Next.js 15 app at `dare/web/` alongside the existing `dare/mobile/` and `dare/supabase/` folders. Marketing routes live at `/`. Admin routes live at `/admin/**` and are protected by middleware.
+Build one Next.js 16 app at `dare/web/` alongside the existing `dare/mobile/` and `dare/supabase/` folders. Marketing routes live at `/`. Admin routes live at `/admin/**` and are protected by middleware.
 
 ## Tech Stack
 
 | Layer | Choice | Reason |
 | --- | --- | --- |
-| Framework | Next.js 15 App Router | SSR for marketing SEO, server components for admin data, API routes for auth |
+| Framework | Next.js 16 App Router | SSR for marketing SEO, server components for admin data, API routes for auth |
 | Styling | Tailwind CSS v4 | Fast design-system implementation and dark theme support |
 | Components | shadcn/ui with Radix primitives | Tables, dialogs, accordions, badges, and admin UI primitives |
 | Auth | `@supabase/ssr` with Next.js middleware | Reuses Supabase auth and supports server-side `is_admin` checks |
-| Blog | MDX files in `content/blog/` with `@next/mdx` | No CMS needed for v1; posts are code-deployed |
+| Blog | MDX files in `content/blog/` with `next-mdx-remote` and `gray-matter` | No CMS needed for v1; posts are code-deployed |
 | Data fetching | Server components and Server Actions | Admin tables load server-side; mutations call existing Edge Functions |
 | Deployment | Vercel | Natural fit for Next.js App Router, edge middleware, image optimization, and preview deployments |
 
@@ -35,7 +35,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 | Route | Purpose |
 | --- | --- |
 | `/` | Landing page with hero, how it works, trust and safety, FAQ, footer |
-| `/how-it-works` | Full explainer page, v2 optional standalone route |
+| `/how-it-works` | Out of v1 route map; landing page carries the explainer content |
 | `/trust-safety` | KYC, skill-based framing, and responsible gaming detail |
 | `/faq` | Full FAQ accordion |
 | `/blog` | Blog post list |
@@ -50,7 +50,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ## Marketing Site
 
-The visual language should match the mobile app exactly:
+The visual language matches the mobile app exactly:
 
 | Token | Value |
 | --- | --- |
@@ -63,14 +63,14 @@ The visual language should match the mobile app exactly:
 
 Load fonts through `next/font/google` in the root layout. Do not load them from external CSS at runtime.
 
-The site should feel dark, dense, and energetic: closer to a sports challenger brand than a polished fintech landing page.
+The site is dark, dense, and energetic: closer to a sports challenger brand than a polished fintech landing page.
 
 ### Landing Sections
 
 | Section | Content |
 | --- | --- |
 | Hero | Headline: "Challenge. Wager. Win." One-line subcopy, APK download CTA, App Store CTA, phone mockup or abstract app visual |
-| How it works | Four steps: Create a DARE, opponent accepts, Court timed challenge, settlement |
+| How it works | Four steps: Create a Skill-Based or Task-Based DARE, accept/perform, Court or proof review, settlement |
 | Trust and safety | Three-column grid: skill-based Predominance Test, escrow-protected funds, KYC and responsible gaming |
 | FAQ | Accordion covering payouts, disputes, jury, trust score, supported banks |
 | Blog | Card grid of latest posts with title, date, excerpt |
@@ -91,7 +91,7 @@ Fields:
 - Email address
 - Optional role selector: Player, creator, community lead, partner
 
-Storage target can be a simple `marketing_waitlist` table or a Vercel/Supabase form handler during implementation.
+Storage target is `marketing_waitlist`. Form inserts run through a server-only action using the Supabase service-role client.
 
 ### SEO and Metadata
 
@@ -149,7 +149,7 @@ from public.profiles
 where id = '<USER_UUID>';
 ```
 
-Only existing project owners should run this. The web app must not include self-service admin registration.
+Only existing project owners run this. The web app must not include self-service admin registration.
 
 ### Admin Data Sources
 
@@ -333,19 +333,17 @@ dare/web/
 |   |-- favicon.ico
 |   |-- og-image.png
 |   `-- blog/images/
-|-- middleware.ts
+|-- proxy.ts
 |-- next.config.ts
-|-- tailwind.config.ts
 `-- package.json
 ```
 
 ## Build Order
 
-1. Scaffold `dare/web/` with Next.js 15, TypeScript, Tailwind, and shadcn/ui.
-   - Configure `@next/mdx` in `next.config.ts` before building blog routes.
+1. Scaffold `dare/web/` with Next.js 16, TypeScript, Tailwind, and shadcn/ui.
+   - Use `next-mdx-remote/rsc` plus `gray-matter` for blog rendering; do not configure `@next/mdx`.
    - Configure Syne, DM Sans, and JetBrains Mono via `next/font/google` in `app/layout.tsx`.
-   - Include a Supabase migration for `marketing_waitlist` if the waitlist form is kept in v1.
-   - If the waitlist is deferred, keep the section as a static newsletter CTA with no form submission.
+   - Include a Supabase migration for `marketing_waitlist`.
 2. Set up Supabase browser client, server client, and middleware session refresh.
 3. Build auth flow: login page, middleware protection, and `is_admin` guard.
 4. Build marketing landing page with all sections.
@@ -358,7 +356,7 @@ dare/web/
 
 ## Monorepo Integration
 
-`dare/web/` should stay independent enough to deploy as its own Vercel project, while sharing baseline TypeScript and linting conventions with the repository.
+`dare/web/` stays independent enough to deploy as its own Vercel project, while sharing baseline TypeScript and linting conventions with the repository.
 
 Minimum shared structure:
 
@@ -366,4 +364,4 @@ Minimum shared structure:
 - Shared ESLint config if linting is introduced
 - Web-specific scripts inside `dare/web/package.json`
 - No direct imports from `dare/mobile/`
-- Shared constants can move to a future `dare/packages/` workspace only if duplication becomes meaningful
+- Shared constants remain local to each app until a dedicated `dare/packages/` workspace is created.

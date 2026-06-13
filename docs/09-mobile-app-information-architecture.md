@@ -2,7 +2,7 @@
 
 ## Product Navigation Model
 
-The prototype uses a desktop-style sidebar. The mobile app should use a native mobile information architecture.
+The prototype uses a desktop-style sidebar. The mobile app uses a native mobile information architecture.
 
 Recommended primary tabs:
 
@@ -43,7 +43,8 @@ Card must show:
 
 - Title
 - Category
-- Stake
+- DARE type
+- Stake or reward
 - Resolution type
 - Issuer trust score
 - Time remaining
@@ -57,10 +58,10 @@ Purpose:
 
 Recommended mobile flow:
 
-1. Type and category
+1. DARE type, category, and resolution
 2. Define challenge
 3. Proof and duration
-4. Stake and payout
+4. Stake/reward and payout
 5. Rules
 6. Review
 
@@ -81,7 +82,7 @@ Purpose:
 States:
 
 - No active DARE
-- Waiting for opponent
+- Waiting for participant
 - Ready check
 - Countdown
 - Active match
@@ -97,7 +98,7 @@ Core UI:
 - Score
 - Current prompt/question
 - Answer controls
-- Stake summary
+- Stake or reward summary
 - Chat
 - Spectator count
 - Constitution drawer
@@ -106,7 +107,7 @@ Core UI:
 Mobile constraints:
 
 - Timer and current action must stay visible.
-- Chat should not block play.
+- Chat does not block play.
 - Reconnect state must be explicit.
 - Avoid dense desktop sidebars.
 
@@ -127,7 +128,7 @@ Required sections:
 - Transaction history
 - Dispute holds
 
-Transaction row should show:
+Transaction row shows:
 
 - Type
 - Amount
@@ -170,11 +171,11 @@ Notification types:
 - Trust score change
 - Admin/risk action
 
-Each notification should have a clear destination.
+Each notification has a clear destination.
 
 ## Jury
 
-Jury should not be a primary tab for all users initially. It can live under Profile or Notifications until the juror economy is active.
+Jury is not a primary tab for all users initially. It lives under Profile or Notifications until the juror economy is active.
 
 Jury screens:
 
@@ -203,7 +204,7 @@ Important empty states:
 - Deposit required
 - Network offline
 
-Empty states should offer a next action, not generic text.
+Empty states offer a next action, not generic text.
 
 ## Accessibility
 
@@ -227,4 +228,3 @@ Required:
 - Never fake wallet success offline.
 - Clearly show when Court is reconnecting.
 - Preserve draft creation inputs locally.
-

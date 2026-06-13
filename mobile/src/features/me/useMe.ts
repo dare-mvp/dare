@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getMe } from '../../lib/actions/endpoints';
 import { useAuth } from '../auth/AuthProvider';
-import { createPreviewMeState, normalizeMeResponse } from './normalizeMe';
+import { createEmptyMeState, createPreviewMeState, normalizeMeResponse } from './normalizeMe';
 import { MeState } from './types';
 
 type UseMeResult = {
@@ -38,7 +38,7 @@ export function useMe(): UseMeResult {
       setData(normalizeMeResponse(result.data));
       setError(null);
     } else {
-      setData(createPreviewMeState());
+      setData(createEmptyMeState());
       setError(result.error.message);
     }
 
@@ -73,7 +73,7 @@ export function useMe(): UseMeResult {
         setData(normalizeMeResponse(result.data));
         setError(null);
       } else {
-        setData(createPreviewMeState());
+        setData(createEmptyMeState());
         setError(result.error.message);
       }
 

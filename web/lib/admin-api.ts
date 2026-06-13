@@ -4,6 +4,41 @@ type ActionEnvelope<TPayload> = {
   payload: TPayload;
 };
 
+type ActionErrorEnvelope = {
+  ok?: false;
+  error?: {
+    code?: string;
+    message?: string;
+    retryable?: boolean;
+  };
+  requestId?: string;
+};
+
+export class AdminActionError extends Error {
+  readonly code: string;
+  readonly requestId: string;
+  readonly retryable: boolean;
+  readonly status: number;
+
+  constructor(
+    message: string,
+    options: {
+      code: string;
+      requestId: string;
+      retryable: boolean;
+      status: number;
+      cause?: unknown;
+    },
+  ) {
+    super(message, { cause: options.cause });
+    this.name = 'AdminActionError';
+    this.code = options.code;
+    this.requestId = options.requestId;
+    this.retryable = options.retryable;
+    this.status = options.status;
+  }
+}
+
 async function postAdminAction<TPayload>(
   path: string,
   scope: string,
@@ -16,23 +51,85 @@ async function postAdminAction<TPayload>(
     payload,
   };
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${adminActionBaseUrl()}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'x-request-id': body.requestId,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new AdminActionError('Admin action request failed.', {
+      code: 'NETWORK_ERROR',
+      requestId: body.requestId,
+      retryable: true,
+      status: 0,
+      cause: error,
+    });
+  }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(
-      typeof errorBody?.error?.message === 'string'
-        ? errorBody.error.message
-        : `Admin action failed with ${response.status}`,
-    );
+    const errorBody = await readActionErrorEnvelope(response);
+    const requestId = typeof errorBody?.requestId === 'string'
+      ? errorBody.requestId
+      : body.requestId;
+    const code = typeof errorBody?.error?.code === 'string'
+      ? errorBody.error.code
+      : 'ADMIN_ACTION_FAILED';
+    const message = typeof errorBody?.error?.message === 'string'
+      ? errorBody.error.message
+      : 'Admin action failed.';
+
+    throw new AdminActionError(message, {
+      code,
+      requestId,
+      retryable: errorBody?.error?.retryable === true,
+      status: response.status,
+    });
   }
+}
+
+function adminActionBaseUrl(): string {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!value) {
+    throw new AdminActionError('Admin action API is not configured.', {
+      code: 'ADMIN_ACTION_API_NOT_CONFIGURED',
+      requestId: crypto.randomUUID(),
+      retryable: false,
+      status: 0,
+    });
+  }
+
+  try {
+    return new URL(value).origin;
+  } catch (error) {
+    throw new AdminActionError('Admin action API is not configured.', {
+      code: 'ADMIN_ACTION_API_NOT_CONFIGURED',
+      requestId: crypto.randomUUID(),
+      retryable: false,
+      status: 0,
+      cause: error,
+    });
+  }
+}
+
+async function readActionErrorEnvelope(
+  response: Response,
+): Promise<ActionErrorEnvelope | null> {
+  try {
+    const body = await response.json();
+    return isActionErrorEnvelope(body) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+function isActionErrorEnvelope(value: unknown): value is ActionErrorEnvelope {
+  return typeof value === 'object' && value !== null;
 }
 
 export function approveWithdrawal(id: string, reason: string, accessToken: string): Promise<void> {

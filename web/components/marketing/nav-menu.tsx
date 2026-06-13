@@ -74,20 +74,20 @@ export function NavMenu() {
               </Link>
             ))}
             <div className="mt-4 pt-4 border-t border-white/8 flex flex-col gap-2.5">
-              <a
+              <Link
                 href="/#waitlist"
                 onClick={() => setOpen(false)}
                 className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-primary text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
                 Download APK
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/#waitlist"
                 onClick={() => setOpen(false)}
                 className="inline-flex h-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-foreground transition-colors hover:bg-white/10"
               >
                 iOS TestFlight
-              </a>
+              </Link>
             </div>
           </nav>
         </div>

@@ -41,6 +41,14 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
     return new ActionError("INSUFFICIENT_FUNDS", { cause: error });
   }
 
+  if (error.message === "active_court_commitment") {
+    return new ActionError("ACTIVE_COURT_COMMITMENT", { cause: error });
+  }
+
+  if (error.message === "live_court_required") {
+    return new ActionError("LIVE_COURT_REQUIRED", { cause: error });
+  }
+
   if (
     ["account_restricted", "wallet_restricted", "target_restricted"].includes(
       error.message ?? "",
@@ -76,6 +84,7 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "dare_not_acceptable",
       "invalid_dare_state",
       "invalid_court_state",
+      "invalid_court_phase",
       "invalid_round_count",
       "invalid_round_index",
       "invalid_selected_option",
@@ -103,6 +112,8 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "invalid_evidence_content_hash",
       "invalid_evidence_state",
       "evidence_slot_filled",
+      "evidence_required",
+      "invalid_claimed_winner",
       "invalid_self_exclusion_duration",
       "invalid_self_exclusion_reason",
       "self_exclusion_active",
@@ -112,6 +123,16 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "invalid_admin_action",
       "invalid_account_state",
       "invalid_withdrawal_state",
+      "invalid_resolution_type",
+      "invalid_result_claim",
+      "invalid_live_court_state",
+      "invalid_witness_vote",
+      "participant_cannot_witness_vote",
+      "witness_attendance_required",
+      "witness_attendance_not_eligible",
+      "livekit_witness_presence_required",
+      "witness_not_eligible",
+      "result_not_ready",
     ].includes(
       error.message ?? "",
     )
@@ -136,6 +157,8 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
       "duplicate_dispute",
       "dispute_already_closed",
       "jury_vote_already_submitted",
+      "result_claim_already_submitted",
+      "witness_vote_already_submitted",
       "cancellation_already_processed",
     ].includes(
       error.message ?? "",
@@ -145,7 +168,11 @@ export function mapDareQueryError(error: SupabaseQueryError): ActionError {
   }
 
   if (
-    ["jury_pool_insufficient", "evidence_limit_exceeded"].includes(
+    [
+      "jury_pool_insufficient",
+      "evidence_limit_exceeded",
+      "responsible_gaming_limit",
+    ].includes(
       error.message ?? "",
     )
   ) {

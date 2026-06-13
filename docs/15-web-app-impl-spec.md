@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document converts `14-web-app-plan.md` into a step-by-step build guide. Every section corresponds to a step in the build order and specifies exact commands, packages, file contents, query shapes, component APIs, and UI states. Nothing here requires guessing; decisions not in this spec are explicitly deferred.
+This document converts `14-web-app-plan.md` into a step-by-step build guide. Every section corresponds to a step in the build order and specifies exact commands, packages, file contents, query shapes, component APIs, and UI states. Missing behavior is out of scope until this spec is updated.
 
 ---
 
@@ -147,9 +147,9 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 Copy to `.env.local` and fill in values from the Supabase project dashboard. `SUPABASE_SERVICE_ROLE_KEY` must never appear in client components or `NEXT_PUBLIC_*` variables.
 
-### Waitlist migration decision
+### Waitlist migration
 
-If the waitlist form is live in v1, create a Supabase migration before writing the form:
+The waitlist form is live in v1. Create a Supabase migration before writing the form:
 
 ```sql
 create table public.marketing_waitlist (
@@ -162,8 +162,6 @@ create table public.marketing_waitlist (
 alter table public.marketing_waitlist enable row level security;
 -- No public select/update/insert policy. Inserts go through a Server Action using the service-role client.
 ```
-
-If deferred, render the waitlist section as a static display with no form submission.
 
 ---
 
@@ -345,7 +343,7 @@ Every route under `/admin/**` must opt out of static caching:
 export const dynamic = 'force-dynamic';
 ```
 
-Admin data is sensitive and should never be statically generated or cached across users.
+Admin data is sensitive and must never be statically generated or cached across users.
 
 ### Sign out
 
@@ -408,10 +406,10 @@ Each section is a separate component in `components/marketing/`.
 
 Four numbered steps in a horizontal row (desktop) or vertical stack (mobile):
 
-1. Create a DARE — set the challenge, stake, and category
-2. Opponent accepts — funds go into escrow
-3. Court — timed challenge with live countdown
-4. Settlement — winner receives payout, trust score updates
+1. Create a DARE — choose Skill-Based or Task-Based, then set the challenge, category, and stake or reward
+2. Accept or perform — Skill-Based challengers lock a matching stake; Task-Based performers accept without staking
+3. Court or proof review — live witnessed play, answer-key result entry, or evidence submission
+4. Settlement — eligible winner or performer receives payout, trust score updates
 
 Each step has an icon, a bold short label (Syne), and one sentence of body copy (DM Sans).
 
@@ -422,7 +420,7 @@ Three columns:
 | Column | Icon | Heading | Body |
 |---|---|---|---|
 | Skill-based | scales icon | Skill Wins Here | The Predominance Test: outcomes decided by player skill, not chance |
-| Escrowed funds | lock icon | Funds in Escrow | Money is locked the moment a DARE is accepted, released only on settlement |
+| Escrowed funds | lock icon | Funds in Escrow | Skill-Based stakes or Task-Based rewards are locked in escrow and released only on settlement |
 | KYC and gaming limits | shield icon | Responsible Gaming | Identity verified, deposit limits enforced, self-exclusion available |
 
 ### `WaitlistSection`
@@ -436,7 +434,7 @@ Subcopy: "Sign up to get early access and launch updates."
 
 Form fields:
 - Email input (required, type email)
-- Role selector (optional): `<select>` with options Player, Creator, Community lead, Partner
+- Role selector: `<select>` with options Player, Creator, Community lead, Partner
 
 Submit button: "Join waitlist"
 
@@ -523,7 +521,7 @@ export type FaqItem = {
 export const faqItems: FaqItem[] = [
   {
     question: 'How do payouts work?',
-    answer: 'When a DARE settles, the winner receives the eligible escrow payout after platform fees. Wallet updates are recorded through immutable ledger entries.',
+    answer: 'When a Skill-Based DARE settles, the winner receives the eligible escrow payout after platform fees. When a Task-Based DARE settles, the performer receives the Darer-funded reward after valid completion. Wallet updates are recorded through immutable ledger entries.',
   },
   {
     question: "What happens if there's a dispute?",
@@ -676,7 +674,13 @@ Below the columns: a legal disclaimer in small muted text:
 
 ### `app/(marketing)/trust-safety/page.tsx`
 
-Expands the three trust columns from the landing section into full explanatory content with headers, paragraphs, and a final responsible gaming CTA. Content TBD during implementation.
+Expands the three trust columns from the landing section into full explanatory content:
+
+- Skill Wins Here: DARE is positioned around user-authored skill challenges, clear constitutions, and outcomes determined by player performance.
+- Funds in Escrow: Skill-Based stakes and Task-Based rewards are locked in escrow and released only through server-side settlement, refund, forfeit, or admin/jury verdict.
+- Responsible Gaming: users must be 18+, KYC is required for money movement, deposit/stake limits are enforced, self-exclusion is available, and support escalation exists for disputes.
+
+The page ends with a responsible gaming CTA linking users to account limits and support content.
 
 ### `app/(marketing)/faq/page.tsx`
 
@@ -693,7 +697,7 @@ Every file in `content/blog/` must start with:
 title: string
 date: YYYY-MM-DD
 excerpt: string (1–2 sentences, used in card grid and og:description)
-image: /blog/images/filename.jpg  (optional, falls back to placeholder)
+image: /blog/images/filename.jpg
 author: string
 ---
 ```
@@ -1021,7 +1025,7 @@ adminClient
   .range(from, to)
 ```
 
-`withdrawal_requests` stores bank details as columns, not a `destination` JSON object. Use `bank_code`, `account_number`, and `account_name`. If a display bank name is required, add a bank-code mapping helper or future reference table.
+`withdrawal_requests` stores bank details as columns, not a `destination` JSON object. Use `bank_code`, `account_number`, and `account_name`. Display the bank code when a bank-name mapping is unavailable.
 
 Table columns: Username, Amount (NGN, formatted with comma separator), Bank code/name, Account number, Account name, Requested at.
 

@@ -1,4 +1,4 @@
-import { Camera, FileImage, FileUp, X } from 'lucide-react-native';
+import { Camera, FileImage, FileUp, RefreshCcw, X } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../../components/ui/ActionButton';
@@ -9,7 +9,7 @@ export type EvidenceDraftFile = {
   id: string;
   name: string;
   sizeLabel: string;
-  status: 'ready' | 'uploading' | 'failed';
+  status: 'failed' | 'ready' | 'uploaded' | 'uploading';
 };
 
 type EvidenceUploaderProps = {
@@ -18,6 +18,7 @@ type EvidenceUploaderProps = {
   onCamera?: () => void;
   onPickMedia?: () => void;
   onRemoveFile?: (id: string) => void;
+  onRetryFile?: (id: string) => void;
 };
 
 export function EvidenceUploader({
@@ -26,6 +27,7 @@ export function EvidenceUploader({
   onCamera,
   onPickMedia,
   onRemoveFile,
+  onRetryFile,
 }: EvidenceUploaderProps) {
   return (
     <View style={styles.panel}>
@@ -44,7 +46,7 @@ export function EvidenceUploader({
       <View style={styles.dropzone}>
         <FileUp color={colors.primary} size={22} />
         <Text style={styles.dropTitle}>Add photos or files</Text>
-        <Text style={styles.dropText}>Use readable images, videos, or documents that support your claim.</Text>
+          <Text style={styles.dropText}>PNG, JPEG, or MP4 only. Maximum file size is 10 MB.</Text>
         <View style={styles.actionGroup}>
           <ActionButton
             accessibilityLabel="Choose evidence from photo library"
@@ -71,6 +73,13 @@ export function EvidenceUploader({
                 <Text numberOfLines={1} style={styles.fileName}>{file.name}</Text>
                 <Text style={styles.fileMeta}>{file.sizeLabel} - {file.status}</Text>
               </View>
+              {file.status === 'failed' ? (
+                <IconButton
+                  accessibilityLabel={`Retry ${file.name}`}
+                  icon={<RefreshCcw color={colors.warning} size={16} />}
+                  onPress={() => onRetryFile?.(file.id)}
+                />
+              ) : null}
               <IconButton
                 accessibilityLabel={`Remove ${file.name}`}
                 icon={<X color={colors.textMuted} size={16} />}

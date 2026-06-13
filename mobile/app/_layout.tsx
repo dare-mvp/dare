@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -22,7 +22,7 @@ import {
 } from '@expo-google-fonts/syne';
 
 import { colors } from '../src/theme/tokens';
-import { AuthProvider } from '../src/features/auth/AuthProvider';
+import { AuthProvider, useAuth } from '../src/features/auth/AuthProvider';
 import { usePushNotifications } from '../src/features/notifications/usePushNotifications';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -67,7 +67,35 @@ export default function RootLayout() {
 }
 
 function AppNavigator() {
+  const auth = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
   usePushNotifications();
+
+  useEffect(() => {
+    if (auth.status === 'loading') return;
+
+    const segmentList = [...segments] as string[];
+    const rootSegment = segmentList[0];
+    const authScreen = segmentList[1];
+    const isPublicAuthScreen =
+      (rootSegment === 'auth' && authScreen === 'callback') ||
+      (rootSegment === '(auth)' && (
+        !authScreen ||
+        authScreen === 'index' ||
+        authScreen === 'age-gate' ||
+        authScreen === 'forgot-password' ||
+        authScreen === 'sign-in' ||
+        authScreen === 'sign-up'
+      ));
+    const isPublicExploreFeed = rootSegment === '(tabs)' && (!segmentList[1] || segmentList[1] === 'index');
+    const mustAuthenticate = auth.status === 'unauthenticated' || auth.status === 'error' || auth.status === 'preview';
+
+    if (mustAuthenticate && !isPublicAuthScreen && !isPublicExploreFeed) {
+      router.replace('/sign-in');
+    }
+  }, [auth.status, router, segments]);
 
   return (
     <Stack
@@ -110,6 +138,7 @@ function AppNavigator() {
       <Stack.Screen name="responsible-gaming/cool-off-receipt" />
       <Stack.Screen name="wallet/deposit" />
       <Stack.Screen name="wallet/deposit-pending" />
+      <Stack.Screen name="wallet/coins" />
       <Stack.Screen name="wallet/withdraw" />
       <Stack.Screen name="wallet/withdrawal-receipt" />
       <Stack.Screen name="wallet/transaction/[id]" />

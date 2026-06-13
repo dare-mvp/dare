@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'DARE',
     short_name: 'DARE',
     description:
-      'DARE is a hyper-local P2P social wagering platform for skill-based challenges.',
+      'DARE is a hyper-local platform for user-authored Skill-Based DAREs and Task-Based rewards.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

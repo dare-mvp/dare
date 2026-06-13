@@ -40,7 +40,7 @@ This plan is grounded in:
 
 ## MVP Technical Scope
 
-The first production MVP should implement Algorithmic DAREs only.
+The first production MVP implements creator-authored Court DAREs. The old platform-authored challenge path is legacy scaffolding and is not the production product direction. See `docs/16-dare-resolution-model.md`.
 
 Included:
 
@@ -55,7 +55,7 @@ Included:
 - Escrow holds
 - Court ready-up
 - Server-authoritative match start
-- Quiz/algorithmic scoring
+- creator-authored answer-key, witness, evidence, and result-claim flows
 - Settlement
 - Notifications
 - Dispute filing
@@ -65,10 +65,10 @@ Included:
 Excluded from MVP:
 
 - Physical DAREs
-- Evidence-first DAREs
-- Honour DAREs with real stakes
+- High-risk physical evidence formats
+- Unsupported handshake-only outcomes with real stakes
 - Tournaments
-- Replicate Wager
+- Replicate DARE
 - USSD gateway
 - AI voice-to-DARE
 - Predictive matchmaking
@@ -109,7 +109,7 @@ docs/
   product and architecture documentation
 ```
 
-If the team chooses a smaller first step, `apps/mobile`, `apps/admin`, `packages/domain`, and `supabase/migrations` can still be created up front. The repository should not begin as another single-app prototype.
+The repository starts with `apps/mobile`, `apps/admin`, `packages/domain`, and `supabase/migrations` boundaries. It does not begin as another single-app prototype.
 
 ## Stack Recommendation
 
@@ -120,13 +120,13 @@ Preferred: React Native with Expo.
 Reasons:
 
 - Fast iteration for mobile MVP.
-- Good camera/media support when evidence DAREs arrive.
+- Good camera/media support for Evidence DAREs.
 - Strong TypeScript ecosystem.
 - Easier OTA/update workflows for beta.
 
 Risks:
 
-- Evidence capture, device attestation, and background behavior may eventually require native modules.
+- Evidence capture, device attestation, and background behavior use Expo APIs for MVP; native modules are introduced only when an approved capture, attestation, or background requirement cannot be met by Expo.
 - Realtime Court performance must be profiled on low-end Android devices.
 
 ### Backend
@@ -223,7 +223,7 @@ Responsibilities:
 - Trust/tier read model
 - KYC status display
 
-Sensitive fields such as risk status and KYC details should not be exposed in public profile payloads.
+Sensitive fields such as risk status and KYC details are not exposed in public profile payloads.
 
 ### Wallet Module
 
@@ -271,9 +271,9 @@ Responsibilities:
 - Ready-up
 - Server-authoritative start time
 - Heartbeats
-- Quiz session
-- Answer submission
-- Score calculation
+- Live challenge session
+- Answer/proof/result event submission
+- Answer-key or witness/evidence result calculation
 - Completion decision
 - Forfeit handling
 
@@ -301,7 +301,7 @@ Responsibilities:
 - Private signed access URLs
 - Evidence access logs
 
-Evidence is not core MVP for Algorithmic DAREs, but the schema should be designed early.
+Evidence and witness metadata are core to trustworthy creator-authored Court resolution and are designed before production Court branching.
 
 ### Notification Module
 
@@ -340,11 +340,11 @@ Responsibilities:
 
 The initial Supabase migration set now exists in `supabase/migrations/`. Treat the SQL migrations as the executable schema and this section as the conceptual table map for engineers.
 
-The physical migrations extend the original core map with launch-critical support tables and views: `dare_categories`, `dare_votes`, `dare_quiz_rounds`, `wallet_summary`, `withdrawal_requests`, `trust_events`, `responsible_gaming_settings`, `user_devices`, `kyc_verifications`, `moderation_reports`, and `jury_flags`. Server functions/RPCs remain the required enforcement layer for sensitive writes.
+The physical migrations extend the original core map with launch-critical support tables and views: `dare_categories`, `dare_votes`, legacy `dare_quiz_rounds`, `wallet_summary`, `withdrawal_requests`, `trust_events`, `responsible_gaming_settings`, `user_devices`, `kyc_verifications`, `moderation_reports`, and `jury_flags`. Server functions/RPCs remain the required enforcement layer for sensitive writes.
 
 ### users
 
-If Supabase Auth is used, the auth user lives in `auth.users`; app-specific user state should live in `profiles` and supporting tables.
+Supabase Auth is the production auth provider. The auth user lives in `auth.users`; app-specific user state lives in `profiles` and supporting tables.
 
 ### profiles
 
@@ -380,9 +380,12 @@ create table dares (
   title text not null,
   description text,
   category text not null,
+  dare_type text not null,
+  funding_model text not null,
   resolution_type text not null,
   status text not null,
   stake_amount integer not null,
+  reward_amount integer,
   currency text not null default 'NGN',
   platform_fee integer not null default 0,
   winner_payout integer not null default 0,
@@ -400,10 +403,15 @@ create table dares (
 Recommended constraints:
 
 - `stake_amount > 0`
+- `reward_amount is null or reward_amount > 0`
+- `dare_type in ('skill','task')`
+- `funding_model in ('two_sided_stake','darer_reward')`
+- `dare_type` and `funding_model` must match: `skill/two_sided_stake` or `task/darer_reward`
 - `duration_seconds between 30 and 3600`
-- `resolution_type in ('algorithmic','witnessed','evidenced','honour')`
+- `resolution_type in ('answer_key','witnessed','evidence')`
 - `status in (...)`
 - `winner_id` must be issuer or challenger when settled, unless voided.
+- Task-Based DAREs use `reward_amount` as the Darer-funded escrow amount and do not require challenger escrow on accept.
 
 ### dare_constitutions
 
@@ -444,7 +452,7 @@ create table court_sessions (
 
 ### quiz_questions
 
-For MVP, use a controlled question bank.
+Legacy prototype table for platform-authored challenge questions. Do not expand this as the production MVP direction. Production work moves to creator-authored prompts, answer-key commitments, Court events, witness signals, and evidence packets.
 
 ```sql
 create table quiz_questions (
@@ -460,6 +468,8 @@ create table quiz_questions (
 ```
 
 ### dare_quiz_answers
+
+Legacy prototype table for platform-authored answers. Do not expand this as the production MVP direction; production answer-key resolution stores creator-authored commitments and participant submissions through the Court/result model.
 
 ```sql
 create table dare_quiz_answers (
@@ -746,17 +756,18 @@ Input:
 
 ```json
 {
-  "title": "Name 20 African capitals in 60 seconds",
+  "title": "Answer 10 Nigerian fintech questions live",
   "category": "knowledge",
-  "resolutionType": "algorithmic",
-  "durationSeconds": 60,
+  "dareType": "skill",
+  "resolutionType": "answer_key",
+  "durationSeconds": 600,
   "stakeAmount": 50000,
   "currency": "NGN",
   "constitution": {
-    "test": "Name 20 African capitals in 60 seconds",
+    "test": "Issuer asks 10 live questions. Challenger wins with 7 or more correct answers.",
     "rules": "Answers must be typed before the timer ends.",
-    "proofMethod": "Platform scoring",
-    "edgeCases": "Tie refunds both players minus no fee."
+    "proofMethod": "Committed answer key",
+    "edgeCases": "Tie refunds both Skill-Based participants with no platform fee."
   },
   "targetUsername": null
 }
@@ -770,7 +781,7 @@ Server behavior:
 4. Calculate fee and payout.
 5. Create DARE.
 6. Create immutable constitution.
-7. Hold issuer stake in escrow.
+7. Hold issuer stake or Darer reward in escrow.
 8. Return DARE detail.
 
 #### `POST /dares/{id}/accept`
@@ -780,8 +791,8 @@ Server behavior:
 1. Lock DARE row or use serializable transaction.
 2. Confirm status is open or targeted to user.
 3. Confirm user is not issuer.
-4. Confirm wallet availability.
-5. Hold challenger stake.
+4. Confirm wallet availability for Skill-Based DAREs.
+5. Hold challenger stake for Skill-Based DAREs; hold no performer stake for Task-Based DAREs.
 6. Update DARE to accepted/ready_check.
 7. Create Court session.
 8. Notify issuer.
@@ -792,10 +803,12 @@ Server behavior:
 
 1. Confirm user is participant.
 2. Mark player ready.
-3. If both ready, set server start time.
+3. If all required participants are ready, set server start time.
 4. Broadcast `court_started`.
 
 #### `POST /dares/{id}/answers`
+
+Legacy implementation note: this shape still reflects the old platform-authored quiz path. Production answer submission must use creator-authored answer-key, witness, evidence, and result-claim events.
 
 Input:
 
@@ -840,7 +853,7 @@ Server behavior:
 4. Create jury case.
 5. Move DARE to dispute_pending or jury_open.
 6. Hold escrow.
-7. Notify opponent and admins/jurors.
+7. Notify the counterparty and admins/jurors.
 
 #### `POST /admin/jury-cases/{id}/resolve`
 
@@ -909,7 +922,7 @@ active
   -> awaiting_result
   -> forfeited
 
-Active-match forfeits are implemented through `POST /dares/{id}/forfeit`. The action sets the opponent as winner, applies a trust penalty to the forfeiting participant, and leaves escrow release to the settlement endpoint.
+Active-match forfeits are implemented through `POST /dares/{id}/forfeit`. The action records the forfeiting participant, applies a trust penalty, and leaves escrow release to the settlement endpoint. Skill-Based forfeits can award the non-forfeiting participant; Task-Based forfeits refund or pay according to the task constitution and available completion evidence.
 
 awaiting_result
   -> completed
@@ -944,7 +957,7 @@ pending -> posted -> reversed
 pending -> failed
 ```
 
-Ledger entries should almost always be created as `posted` only after the domain action is confirmed. Provider-facing payment records can carry longer pending states.
+Ledger entries are created as `posted` only after the domain action is confirmed. Provider-facing payment records carry longer pending states.
 
 ### Payment Transaction Lifecycle
 
@@ -999,11 +1012,11 @@ Active Court heartbeat is implemented through `POST /court/{dareId}/heartbeat`. 
 
 Responsible gaming limit settings are implemented through `PATCH /responsible-gaming/settings`. Stricter limits apply immediately. Limit increases are stored as pending values with a 24-hour effective timestamp and are only promoted by server-side logic, keeping the mobile client out of limit enforcement decisions.
 
-Self-exclusion is implemented through `POST /responsible-gaming/self-exclude`. It marks the responsible gaming settings as excluded, limits the account, disables jury opt-in, cancels open issuer DAREs with escrow refunds, and forfeits active participant DAREs to the opponent so settlement can follow the standard escrow path.
+Self-exclusion is implemented through `POST /responsible-gaming/self-exclude`. It marks the responsible gaming settings as excluded, limits the account, disables jury opt-in, cancels open issuer DAREs with escrow refunds, and applies the relevant Skill-Based or Task-Based forfeit/refund rule to active participant DAREs so settlement can follow the standard escrow path.
 
 Dispute evidence is implemented through `POST /dares/{id}/evidence` and `POST /dares/{id}/evidence/confirm`. The request action creates a pending evidence object and signed private Storage upload URL. The confirm action marks the evidence uploaded and attaches it to the issuer or challenger side of the active jury case.
 
-KYC review is implemented through `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide`. The current flow supports internal/manual review and preserves provider optionality; raw identity documents should stay with the chosen KYC provider or private storage, not in Postgres JSON.
+KYC review is implemented through `POST /kyc/submit`, `GET /kyc/status`, and `POST /admin/kyc/{id}/decide`. The current phase accepts private document intake/storage plus internal/manual review: the mobile app uploads identity images to the private `kyc-documents` bucket, the backend stores a redacted `private_storage_v1` reference, and raw identity numbers, legal names, base64 images, and raw ID images are not stored in Postgres JSON. Third-party KYC automation, provider webhooks, magic-byte validation, malware scanning, and orphan-upload cleanup are deferred future hardening items.
 
 Scheduled backend maintenance is implemented with `pg_cron` for expired idempotency cleanup, active Court expiry, and automatic settlement of completed DAREs after the dispute window closes.
 
@@ -1061,7 +1074,7 @@ Secondary:
 - Settings
 - Support
 
-Admin should be a separate app or locked-down admin web console, not a consumer tab.
+Admin is a separate app or locked-down admin web console, not a consumer tab.
 
 ### Client State Management
 
@@ -1106,7 +1119,7 @@ Court screen must handle:
 
 ### RLS / Authorization
 
-RLS policies should enforce:
+RLS policies enforce:
 
 - Users can read their own wallet records.
 - Users cannot update ledger entries.
@@ -1115,7 +1128,7 @@ RLS policies should enforce:
 - Jurors can read only assigned jury cases.
 - Admin tables require admin role.
 
-Sensitive writes should go through functions/API, not client table updates.
+Sensitive writes go through functions/API, not client table updates.
 
 ### Rate Limits
 
@@ -1153,7 +1166,7 @@ Never ship:
 - admin tokens
 - storage signing secrets
 
-Mobile app may contain public anon keys only if RLS/policies are strong and all sensitive mutations go through server actions.
+Mobile app contains public anon keys only. RLS/policies protect reads, and all sensitive mutations go through server actions.
 
 ## Testing Strategy
 
@@ -1225,7 +1238,7 @@ MVP flows:
 
 ### Logs
 
-Structured logs should include:
+Structured logs include:
 
 - request id
 - user id when available
@@ -1314,19 +1327,19 @@ Deliverables:
 
 Exit criteria:
 
-- two users can create and accept DARE in sandbox with escrow holds
+- users can create and accept Skill-Based and Task-Based DAREs in sandbox with the correct escrow holds
 - double acceptance race is tested
 
-### Phase 4: Court And Algorithmic Resolution
+### Phase 4: Court And Creator-Authored Resolution
 
 Deliverables:
 
 - Court session
 - ready-up endpoint
 - server start time
-- quiz questions
-- answer endpoint
-- scoring
+- creator-authored prompt/answer-key setup where applicable
+- witness/evidence/result-claim endpoints
+- server-authoritative result path
 - result calculation
 - realtime Court updates
 
@@ -1405,7 +1418,7 @@ Exit criteria:
 - browser direct Supabase writes with API actions
 - mutable client balance updates with ledger projection
 - client-side payout settlement with server settlement
-- client-side result calculation with server scoring
+- client-side result calculation with server-authoritative verification
 - `innerHTML` rendering with typed UI components
 - monolithic global state with feature modules
 
@@ -1429,12 +1442,12 @@ A feature is not done until:
 1. Supabase Edge Functions vs dedicated API service.
 2. Expo managed workflow vs bare React Native.
 3. Payment provider for first approved launch.
-4. Initial KYC vendor and identity flow.
-5. Whether issuer stake locks at DARE creation or at first acceptance.
+4. Future KYC vendor and automated identity flow; current phase uses private-storage intake plus internal/manual review.
+5. Issuer/Darer escrow locks at DARE creation for both funding models; challenger escrow locks on accept only for Skill-Based DAREs.
 6. Whether MVP settlement waits for a dispute window or settles instantly with reversible hold.
 7. Admin console stack.
 8. Realtime provider and fallback behavior.
-9. Evidence storage provider for post-MVP evidence DAREs.
+9. Evidence storage provider and media-retention policy for production Evidence DAREs.
 10. Exact trust score formula.
 
 ## Recommended Immediate Next Steps

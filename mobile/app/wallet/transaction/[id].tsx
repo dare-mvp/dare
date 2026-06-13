@@ -85,14 +85,17 @@ export default function TransactionDetailScreen() {
           amountKobo={signedAmount}
           tone={transaction.direction === 'credit' ? 'positive' : 'negative'}
         />
-        <Text style={styles.reference}>{transaction.id.toUpperCase()}</Text>
+        <Text style={styles.title}>{transaction.label}</Text>
+        <Text style={styles.description}>{transaction.description}</Text>
+        <Text style={styles.reference}>{transaction.referenceLabel}</Text>
       </View>
 
       <View style={styles.detailPanel}>
         <DetailLine label="Date" value={transaction.createdLabel} />
-        <DetailLine label="Direction" value={transaction.direction} />
-        <DetailLine label="Type" value={transaction.type.replace(/_/g, ' ')} />
-        <DetailLine label="Status" value={transaction.status} />
+        {transaction.details.map((detail) => (
+          <DetailLine key={detail.label} label={detail.label} value={detail.value} />
+        ))}
+        <DetailLine label="Reference" value={transaction.referenceLabel} />
       </View>
 
       <ActionButton accessibilityLabel="Back to wallet" label="Back to wallet" onPress={() => router.replace('/(tabs)/wallet')} />
@@ -123,6 +126,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: fonts.mono,
     fontSize: 11,
+  },
+  title: {
+    color: colors.text,
+    fontFamily: fonts.displaySemi,
+    fontSize: typography.sectionTitle.fontSize,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  description: {
+    color: colors.textMuted,
+    fontFamily: fonts.bodyRegular,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
   },
   detailPanel: {
     backgroundColor: colors.surface,

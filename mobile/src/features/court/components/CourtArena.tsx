@@ -19,6 +19,7 @@ const accentColors: Record<CourtPlayer['accent'], string> = {
 
 export function CourtArena({ session }: CourtArenaProps) {
   const timerCritical = session.timeRemainingSeconds <= 10;
+  const modeLabel = getModeLabel(session.resolutionType);
 
   return (
     <View style={styles.arena}>
@@ -38,7 +39,7 @@ export function CourtArena({ session }: CourtArenaProps) {
         <PlayerPanel player={session.playerA} />
         <View style={styles.centerClash}>
           <Text style={styles.centerVs}>VS</Text>
-          <Text style={styles.roundLabel}>Round</Text>
+          <Text style={styles.roundLabel}>{modeLabel}</Text>
         </View>
         <PlayerPanel player={session.playerB} alignRight />
       </View>
@@ -51,7 +52,7 @@ export function CourtArena({ session }: CourtArenaProps) {
         <View style={styles.footerRight}>
           <View style={styles.liveLabel}>
             <Radio color={colors.danger} size={13} />
-            <StatusBadge label="ACTIVE NOW" tone="danger" />
+            <StatusBadge label={getStatusLabel(session.phase)} tone={session.phase === 'active' ? 'danger' : 'neutral'} />
           </View>
           <Text style={styles.spectators}>{session.spectators} watching</Text>
         </View>
@@ -60,6 +61,18 @@ export function CourtArena({ session }: CourtArenaProps) {
   );
 }
 
+function getModeLabel(resolutionType: CourtSession['resolutionType']) {
+  if (resolutionType === 'witnessed') return 'Witness';
+  if (resolutionType === 'evidence') return 'Evidence';
+  return 'Answer';
+}
+function getStatusLabel(phase: CourtSession['phase']) {
+  if (phase === 'active') return 'ACTIVE NOW';
+  if (phase === 'awaiting_result') return 'AWAITING RESULT';
+  if (phase === 'disputed') return 'REVIEW';
+  if (phase === 'settled') return 'SETTLED';
+  return 'PENDING';
+}
 function PlayerPanel({ alignRight = false, player }: { alignRight?: boolean; player: CourtPlayer }) {
   return (
     <View style={styles.playerPanel}>

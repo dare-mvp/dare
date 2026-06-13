@@ -105,7 +105,7 @@ export default function EditProfileScreen() {
           leftIcon={<ScrollText color={colors.textMuted} size={16} />}
           multiline
           onChangeText={setBio}
-          placeholder="Fast quizzes, clean rules, fair disputes."
+          placeholder="Sharp challenges, clean rules, fair disputes."
           textAlignVertical="top"
           style={styles.bio}
           value={bio}

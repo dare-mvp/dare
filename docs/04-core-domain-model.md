@@ -4,9 +4,10 @@
 
 - Money movement must be server-authoritative.
 - Challenge outcomes must be auditable.
+- DAREs are user-authored; the platform does not generate the primary challenge content.
 - User trust must be earned through behavior.
-- The client may request actions, but the server decides sensitive state transitions.
-- The domain model should be independent of the UI framework.
+- The client requests actions, but the server decides sensitive state transitions.
+- The domain model is independent of the UI framework.
 
 ## Core Entities
 
@@ -52,12 +53,15 @@ Key fields:
 - id
 - issuer_id
 - challenger_id
+- dare_type
+- funding_model
 - title
 - description
 - category
 - resolution_type
 - status
 - stake_amount
+- reward_amount
 - platform_fee
 - winner_payout
 - duration_seconds
@@ -85,7 +89,27 @@ Key fields:
 - accepted_by_issuer_at
 - accepted_by_challenger_at
 
-The constitution should be immutable after acceptance. Amendments require a new version and explicit acceptance by both parties.
+The constitution is immutable after acceptance. Amendments require a new version and explicit acceptance by all required participants.
+
+### DARE Type
+
+Defines who funds escrow.
+
+Allowed values:
+
+- `skill`: two participants compete; issuer and challenger both fund escrow.
+- `task`: Darer funds a reward; performer accepts or claims the task without staking their own money.
+
+`dare_type` is independent of `resolution_type`.
+
+### Funding Model
+
+Derived from `dare_type`:
+
+- `two_sided_stake`: used by Skill-Based DAREs.
+- `darer_reward`: used by Task-Based DAREs.
+
+Skill-Based settlement pays the eligible escrow pool to the winner. Task-Based settlement pays the eligible reward to the performer after valid completion or refunds the Darer when the task expires, is cancelled before acceptance, or is voided.
 
 ### Court Session
 
@@ -103,6 +127,69 @@ Key fields:
 - player_a_heartbeat_at
 - player_b_heartbeat_at
 - reconnect_deadline
+
+### Live Court Room
+
+Provider-backed video room for a Court session.
+
+Production provider: LiveKit Cloud.
+
+Key fields:
+
+- id
+- dare_id
+- court_session_id
+- provider (`livekit` in production)
+- provider_room_id
+- status
+- audience_enabled
+- recording_required
+- recording_status
+- recording_started_at
+- recording_ended_at
+- metadata
+
+### Live Court Participant
+
+Tracks authenticated Court video presence and recording consent.
+
+Key fields:
+
+- id
+- live_court_room_id
+- dare_id
+- user_id
+- role (`participant_a`, `participant_b`, or `spectator`)
+- connection_status
+- consented_to_recording
+- consent_text_version
+- consented_at
+- audio_enabled
+- video_enabled
+- joined_at
+- last_seen_at
+- left_at
+
+### Live Court Recording
+
+Provider recording or egress metadata for Court review.
+
+Production source: LiveKit egress.
+
+Key fields:
+
+- id
+- live_court_room_id
+- dare_id
+- provider
+- provider_recording_id
+- evidence_object_id
+- storage_bucket
+- storage_path
+- status
+- started_at
+- ended_at
+- retention_expires_at
 
 ### Evidence
 
@@ -168,7 +255,7 @@ Key fields:
 - rationale
 - created_at
 
-Votes should be immutable after submission.
+Votes are immutable after submission.
 
 ### Wallet Account
 
@@ -289,35 +376,35 @@ Sensitive transitions must happen on the server.
 
 Examples:
 
-- `open -> accepted`: server verifies challenger, balance, KYC, limits.
-- `accepted -> active`: server verifies both users ready.
+- `open -> accepted`: server verifies acceptor, balance requirements where applicable, KYC, limits.
+- `accepted -> active`: server verifies all required participants are ready.
 - `active -> completed`: server computes outcome.
 - `completed -> settled`: server releases escrow.
 - `completed -> dispute_pending`: server validates dispute window and freezes settlement if required.
 
 ## Resolution Types
 
-### Algorithmic
+See [`docs/16-dare-resolution-model.md`](16-dare-resolution-model.md) for the canonical product direction.
 
-Server-scored challenge such as quiz, timed task, or deterministic answer.
+### Answer Key
 
-MVP candidate because it reduces evidence and jury complexity.
+Objective creator-authored challenge with a pre-committed answer key or answer rules.
+
+Use for knowledge, trivia, spelling, calculation, or deterministic response challenges.
+
+The platform verifies answers against committed data, but the platform does not author the challenge.
 
 ### Witnessed
 
-Spectator vote resolves outcome. Requires voter eligibility and anti-sybil controls.
+Live audience or eligible witnesses provide result signals. Requires voter eligibility, anti-sybil controls, and dispute review safeguards.
 
-### Evidenced
+### Evidence
 
 Players submit proof. Jury or admin decides.
 
-### Honour
-
-Players mutually confirm outcome. Requires high trust and low stake limits until proven safe.
-
 ## Trust Score Model
 
-Trust score should be a server-calculated derived value, not directly mutable by clients.
+Trust score is a server-calculated derived value, not directly mutable by clients.
 
 Positive signals:
 
@@ -346,6 +433,9 @@ User 1--many DARE as issuer
 User 1--many DARE as challenger
 DARE 1--1 Constitution
 DARE 1--1 Court Session
+Court Session 1--1 Live Court Room
+Live Court Room 1--many Live Court Participant
+Live Court Room 1--many Live Court Recording
 DARE 1--many Evidence
 DARE 1--many Jury Case
 Jury Case 1--many Jury Assignment
@@ -354,4 +444,3 @@ Wallet Account 1--many Ledger Entry
 User 1--many Notification
 User 1--many Risk Event
 ```
-

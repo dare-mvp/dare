@@ -156,15 +156,20 @@ export type RequestWithdrawalResponse = {
 export type CreateDarePayload = {
   category: 'knowledge' | 'physical' | 'verbal' | 'sports' | 'creative' | 'other';
   constitution: {
+    answerKey?: string | null;
+    answerKeyRules?: string | null;
     edgeCases?: string | null;
     proofMethod?: string | null;
     rules: string;
     test: string;
   };
   currency: 'NGN';
+  dareType: 'skill' | 'task';
   description?: string;
   durationSeconds: number;
+  resolutionType: 'answer_key' | 'witnessed' | 'evidence';
   stakeAmount: number;
+  rewardAmount?: number;
   targetUsername?: string | null;
   title: string;
 };
@@ -174,21 +179,77 @@ export type CreateDareResponse = {
   constitutionId: string;
   currency: 'NGN';
   dareId: string;
+  dareType: 'skill' | 'task';
+  escrowAmount: number;
+  fundingModel: 'two_sided_stake' | 'darer_reward';
   issuerEscrowHoldId: string;
   issuerLedgerEntryId: string;
+  rewardAmount: number;
   stakeAmount: number;
   status: 'open' | 'targeted_pending';
 };
 
 export type AcceptDareResponse = {
-  challengerEscrowHoldId: string;
-  challengerLedgerEntryId: string;
+  challengerEscrowHoldId: string | null;
+  challengerLedgerEntryId: string | null;
   courtSessionId: string;
   currency: 'NGN';
   dareId: string;
+  dareType: 'skill' | 'task';
+  escrowAmount: number;
+  fundingModel: 'two_sided_stake' | 'darer_reward';
+  rewardAmount: number;
   stakeAmount: number;
   status: 'ready_check';
 };
+
+export type AcceptQuoteResponse = {
+  canAccept: boolean;
+  challengerStakeAmount: number;
+  currency: 'NGN';
+  dareId: string;
+  dareType: 'skill' | 'task';
+  fundingModel: 'two_sided_stake' | 'darer_reward';
+  issuerEscrowAmount: number;
+  performerStakeRequired: boolean;
+  reasonCode:
+    | 'ACCOUNT_READY'
+    | 'ACTIVE_COURT_COMMITMENT'
+    | 'DARE_NOT_OPEN'
+    | 'SELF_CHALLENGE'
+    | 'TARGETED_TO_ANOTHER_USER';
+  rewardAmount: number;
+  settlementPlatformFeeAmount: number;
+  stakeAmount: number;
+  totalDueAmount: number;
+  winnerPayoutAmount: number;
+  copy: {
+    confirmation: string;
+    escrowLabel: string;
+    primary: string;
+    title: string;
+  };
+};
+
+export type AcceptDareWithQuoteResponse = {
+  challengerEscrowHoldId: string | null;
+  challengerLedgerEntryId: string | null;
+  courtSessionId: string;
+  currency: 'NGN';
+  dareId: string;
+  dareType: 'skill' | 'task';
+  escrowAmount: number;
+  fundingModel: 'two_sided_stake' | 'darer_reward';
+  quote: AcceptQuoteResponse;
+  rewardAmount: number;
+  stakeAmount: number;
+  status: 'ready_check';
+};
+
+export type AcceptQuoteConfirmationPayload = Pick<
+  AcceptQuoteResponse,
+  'challengerStakeAmount' | 'dareType' | 'fundingModel' | 'rewardAmount' | 'stakeAmount' | 'totalDueAmount'
+>;
 
 export type ReadyDareResponse = {
   assignedRounds: number;
@@ -212,10 +273,39 @@ export type CourtHeartbeatResponse = {
   reconnectDeadline: string;
 };
 
+export type LiveCourtStateResponse = {
+  challengerLive: boolean;
+  courtSessionId: string;
+  dareId: string;
+  issuerLive: boolean;
+  liveCourtRoomId: string | null;
+  liveRequirementMet: boolean;
+  participantCount: number;
+  provider: 'agora' | 'custom' | 'daily' | 'livekit' | 'mux' | 'provider_pending';
+  providerRoomId: string;
+  providerToken: string | null;
+  providerUrl: string | null;
+  recordingRequired: boolean;
+  recordingStatus: 'available' | 'disabled' | 'failed' | 'not_started' | 'processing' | 'recording';
+  roomStatus: 'cancelled' | 'created' | 'ended' | 'live';
+  spectatorCount: number;
+  viewerJoined: boolean;
+  viewerRole: 'participant_a' | 'participant_b' | 'spectator';
+};
+
+export type EnterLiveCourtPayload = {
+  audioEnabled: boolean;
+  recordingConsent: boolean;
+  videoEnabled: boolean;
+};
+
+export type RecordLiveCourtPresencePayload = EnterLiveCourtPayload & {
+  connectionStatus: 'joined' | 'left' | 'reconnecting';
+};
+
 export type SubmitAnswerPayload = {
+  answerText: string;
   questionId: string;
-  roundIndex: number;
-  selectedOption: number;
 };
 
 export type SubmitAnswerResponse = {
@@ -224,11 +314,141 @@ export type SubmitAnswerResponse = {
   dareId: string;
   phase: 'active';
   questionId: string;
-  responseMs: number;
+  responseMs: number | null;
   roundIndex: number;
   scoreA: number;
   scoreB: number;
-  selectedOption: number;
+  selectedOption: number | null;
+};
+
+export type ResultClaimOutcome =
+  | 'challenger_won'
+  | 'dispute'
+  | 'issuer_won'
+  | 'performer_completed'
+  | 'void';
+
+export type SubmitResultClaimPayload = {
+  claimedOutcome: ResultClaimOutcome;
+  claimedWinnerId?: string | null;
+  evidenceObjectIds?: string[];
+  rationale?: string;
+};
+
+export type SubmitResultClaimResponse = {
+  agreedWinnerId: string | null;
+  claimId: string;
+  claimState: 'agreed' | 'conflicted' | 'dispute_requested' | 'pending';
+  claimedOutcome: ResultClaimOutcome;
+  claimedWinnerId: string | null;
+  claimsCount: number;
+  courtPhase: 'active' | 'awaiting_result' | 'completed' | 'disputed';
+  dareId: string;
+  dareStatus: 'active' | 'awaiting_result' | 'completed' | 'dispute_pending';
+  resolutionType: 'evidence' | 'witnessed';
+  userId: string;
+};
+
+export type RecordWitnessAttendanceResponse = {
+  attendanceId: string;
+  dareId: string;
+  eligibleToVote: boolean;
+  joinedAt: string;
+  lastSeenAt: string;
+  userId: string;
+  voteEligibleAt: string;
+};
+
+export type SubmitWitnessVotePayload = {
+  vote: 'A' | 'B';
+};
+
+export type SubmitWitnessVoteResponse = {
+  dareId: string;
+  phase: 'active' | 'awaiting_result' | 'completed';
+  vote: 'A' | 'B';
+  voteId: string;
+  voterId: string;
+  votesA: number;
+  votesB: number;
+};
+
+export type CompleteDareResponse = {
+  completedAt: string | null;
+  dareId: string;
+  disputeDeadlineAt: string | null;
+  phase: 'completed';
+  scoreA: number;
+  scoreB: number;
+  status: 'completed' | 'settled';
+  winnerId: string | null;
+};
+
+export type SettleDareResponse = {
+  dareId: string;
+  ledgerEntriesCreated: number;
+  payoutAmount: number;
+  refundedAmount: number;
+  status: 'settled';
+  winnerId: string | null;
+};
+
+export type SettlementStatusResponse = {
+  court: {
+    courtSessionId: string | null;
+    phase: string | null;
+    scoreA: number;
+    scoreB: number;
+  };
+  currency: 'NGN';
+  dareId: string;
+  dareStatus: string;
+  dareType: 'skill' | 'task';
+  dispute: {
+    canFileDispute: boolean;
+    deadlineAt: string | null;
+    secondsUntilDeadline: number | null;
+    status: 'closed' | 'none' | 'open' | 'paused_by_jury';
+  };
+  fundingModel: 'two_sided_stake' | 'darer_reward';
+  jury: {
+    blockingSettlement: boolean;
+    caseId: string | null;
+    closedAt: string | null;
+    openedAt: string | null;
+    status: string;
+    verdict: string | null;
+    votesNeeded: number | null;
+  };
+  money: {
+    expectedPlatformFeeAmount: number;
+    expectedPayoutAmount: number;
+    expectedRefundAmount: number;
+    heldAmount: number;
+    holdSummary: {
+      activeHeldAmount: number;
+      disputedHeldAmount: number;
+      forfeitedAmount: number;
+      heldCount: number;
+      refundedAmount: number;
+      releasedAmount: number;
+      voidedAmount: number;
+    };
+    postedPayoutAmount: number;
+    postedPlatformFeeAmount: number;
+    postedRefundAmount: number;
+  };
+  settlement: {
+    eligible: boolean;
+    reason: 'already_settled' | 'dispute_window_open' | 'jury_blocking' | 'ready' | 'result_not_ready';
+  };
+  winnerId: string | null;
+  copyReady: {
+    body: string;
+    ctaLabel: string;
+    state: 'blocked' | 'ready' | 'settled' | 'waiting';
+    title: string;
+  };
 };
 
 export type CurrentCourtQuestionResponse = {
@@ -324,7 +544,7 @@ export type EvidenceConfirmPayload = {
 export type EvidenceConfirmResponse = {
   dareId: string;
   evidenceObjectId: string;
-  juryCaseId: string;
+  juryCaseId: string | null;
   side: 'A' | 'B';
   status: 'uploaded';
   uploadedAt: string;
@@ -498,6 +718,26 @@ export function acceptDare(dareId: string) {
   );
 }
 
+export function getAcceptQuote(dareId: string) {
+  return callAction<AcceptQuoteResponse>(`/dares/${dareId}/accept-quote`);
+}
+
+export function acceptDareWithQuote(dareId: string, quote: AcceptQuoteResponse) {
+  const payload: AcceptQuoteConfirmationPayload = {
+    challengerStakeAmount: quote.challengerStakeAmount,
+    dareType: quote.dareType,
+    fundingModel: quote.fundingModel,
+    rewardAmount: quote.rewardAmount,
+    stakeAmount: quote.stakeAmount,
+    totalDueAmount: quote.totalDueAmount,
+  };
+  return postAction<AcceptDareWithQuoteResponse, AcceptQuoteConfirmationPayload>(
+    `/dares/${dareId}/accept-quote`,
+    payload,
+    'accept-dare',
+  );
+}
+
 export function markDareReady(dareId: string) {
   return postAction<ReadyDareResponse, Record<string, never>>(
     `/dares/${dareId}/ready`,
@@ -513,12 +753,79 @@ export function recordCourtHeartbeat(dareId: string) {
   });
 }
 
+export function getLiveCourtState(dareId: string) {
+  return callAction<LiveCourtStateResponse>(`/court/${dareId}/live-room`);
+}
+
+export function enterLiveCourt(dareId: string, payload: EnterLiveCourtPayload) {
+  return postAction<LiveCourtStateResponse, EnterLiveCourtPayload>(
+    `/court/${dareId}/live-room/enter`,
+    payload,
+    'live-court-enter',
+  );
+}
+
+export function recordLiveCourtPresence(dareId: string, payload: RecordLiveCourtPresencePayload) {
+  return postAction<LiveCourtStateResponse, RecordLiveCourtPresencePayload>(
+    `/court/${dareId}/live-room/presence`,
+    payload,
+    'live-court-presence',
+  );
+}
+
 export function submitDareAnswer(dareId: string, payload: SubmitAnswerPayload) {
   return postAction<SubmitAnswerResponse, SubmitAnswerPayload>(
     `/dares/${dareId}/answers`,
     payload,
     'dare-answer',
   );
+}
+
+export function submitResultClaim(dareId: string, payload: SubmitResultClaimPayload) {
+  return postAction<SubmitResultClaimResponse, SubmitResultClaimPayload>(
+    `/dares/${dareId}/results/claims`,
+    {
+      ...payload,
+      evidenceObjectIds: payload.evidenceObjectIds ?? [],
+    },
+    'dare-result-claim',
+  );
+}
+
+export function recordWitnessAttendance(dareId: string) {
+  return postAction<RecordWitnessAttendanceResponse, Record<string, never>>(
+    `/dares/${dareId}/results/witness-attendance`,
+    {},
+    'dare-witness-attendance',
+  );
+}
+
+export function submitWitnessVote(dareId: string, payload: SubmitWitnessVotePayload) {
+  return postAction<SubmitWitnessVoteResponse, SubmitWitnessVotePayload>(
+    `/dares/${dareId}/results/witness-votes`,
+    payload,
+    'dare-witness-vote',
+  );
+}
+
+export function completeDare(dareId: string) {
+  return postAction<CompleteDareResponse, Record<string, never>>(
+    `/dares/${dareId}/complete`,
+    {},
+    'dare-complete',
+  );
+}
+
+export function settleDare(dareId: string) {
+  return postAction<SettleDareResponse, Record<string, never>>(
+    `/dares/${dareId}/settle`,
+    {},
+    'dare-settle',
+  );
+}
+
+export function getSettlementStatus(dareId: string) {
+  return callAction<SettlementStatusResponse>(`/dares/${dareId}/settlement-status`);
 }
 
 export function getCurrentCourtQuestion(dareId: string) {
