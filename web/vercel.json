@@ -1,8 +1,12 @@
 {
   "crons": [
     {
+      "path": "/api/cron/send-legend-welcome",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/challenge-reminder",
-      "schedule": "0 8 12 6 *"
+      "schedule": "0 7 12-14 7 *"
     }
   ]
 }

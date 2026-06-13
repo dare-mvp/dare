@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { buildLegendClosingSoonPayload } from '@/lib/email';
+import { buildLegendWelcomePayload } from '@/lib/email';
+import { LEGEND_START } from '@/lib/challenge-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dareapp.io';
 const DAILY_CAP = 50;
@@ -17,11 +18,17 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Don't fire before Legend opens — cron runs daily but is gated here.
+  if (new Date() < LEGEND_START) {
+    return Response.json({ skipped: 'legend_not_open_yet' });
+  }
+
   const admin = createAdminClient();
 
-  // Only Standard/Champion completers are eligible for Legend — don't send to
-  // users who never finished a prior tier. Runs July 12, 13, 14 at 50/day.
-  const { data: users, error } = await admin.rpc('get_legend_closing_eligible');
+  // get_legend_eligible_unsent excludes:
+  //   - users whose legend_email_sent_at is already set (batch-sent)
+  //   - users who have a 'legend' tier row (got email via UI flow in actions.ts)
+  const { data: users, error } = await admin.rpc('get_legend_eligible_unsent');
 
   if (error) {
     return Response.json({ error: 'db_error' }, { status: 500 });
@@ -36,17 +43,17 @@ export async function GET(request: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: sendError } = await resend.batch.send(
-    batch.map((u) => buildLegendClosingSoonPayload(u.email, buildReferralUrl(u.referral_code))),
+    batch.map((u) => buildLegendWelcomePayload(u.email, buildReferralUrl(u.referral_code))),
   );
 
   if (sendError) {
     return Response.json({ error: 'send_error' }, { status: 500 });
   }
 
-  // Mark as sent so the next day's run moves on to the next 50.
+  // Mark as sent so tomorrow's run skips these users.
   await admin
     .from('marketing_waitlist')
-    .update({ closing_email_sent_at: new Date().toISOString() })
+    .update({ legend_email_sent_at: new Date().toISOString() })
     .in('referral_code', batch.map((u) => u.referral_code));
 
   return Response.json({ sent: batch.length, total: users?.length ?? 0 });
