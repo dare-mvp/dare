@@ -432,14 +432,14 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
   // ── Phase 1: tier selection ───────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
 
         {/* ── Standard ₦2,000 ── */}
         <button
           type="button"
           onClick={() => { setSelected('standard'); trackEvent('challenge_tier_selected', { tier: 'standard' }); }}
           aria-label={`Standard Dare — ₦2,000, 4 tasks${selected === 'standard' ? ' (selected)' : ''}`}
-          className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+          className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'standard'
               ? 'border-[#19C37D]/60 shadow-lg shadow-[#19C37D]/5'
               : selected === 'champion'
@@ -533,7 +533,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
           type="button"
           onClick={() => { setSelected('champion'); trackEvent('challenge_tier_selected', { tier: 'champion' }); }}
           aria-label={`Champion Dare — ₦3,000, 5 tasks${selected === 'champion' ? ' (selected)' : ''}`}
-          className={`relative w-full rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+          className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'champion'
               ? 'border-brand-primary shadow-lg shadow-brand-primary/10'
               : selected === 'standard'
