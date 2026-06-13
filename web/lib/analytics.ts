@@ -6,7 +6,8 @@ type ChallengeEventMap = {
   challenge_task_share_click: { source: 'step1' | 'task_list'; method: 'native' | 'whatsapp' };
   challenge_referral_link_copied: { source: 'step1' | 'task_list' };
   challenge_claim_message_copied: Record<string, never>;
-  challenge_task_dm_click: { tier: 'standard' | 'champion' | 'legend' };
+  challenge_task_dm_click: { tier: 'standard' | 'champion' | 'legend'; method?: 'instagram' | 'whatsapp' };
+  challenge_task_whatsapp_channel_click: { tier: 'legend' };
 };
 
 type ChallengeEventName = keyof ChallengeEventMap;
