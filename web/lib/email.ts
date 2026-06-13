@@ -7,11 +7,20 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 // ---------------------------------------------------------------------------
 // Challenge welcome — sent when someone joins the waitlist
 // ---------------------------------------------------------------------------
 
 export function buildChallengeWelcomePayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
   return {
     from: FROM,
     to,
@@ -28,9 +37,9 @@ export function buildChallengeWelcomePayload(to: string, referralUrl: string) {
           Your referral link
         </p>
 
-        <a href="${referralUrl}"
+        <a href="${safeUrl}"
            style="display:block;margin-top:8px;padding:14px 20px;background:#FF5500;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
-          ${referralUrl}
+          ${safeUrl}
         </a>
 
         <p style="font-size:15px;line-height:1.7;color:#a1a1aa;margin-top:24px;">
@@ -69,6 +78,7 @@ export async function sendChallengeWelcomeEmail(to: string, referralUrl: string)
 // ---------------------------------------------------------------------------
 
 export function buildLegendWelcomePayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
   return {
     from: FROM,
     to,
@@ -128,9 +138,9 @@ export function buildLegendWelcomePayload(to: string, referralUrl: string) {
 
         <p style="font-size:14px;color:#a1a1aa;margin-bottom:8px;">Your referral link (Task A is auto-tracked with this):</p>
 
-        <a href="${referralUrl}"
+        <a href="${safeUrl}"
            style="display:block;padding:14px 20px;background:#FBBF24;color:#000000;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
-          ${referralUrl}
+          ${safeUrl}
         </a>
 
         <p style="font-size:14px;color:#71717a;margin-top:16px;">
@@ -166,6 +176,7 @@ export async function sendLegendWelcomeEmail(to: string, referralUrl: string): P
 // ---------------------------------------------------------------------------
 
 export function buildLegendClosingSoonPayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
   return {
     from: FROM,
     to,
@@ -223,9 +234,9 @@ export function buildLegendClosingSoonPayload(to: string, referralUrl: string) {
           </div>
         </div>
 
-        <a href="${referralUrl}"
+        <a href="${safeUrl}"
            style="display:block;padding:14px 20px;background:#FBBF24;color:#000000;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
-          ${referralUrl}
+          ${safeUrl}
         </a>
 
         <p style="font-size:14px;color:#71717a;margin-top:16px;">
