@@ -6,7 +6,7 @@ import {
   CHALLENGE_START,
   CHALLENGE_END,
 } from '@/lib/challenge-config';
-import { sendChallengeWelcomeEmail } from '@/lib/email';
+import { sendChallengeWelcomeEmail, sendLegendWelcomeEmail } from '@/lib/email';
 import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 
@@ -270,25 +270,65 @@ export async function joinChallengeWaitlist(
   return { error: 'unknown' };
 }
 
+export type TierSelectionResult = { ok: true } | { error: 'not_eligible' | 'unknown' };
+
 // Upsert approach: referral_code holders update their row; anonymous create a new row.
-// Called directly (not via useActionState) — fire-and-forget from the client.
 export async function recordTierSelection(
-  tier: 'standard' | 'champion',
+  tier: 'standard' | 'champion' | 'legend',
   referralCode?: string,
-): Promise<void> {
-  if (tier !== 'standard' && tier !== 'champion') return;
+): Promise<TierSelectionResult> {
+  if (tier !== 'standard' && tier !== 'champion' && tier !== 'legend') {
+    return { error: 'unknown' };
+  }
 
-  const admin = createAdminClient();
-  const clientIp = await getClientIp();
-  const ipHash = hashRateLimitIdentifier(clientIp);
-  const now = new Date().toISOString();
+  try {
+    const admin = createAdminClient();
+    const clientIp = await getClientIp();
+    const ipHash = hashRateLimitIdentifier(clientIp);
+    const now = new Date().toISOString();
 
-  if (referralCode && REFERRAL_CODE_RE.test(referralCode)) {
-    await admin.from('challenge_tier_selections').upsert(
-      { referral_code: referralCode, tier, ip_hash: ipHash, updated_at: now },
-      { onConflict: 'referral_code' },
-    );
-  } else {
-    await admin.from('challenge_tier_selections').insert({ tier, ip_hash: ipHash });
+    // Legend is exclusive to prior Standard or Champion completers.
+    // Anonymous submissions (no referral code) cannot be verified so are rejected.
+    if (tier === 'legend') {
+      if (!referralCode || !REFERRAL_CODE_RE.test(referralCode)) {
+        return { error: 'not_eligible' };
+      }
+      const { data: prior } = await admin
+        .from('challenge_tier_selections')
+        .select('tier')
+        .eq('referral_code', referralCode)
+        .in('tier', ['standard', 'champion'])
+        .maybeSingle();
+      if (!prior) return { error: 'not_eligible' };
+    }
+
+    if (referralCode && REFERRAL_CODE_RE.test(referralCode)) {
+      const { error } = await admin.from('challenge_tier_selections').upsert(
+        { referral_code: referralCode, tier, ip_hash: ipHash, updated_at: now },
+        { onConflict: 'referral_code,tier' },
+      );
+      if (error) return { error: 'unknown' };
+    } else {
+      const { error } = await admin
+        .from('challenge_tier_selections')
+        .insert({ tier, ip_hash: ipHash });
+      if (error) return { error: 'unknown' };
+    }
+
+    // Send the Legend welcome email to the confirmed user (fire-and-forget).
+    if (tier === 'legend' && referralCode) {
+      const { data: user } = await admin
+        .from('marketing_waitlist')
+        .select('email')
+        .eq('referral_code', referralCode)
+        .maybeSingle();
+      if (user?.email) {
+        sendLegendWelcomeEmail(user.email, await buildReferralUrl(referralCode));
+      }
+    }
+
+    return { ok: true };
+  } catch {
+    return { error: 'unknown' };
   }
 }

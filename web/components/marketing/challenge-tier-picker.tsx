@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { recordTierSelection } from '@/app/(marketing)/actions';
 import { trackEvent } from '@/lib/analytics';
 import {
@@ -14,15 +14,23 @@ import {
   Copy,
   Check,
   MessageCircle,
+  Swords,
+  Users,
+  Shield,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
+import { LEGEND_START, LEGEND_START_LABEL } from '@/lib/challenge-config';
 
-type Tier = 'standard' | 'champion';
+type Tier = 'standard' | 'champion' | 'legend';
 
 const INSTAGRAM_PROFILE = 'https://www.instagram.com/dareappofficial';
 const INSTAGRAM_DM = 'https://ig.me/m/dareappofficial';
 const CLAIM_MESSAGE = 'Challenge accepted and completed';
 const SHARE_TEXT =
-  'I dare you to try this 👊 Join the DARE I Dare You Challenge and earn up to ₦3,000. Sign up with my link:';
+  'I dare you to try this 👊 Join the DARE I Dare You Challenge and earn up to ₦9,000. Sign up with my link:';
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -79,12 +87,12 @@ function ShareTaskButton({ referralUrl }: { referralUrl: string }) {
   );
 }
 
-function CopyMessageButton() {
+function CopyMessageButton({ message }: { message: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(CLAIM_MESSAGE);
+      await navigator.clipboard.writeText(message);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       trackEvent('challenge_claim_message_copied');
@@ -231,6 +239,118 @@ function TaskList({
   referralCode?: string;
   referralUrl?: string;
 }) {
+  // ── Legend tier task list ─────────────────────────────────────────────────
+  if (tier === 'legend') {
+    return (
+      <div className="space-y-3">
+        {/* Gate */}
+        <div className="rounded-xl border border-[#FBBF24]/20 bg-[#FBBF24]/5 opacity-70 p-4 sm:p-5">
+          <div className="flex gap-3">
+            <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/10">
+              <Shield className="h-4 w-4 text-[#FBBF24]" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                <span className="font-mono text-[10px] text-[#FBBF24]">Gate</span>
+                Prior Tier Completed
+                <span className="rounded-full border border-[#FBBF24]/30 bg-[#FBBF24]/10 px-2 py-0.5 font-mono text-[10px] text-[#FBBF24]">
+                  Done ✓
+                </span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                You earned Standard or Champion already. Submit your reward receipt in the claim DM.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <TaskCard number="01" Icon={ListChecks} title="Join the DARE waitlist" done>
+          <p className="mt-1 text-xs text-[#19C37D]">Completed in Step 1 ↑</p>
+        </TaskCard>
+
+        <TaskCard
+          number="A"
+          Icon={UserPlus}
+          title="Refer 5 Friends"
+          description="Get 5 friends to sign up via your referral link. Auto-tracked — no screenshot needed."
+        >
+          {referralUrl && (
+            <CopyLinkButton url={referralUrl} referralCode={referralCode} />
+          )}
+        </TaskCard>
+
+        <TaskCard
+          number="B"
+          Icon={Swords}
+          title="Film a DARE Battle"
+          description='Dare a named friend on camera to do something specific. They film themselves accepting or attempting it and post their response. Submit both video links in your claim DM. Tag @dareappofficial and use #IDareYouNG on both posts.'
+          accent
+        >
+          <a
+            href={INSTAGRAM_PROFILE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex w-full items-center justify-center gap-2 h-11 rounded-xl border border-brand-primary/30 bg-brand-primary/10 px-5 text-sm font-semibold text-brand-primary transition-all hover:bg-brand-primary/20 active:scale-[0.98]"
+          >
+            Open Instagram Reels →
+          </a>
+        </TaskCard>
+
+        <TaskCard
+          number="C"
+          Icon={Users}
+          title="Drop in a WhatsApp Community"
+          description="Share your referral link in a WhatsApp group of 20+ people. Screenshot the delivery as proof and include it in your claim DM."
+        >
+          {referralUrl && (
+            <CopyLinkButton url={referralUrl} referralCode={referralCode} />
+          )}
+        </TaskCard>
+
+        {/* Claim */}
+        <div className="rounded-xl border border-[#FBBF24]/30 bg-[#FBBF24]/5 p-4 sm:p-5 space-y-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#FBBF24]">
+              Done all tasks? Claim your ₦9,000
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              DM us with: proof of prior reward receipt, both battle video links (Task B), and screenshot of WhatsApp group delivery (Task C). Referrals are auto-tracked.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Send this message
+            </p>
+            {(() => {
+              const legendMsg = `Legend Dare complete — ref: ${referralCode ?? 'XXXXXXXX'}`;
+              return (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-lg border border-[#FBBF24]/20 bg-brand-bg px-3 py-2.5 font-mono text-sm text-[#FBBF24]">
+                    {legendMsg}
+                  </div>
+                  <CopyMessageButton message={legendMsg} />
+                </div>
+              );
+            })()}
+          </div>
+
+          <a
+            href={INSTAGRAM_DM}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-[#FBBF24] px-6 text-sm font-semibold text-black transition-all hover:opacity-90 active:scale-[0.98]"
+            onClick={() => trackEvent('challenge_task_dm_click', { tier: 'legend' })}
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            DM @dareappofficial to claim
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Standard / Champion task list ─────────────────────────────────────────
   return (
     <div className="space-y-3">
       <TaskCard number="01" Icon={ListChecks} title="Join the DARE waitlist" done>
@@ -320,7 +440,7 @@ function TaskList({
             <div className="flex-1 rounded-lg border border-brand-primary/20 bg-brand-bg px-3 py-2.5 font-mono text-sm text-brand-primary">
               {CLAIM_MESSAGE}
             </div>
-            <CopyMessageButton />
+            <CopyMessageButton message={CLAIM_MESSAGE} />
           </div>
         </div>
 
@@ -349,9 +469,21 @@ interface ChallengeTierPickerProps {
 export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTierPickerProps) {
   const [selected, setSelected] = useState<Tier | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const [selectionError, setSelectionError] = useState<'not_eligible' | 'unknown' | null>(null);
+  const [hasSwiped, setHasSwiped] = useState(false);
+  const legendComingSoon = new Date() < LEGEND_START;
   const taskListRef = useRef<HTMLDivElement>(null);
   const continueRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => setHasSwiped(true);
+    el.addEventListener('scroll', onScroll, { once: true, passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!selected || !continueRef.current) return;
@@ -361,12 +493,25 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
     return () => clearTimeout(timer);
   }, [selected]);
 
-  function handleContinue() {
-    if (!selected) return;
+  function handleTierSelect(tier: Tier) {
+    if (tier === 'legend' && legendComingSoon) return;
+    setSelected(tier);
+    setSelectionError(null);
+    trackEvent('challenge_tier_selected', { tier });
+  }
+
+  async function handleContinue() {
+    if (!selected || isPending) return;
+    setIsPending(true);
+    setSelectionError(null);
+    const result = await recordTierSelection(selected, referralCode);
+    setIsPending(false);
+    if ('error' in result) {
+      setSelectionError(result.error);
+      if (result.error === 'not_eligible') setSelected(null);
+      return;
+    }
     trackEvent('challenge_tier_confirmed', { tier: selected });
-    startTransition(() => {
-      recordTierSelection(selected, referralCode).catch(() => {});
-    });
     setConfirmed(true);
   }
 
@@ -380,32 +525,42 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
 
   // ── Phase 2: task list ────────────────────────────────────────────────────
   if (confirmed && selected) {
+    const isChampion = selected === 'champion';
+    const isLegend = selected === 'legend';
+    const accentClass = isLegend
+      ? 'text-[#FBBF24]'
+      : isChampion
+      ? 'text-brand-primary'
+      : 'text-[#19C37D]';
+    const ringClass = isLegend
+      ? 'bg-[#FBBF24]/20'
+      : isChampion
+      ? 'bg-brand-primary/20'
+      : 'bg-[#19C37D]/15';
+    const checkClass = isLegend
+      ? 'text-[#FBBF24]'
+      : isChampion
+      ? 'text-brand-primary'
+      : 'text-[#19C37D]';
+    const tierLabel =
+      selected === 'standard' ? 'Standard Dare' : selected === 'champion' ? 'Champion Dare' : 'Legend Dare';
+    const tierAmount =
+      selected === 'standard' ? '₦2,000' : selected === 'champion' ? '₦3,000' : '₦9,000';
+
     return (
       <div className="space-y-6">
         {/* Compact selected-tier header */}
         <div className="flex items-center justify-between rounded-xl border border-white/10 bg-brand-surface px-4 py-3">
           <div className="flex items-center gap-3">
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full ${
-                selected === 'champion' ? 'bg-brand-primary/20' : 'bg-[#19C37D]/15'
-              }`}
-            >
-              <CheckCircle2
-                className={`h-4 w-4 ${
-                  selected === 'champion' ? 'text-brand-primary' : 'text-[#19C37D]'
-                }`}
-              />
+            <div className={`flex h-7 w-7 items-center justify-center rounded-full ${ringClass}`}>
+              <CheckCircle2 className={`h-4 w-4 ${checkClass}`} />
             </div>
             <div>
-              <span
-                className={`font-mono text-[10px] uppercase tracking-widest ${
-                  selected === 'champion' ? 'text-brand-primary' : 'text-[#19C37D]'
-                }`}
-              >
-                {selected === 'standard' ? 'Standard Dare' : 'Champion Dare'}
+              <span className={`font-mono text-[10px] uppercase tracking-widest ${accentClass}`}>
+                {tierLabel}
               </span>
               <p className="font-syne text-xl font-extrabold text-foreground leading-tight">
-                {selected === 'standard' ? '₦2,000' : '₦3,000'}
+                {tierAmount}
               </p>
             </div>
           </div>
@@ -414,6 +569,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
             onClick={() => {
               setConfirmed(false);
               setSelected(null);
+              setIsPending(false);
             }}
             className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors py-2 px-3"
           >
@@ -431,18 +587,33 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
 
   // ── Phase 1: tier selection ───────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+    <div className="space-y-4">
+
+      {/* ── Scroll hint — fades out after first swipe ── */}
+      <div
+        aria-hidden
+        className={`flex items-center justify-center gap-2 transition-opacity duration-500 ${
+          hasSwiped ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <ChevronLeft className="h-4 w-4 animate-pulse text-muted-foreground" />
+        <span className="font-mono text-[11px] text-muted-foreground tracking-wide">
+          3 tiers · swipe to explore
+        </span>
+        <ChevronRight className="h-4 w-4 animate-pulse text-muted-foreground" />
+      </div>
+
+      <div ref={scrollContainerRef} className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
 
         {/* ── Standard ₦2,000 ── */}
         <button
           type="button"
-          onClick={() => { setSelected('standard'); trackEvent('challenge_tier_selected', { tier: 'standard' }); }}
+          onClick={() => handleTierSelect('standard')}
           aria-label={`Standard Dare — ₦2,000, 4 tasks${selected === 'standard' ? ' (selected)' : ''}`}
           className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'standard'
               ? 'border-[#19C37D]/60 shadow-lg shadow-[#19C37D]/5'
-              : selected === 'champion'
+              : selected !== null
               ? 'border-white/8 opacity-40'
               : 'border-white/8 active:scale-[0.99] sm:hover:border-white/20 sm:hover:-translate-y-0.5'
           }`}
@@ -491,24 +662,9 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
             </div>
 
             {[
-              {
-                number: '02',
-                Icon: Heart,
-                title: 'Follow',
-                description: 'Follow @dareappofficial on Instagram. Screenshot as proof.',
-              },
-              {
-                number: '03',
-                Icon: Share2,
-                title: 'Spread the Word',
-                description: 'Share your referral link on WhatsApp Status or Instagram Story.',
-              },
-              {
-                number: '04',
-                Icon: UserPlus,
-                title: 'Refer 2 Friends',
-                description: 'Get 2 friends to sign up via your referral link. Auto-tracked.',
-              },
+              { number: '02', Icon: Heart, title: 'Follow', description: 'Follow @dareappofficial on Instagram. Screenshot as proof.' },
+              { number: '03', Icon: Share2, title: 'Spread the Word', description: 'Share your referral link on WhatsApp Status or Instagram Story.' },
+              { number: '04', Icon: UserPlus, title: 'Refer 2 Friends', description: 'Get 2 friends to sign up via your referral link. Auto-tracked.' },
             ].map(({ number, Icon, title, description }) => (
               <div key={number} className="flex gap-3">
                 <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5">
@@ -519,9 +675,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
                     <span className="font-mono text-[10px] text-muted-foreground">{number}</span>
                     {title}
                   </p>
-                  <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
-                    {description}
-                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">{description}</p>
                 </div>
               </div>
             ))}
@@ -531,12 +685,12 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
         {/* ── Champion ₦3,000 ── */}
         <button
           type="button"
-          onClick={() => { setSelected('champion'); trackEvent('challenge_tier_selected', { tier: 'champion' }); }}
+          onClick={() => handleTierSelect('champion')}
           aria-label={`Champion Dare — ₦3,000, 5 tasks${selected === 'champion' ? ' (selected)' : ''}`}
           className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             selected === 'champion'
               ? 'border-brand-primary shadow-lg shadow-brand-primary/10'
-              : selected === 'standard'
+              : selected !== null
               ? 'border-brand-primary/20 opacity-40'
               : 'border-brand-primary/50 shadow-md shadow-brand-primary/5 active:scale-[0.99] sm:hover:-translate-y-0.5'
           }`}
@@ -586,18 +740,8 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
             </div>
 
             {[
-              {
-                number: '02',
-                Icon: Heart,
-                title: 'Follow',
-                description: 'Follow @dareappofficial on Instagram. Screenshot as proof.',
-              },
-              {
-                number: '03',
-                Icon: Share2,
-                title: 'Spread the Word',
-                description: 'Share your referral link on WhatsApp Status or Instagram Story.',
-              },
+              { number: '02', Icon: Heart, title: 'Follow', description: 'Follow @dareappofficial on Instagram. Screenshot as proof.' },
+              { number: '03', Icon: Share2, title: 'Spread the Word', description: 'Share your referral link on WhatsApp Status or Instagram Story.' },
             ].map(({ number, Icon, title, description }) => (
               <div key={number} className="flex gap-3">
                 <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5">
@@ -608,9 +752,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
                     <span className="font-mono text-[10px] text-muted-foreground">{number}</span>
                     {title}
                   </p>
-                  <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
-                    {description}
-                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">{description}</p>
                 </div>
               </div>
             ))}
@@ -650,6 +792,143 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
           </div>
         </button>
 
+        {/* ── Legend ₦9,000 — coming soon until LEGEND_START, then fully live ── */}
+        {legendComingSoon ? (
+          // Non-interactive preview card
+          <div
+            aria-label={`Legend Dare — ₦9,000, coming ${LEGEND_START_LABEL}`}
+            className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 select-none ${
+              selected !== null ? 'border-[#FBBF24]/10 opacity-30' : 'border-[#FBBF24]/15'
+            }`}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-2xl bg-[#FBBF24] opacity-[0.02]"
+            />
+
+            {/* Coming soon badge — top right */}
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full border border-[#FBBF24]/30 bg-[#FBBF24]/10 px-2.5 py-1">
+              <Clock className="h-3 w-3 text-[#FBBF24]" aria-hidden />
+              <span className="font-mono text-[10px] text-[#FBBF24]">Coming soon</span>
+            </div>
+
+            <div className="relative flex items-start justify-between gap-3 pr-32">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#FBBF24]/60">
+                  Legend Dare
+                </span>
+                <h3 className="mt-1 font-syne text-2xl sm:text-3xl font-extrabold text-foreground">
+                  ₦9,000
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  Unlocks {LEGEND_START_LABEL}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative h-px bg-[#FBBF24]/10" />
+
+            <div className="relative space-y-4 opacity-50">
+              {[
+                { number: 'Gate', Icon: Shield, title: 'Prior Tier Completed' },
+                { number: 'A', Icon: UserPlus, title: 'Refer 5 Friends' },
+                { number: 'B', Icon: Swords, title: 'Film a DARE Battle' },
+                { number: 'C', Icon: Users, title: 'Drop in a WhatsApp Community' },
+              ].map(({ number, Icon, title }) => (
+                <div key={number} className="flex gap-3">
+                  <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-[#FBBF24]/10 bg-[#FBBF24]/5">
+                    <Icon className="h-4 w-4 text-[#FBBF24]/50" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-[#FBBF24]/50">{number}</span>
+                    <p className="text-sm font-semibold text-foreground/50">{title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Live — fully interactive
+          <button
+            type="button"
+            onClick={() => handleTierSelect('legend')}
+            aria-label={`Legend Dare — ₦9,000, exclusive${selected === 'legend' ? ' (selected)' : ''}`}
+            className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24] ${
+              selected === 'legend'
+                ? 'border-[#FBBF24]/60 shadow-lg shadow-[#FBBF24]/10'
+                : selected !== null
+                ? 'border-white/8 opacity-40'
+                : 'border-[#FBBF24]/30 shadow-md shadow-[#FBBF24]/5 active:scale-[0.99] sm:hover:-translate-y-0.5'
+            }`}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-2xl bg-[#FBBF24] opacity-[0.03]"
+            />
+
+            {selected === 'legend' && (
+              <div className="absolute top-4 right-4 flex h-6 w-6 items-center justify-center rounded-full bg-[#FBBF24]/20">
+                <CheckCircle2 className="h-4 w-4 text-[#FBBF24]" />
+              </div>
+            )}
+
+            <div className="relative flex items-start justify-between gap-3 pr-6">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#FBBF24]">
+                  Legend Dare
+                </span>
+                <h3 className="mt-1 font-syne text-2xl sm:text-3xl font-extrabold text-foreground">
+                  ₦9,000
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  Standard or Champion required
+                </p>
+              </div>
+              <span className="rounded-full border border-[#FBBF24]/40 bg-[#FBBF24]/10 px-2.5 py-1 font-mono text-xs text-[#FBBF24] shrink-0">
+                Exclusive
+              </span>
+            </div>
+
+            <div className="relative h-px bg-[#FBBF24]/20" />
+
+            <div className="relative space-y-4">
+              <div className="flex gap-3">
+                <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-[#FBBF24]/20 bg-[#FBBF24]/5">
+                  <Shield className="h-4 w-4 text-[#FBBF24]" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                    <span className="font-mono text-[10px] text-[#FBBF24]">Gate</span>
+                    Prior Tier Completed
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                    You've already earned Standard or Champion. Submit proof in your claim DM.
+                  </p>
+                </div>
+              </div>
+
+              {[
+                { number: 'A', Icon: UserPlus, title: 'Refer 5 Friends', description: 'Get 5 friends to sign up via your referral link. Auto-tracked.' },
+                { number: 'B', Icon: Swords, title: 'Film a DARE Battle', description: 'Dare a named friend on camera. They film their response. Submit both video links.' },
+                { number: 'C', Icon: Users, title: 'Drop in a WhatsApp Community', description: 'Share your link in a WhatsApp group of 20+ people. Screenshot the delivery.' },
+              ].map(({ number, Icon, title, description }) => (
+                <div key={number} className="flex gap-3">
+                  <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-[#FBBF24]/20 bg-[#FBBF24]/5">
+                    <Icon className="h-4 w-4 text-[#FBBF24]" aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <span className="font-mono text-[10px] text-[#FBBF24]">{number}</span>
+                      {title}
+                    </p>
+                    <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">{description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </button>
+        )}
+
       </div>
 
       {/* ── Continue CTA ── */}
@@ -663,16 +942,38 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
           <button
             type="button"
             onClick={handleContinue}
-            className="flex w-full sm:w-auto items-center justify-center gap-2 h-14 rounded-xl bg-brand-primary px-6 sm:px-10 text-base sm:text-lg font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+            disabled={isPending}
+            className={`flex w-full sm:w-auto items-center justify-center gap-2 h-14 rounded-xl px-6 sm:px-10 text-base sm:text-lg font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed ${
+              selected === 'legend'
+                ? 'bg-[#FBBF24] text-black'
+                : 'bg-brand-primary text-white'
+            }`}
           >
-            {selected === 'standard'
-              ? 'Continue — Standard ₦2,000'
-              : 'Continue — Champion ₦3,000'}
-            <ArrowDown className="h-5 w-5 shrink-0" aria-hidden />
+            {isPending ? (
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <>
+                {selected === 'standard'
+                  ? 'Continue — Standard ₦2,000'
+                  : selected === 'champion'
+                  ? 'Continue — Champion ₦3,000'
+                  : 'Continue — Legend ₦9,000'}
+                <ArrowDown className="h-5 w-5 shrink-0" aria-hidden />
+              </>
+            )}
           </button>
+
+          {selectionError && (
+            <p className="text-center text-sm text-red-400 max-w-sm">
+              {selectionError === 'not_eligible'
+                ? 'Legend Dare is only available to previous Standard or Champion completers. Pick one of those tiers to start.'
+                : 'Couldn\'t save your selection — tap Continue to try again.'}
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={() => setSelected(null)}
+            onClick={() => { setSelected(null); setSelectionError(null); }}
             className="text-center font-mono text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
           >
             Change tier
