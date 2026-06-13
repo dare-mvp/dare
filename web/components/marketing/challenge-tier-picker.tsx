@@ -28,6 +28,8 @@ type Tier = 'standard' | 'champion' | 'legend';
 
 const INSTAGRAM_PROFILE = 'https://www.instagram.com/dareappofficial';
 const INSTAGRAM_DM = 'https://ig.me/m/dareappofficial';
+const WHATSAPP_CHANNEL = 'https://whatsapp.com/channel/0029VbCZi4bLdQec56X6i81K';
+const WHATSAPP_DM = 'https://wa.me/2347014268973';
 const CLAIM_MESSAGE = 'Challenge accepted and completed';
 const SHARE_TEXT =
   'I dare you to try this 👊 Join the DARE I Dare You Challenge and earn up to ₦9,000. Sign up with my link:';
@@ -307,6 +309,24 @@ function TaskList({
           )}
         </TaskCard>
 
+        <TaskCard
+          number="D"
+          Icon={MessageCircle}
+          title="Join our WhatsApp Channel"
+          description="Join the official DARE WhatsApp channel. Screenshot your membership screen as proof and include it in your claim DM."
+        >
+          <a
+            href={WHATSAPP_CHANNEL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex w-full items-center justify-center gap-2 h-11 rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 px-5 text-sm font-semibold text-[#25D366] transition-all hover:bg-[#25D366]/20 active:scale-[0.98]"
+            onClick={() => trackEvent('challenge_task_whatsapp_channel_click', { tier: 'legend' })}
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            Join DARE WhatsApp Channel →
+          </a>
+        </TaskCard>
+
         {/* Claim */}
         <div className="rounded-xl border border-[#FBBF24]/30 bg-[#FBBF24]/5 p-4 sm:p-5 space-y-4">
           <div>
@@ -314,7 +334,7 @@ function TaskList({
               Done all tasks? Claim your ₦9,000
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              DM us with: proof of prior reward receipt, both battle video links (Task B), and screenshot of WhatsApp group delivery (Task C). Referrals are auto-tracked.
+              DM us with: proof of prior reward receipt, both battle video links (Task B), screenshot of WhatsApp group delivery (Task C), and screenshot of WhatsApp channel membership (Task D). Referrals are auto-tracked.
             </p>
           </div>
 
@@ -335,16 +355,28 @@ function TaskList({
             })()}
           </div>
 
-          <a
-            href={INSTAGRAM_DM}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-[#FBBF24] px-6 text-sm font-semibold text-black transition-all hover:opacity-90 active:scale-[0.98]"
-            onClick={() => trackEvent('challenge_task_dm_click', { tier: 'legend' })}
-          >
-            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-            DM @dareappofficial to claim
-          </a>
+          <div className="flex flex-col gap-2">
+            <a
+              href={INSTAGRAM_DM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-[#FBBF24] px-6 text-sm font-semibold text-black transition-all hover:opacity-90 active:scale-[0.98]"
+              onClick={() => trackEvent('challenge_task_dm_click', { tier: 'legend', method: 'instagram' })}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+              DM @dareappofficial on Instagram
+            </a>
+            <a
+              href={WHATSAPP_DM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 h-12 rounded-xl border border-[#25D366]/40 bg-[#25D366]/10 px-6 text-sm font-semibold text-[#25D366] transition-all hover:bg-[#25D366]/20 active:scale-[0.98]"
+              onClick={() => trackEvent('challenge_task_dm_click', { tier: 'legend', method: 'whatsapp' })}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+              or DM us on WhatsApp
+            </a>
+          </div>
         </div>
       </div>
     );
