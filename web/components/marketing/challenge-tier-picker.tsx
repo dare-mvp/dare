@@ -955,7 +955,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
                     Prior Tier Completed
                   </p>
                   <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
-                    You've already earned Standard or Champion. Submit proof in your claim DM.
+                    You&apos;ve already earned Standard or Champion. Submit proof in your claim DM.
                   </p>
                 </div>
               </div>

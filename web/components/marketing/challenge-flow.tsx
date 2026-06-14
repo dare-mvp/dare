@@ -28,26 +28,8 @@ export function ChallengeFlow({
   return (
     <>
       {/* ── Task 01 — Join the Waitlist (required) ───────────── */}
-      <section id="start" className="scroll-mt-14 bg-brand-surface px-4 sm:px-6 py-12 sm:py-20">
-        <div className="mx-auto max-w-2xl space-y-8">
-          <div className="flex items-start gap-4">
-            <span className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full border border-brand-primary/40 bg-brand-primary/10 font-mono text-sm font-bold text-brand-primary">
-              01
-            </span>
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-brand-primary mb-1">
-                Required for all tiers
-              </p>
-              <h2 className="font-syne text-2xl font-extrabold text-foreground">
-                Join the DARE waitlist
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                Sign up to get your unique referral link. You need this to complete Tasks 03
-                and 04 — it proves your referrals came from you.
-              </p>
-            </div>
-          </div>
-
+      <section id="start" className="scroll-mt-14 bg-brand-bg px-4 sm:px-6 pt-6 pb-10 sm:pb-16">
+        <div className="mx-auto max-w-2xl">
           <ChallengeWaitlist
             referredBy={referredBy}
             spotsRemaining={spotsRemaining}
