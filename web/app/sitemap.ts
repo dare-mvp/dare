@@ -1,19 +1,51 @@
 import type { MetadataRoute } from 'next';
 import { getAllBlogPosts } from '@/lib/blog';
+import { DEFAULT_OG_IMAGE, absoluteUrl, publicRoutes, sitemapEntry } from '@/lib/seo';
+
+const now = new Date();
+const defaultImage = absoluteUrl(DEFAULT_OG_IMAGE);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const posts = await getAllBlogPosts();
 
   return [
-    { url: 'https://dareapp.com', lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
-    { url: 'https://dareapp.com/trust-safety', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-    { url: 'https://dareapp.com/faq', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-    { url: 'https://dareapp.com/blog', lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
-    ...posts.map((post) => ({
-      url: `https://dareapp.com/blog/${post.slug}`,
-      lastModified: new Date(post.date),
-      changeFrequency: 'monthly' as const,
-      priority: 0.6,
-    })),
+    sitemapEntry(publicRoutes.home, {
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 1,
+      images: [defaultImage],
+    }),
+    sitemapEntry(publicRoutes.challenge, {
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.9,
+      images: [defaultImage],
+    }),
+    sitemapEntry(publicRoutes.faq, {
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+      images: [defaultImage],
+    }),
+    sitemapEntry(publicRoutes.trustSafety, {
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+      images: [defaultImage],
+    }),
+    sitemapEntry(publicRoutes.blog, {
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+      images: [defaultImage],
+    }),
+    ...posts.map((post) =>
+      sitemapEntry(`/blog/${post.slug}`, {
+        lastModified: new Date(post.date),
+        changeFrequency: 'monthly',
+        priority: 0.6,
+        images: [absoluteUrl(post.image ?? DEFAULT_OG_IMAGE)],
+      }),
+    ),
   ];
 }

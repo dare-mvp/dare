@@ -3,22 +3,77 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllBlogPosts } from '@/lib/blog';
 import { MarketingFooter } from '@/components/marketing/footer';
+import {
+  absoluteUrl,
+  createBreadcrumbSchema,
+  createSeoMetadata,
+  createWebPageSchema,
+  jsonLdScript,
+} from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Blog — DARE',
-  description: 'Updates, guides, and community stories from DARE.',
-  openGraph: {
-    title: 'Blog — DARE',
-    description: 'Updates, guides, and community stories from DARE.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-  },
-};
+const path = '/blog';
+const title = 'DARE Blog - Skill Challenge Guides, Product Updates, and Community Stories';
+const description =
+  'Read DARE guides, product updates, trust and safety explainers, and community stories about skill challenges, task rewards, payouts, and disputes.';
+
+export const metadata: Metadata = createSeoMetadata({
+  title,
+  description,
+  path,
+  keywords: [
+    'DARE blog',
+    'skill challenge guides',
+    'challenge app product updates',
+    'task reward guides',
+    'escrow challenge education',
+  ],
+});
 
 export default async function BlogListPage() {
   const posts = await getAllBlogPosts();
+  const blogUrl = absoluteUrl(path);
+  const blogSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      createWebPageSchema({
+        path,
+        name: title,
+        description,
+        type: 'Blog',
+      }),
+      {
+        '@type': 'Blog',
+        '@id': `${blogUrl}#blog`,
+        name: 'DARE Blog',
+        description,
+        url: blogUrl,
+        inLanguage: 'en-NG',
+        publisher: { '@id': `${absoluteUrl('/')}#organization` },
+        blogPost: posts.map((post) => ({
+          '@type': ['Article', 'BlogPosting'],
+          '@id': `${absoluteUrl(`/blog/${post.slug}`)}#article`,
+          headline: post.title,
+          description: post.excerpt,
+          datePublished: post.date,
+          url: absoluteUrl(`/blog/${post.slug}`),
+        })),
+      },
+    ],
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(blogSchema)}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(createBreadcrumbSchema([
+          { name: 'Home', path: '/' },
+          { name: 'Blog', path },
+        ]))}
+      />
       <main className="min-h-screen bg-brand-bg pt-16">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <h1 className="font-syne text-5xl font-extrabold text-foreground sm:text-6xl">Blog</h1>

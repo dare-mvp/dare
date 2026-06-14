@@ -5,6 +5,13 @@ import { notFound } from 'next/navigation';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import { getBlogPost, getBlogSlugs } from '@/lib/blog';
 import { MarketingFooter } from '@/components/marketing/footer';
+import {
+  SITE_URL,
+  absoluteUrl,
+  createBreadcrumbSchema,
+  createSeoMetadata,
+  jsonLdScript,
+} from '@/lib/seo';
 
 export async function generateStaticParams() {
   const slugs = await getBlogSlugs();
@@ -20,19 +27,26 @@ export async function generateMetadata({
 
   try {
     const { frontmatter } = await getBlogPost(slug);
-    return {
-      title: `${frontmatter.title} - DARE`,
+    return createSeoMetadata({
+      title: frontmatter.title,
       description: frontmatter.excerpt,
-      openGraph: {
-        title: `${frontmatter.title} - DARE`,
-        description: frontmatter.excerpt,
-        images: frontmatter.image
-          ? [{ url: frontmatter.image }]
-          : [{ url: '/og-image.png', width: 1200, height: 630 }],
-      },
-    };
+      path: `/blog/${slug}`,
+      image: frontmatter.image,
+      imageAlt: frontmatter.title,
+      type: 'article',
+      publishedTime: frontmatter.date,
+      authors: [frontmatter.author],
+      keywords: [
+        frontmatter.category ?? 'DARE guide',
+        'DARE blog',
+        'skill challenge education',
+      ],
+    });
   } catch {
-    return { title: 'Post not found' };
+    return {
+      title: 'Post not found',
+      robots: { index: false, follow: false },
+    };
   }
 }
 
@@ -53,8 +67,70 @@ export default async function BlogDetailPage({
     notFound();
   }
 
+  const canonical = absoluteUrl(`/blog/${slug}`);
+  const image = absoluteUrl(post.frontmatter.image ?? '/og-image.png');
+
+  const isDareTeam =
+    !post.frontmatter.author ||
+    post.frontmatter.author.toLowerCase().includes('dare');
+
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': ['Article', 'BlogPosting'],
+    '@id': `${canonical}#article`,
+    headline: post.frontmatter.title,
+    description: post.frontmatter.excerpt,
+    url: canonical,
+    datePublished: post.frontmatter.date,
+    dateModified: post.frontmatter.date,
+    image: {
+      '@type': 'ImageObject',
+      url: image,
+      width: 1200,
+      height: 630,
+    },
+    articleSection: post.frontmatter.category ?? 'General',
+    inLanguage: 'en-NG',
+    author: isDareTeam
+      ? {
+          '@type': 'Organization',
+          name: 'DARE',
+          '@id': `${SITE_URL}/#organization`,
+          url: SITE_URL,
+        }
+      : {
+          '@type': 'Person',
+          name: post.frontmatter.author,
+        },
+    publisher: {
+      '@id': `${SITE_URL}/#organization`,
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonical,
+    },
+    isPartOf: {
+      '@type': 'Blog',
+      '@id': `${SITE_URL}/blog#blog`,
+      name: 'DARE Blog',
+      url: `${SITE_URL}/blog`,
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(articleSchema)}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(createBreadcrumbSchema([
+          { name: 'Home', path: '/' },
+          { name: 'Blog', path: '/blog' },
+          { name: post.frontmatter.title, path: `/blog/${slug}` },
+        ]))}
+      />
       <main className="min-h-screen bg-brand-bg pt-16">
         <div className="mx-auto max-w-3xl px-6 py-16">
           {post.frontmatter.image && (

@@ -6,25 +6,32 @@ import {
   CHALLENGE_CAP,
   CHALLENGE_END_LABEL,
   CHALLENGE_START_LABEL,
+  CHALLENGE_START,
+  CHALLENGE_END,
   getChallengeStatus,
 } from '@/lib/challenge-config';
+import { createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
+
+const CANONICAL = 'https://daregamesapp.com/challenge';
 
 export const metadata: Metadata = {
-  title: 'I Dare You Challenge',
+  title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000 in Nigeria',
   description:
-    'DARE is challenging you. Join the waitlist, follow, refer friends, earn ₦2,000 to ₦3,000 in your DARE wallet. Nigeria only.',
+    'Join the DARE Challenge. Complete 4 tasks, refer friends, and earn ₦2,000 (Standard) or ₦3,000 (Champion) paid to your DARE wallet. Nigeria only. 300 spots.',
+  alternates: { canonical: CANONICAL },
   openGraph: {
-    title: 'I Dare You Challenge — DARE App',
+    title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000',
     description:
-      'Join the waitlist, follow @dareappofficial, refer friends, film your dare. Earn ₦2,000 – ₦3,000 paid to your DARE wallet.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+      'Complete 4 tasks, refer friends, and earn ₦2,000 – ₦3,000 paid to your DARE wallet. Nigeria only. Limited to 300 spots.',
+    url: CANONICAL,
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'I Dare You Challenge — DARE App' }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'I Dare You Challenge — DARE App',
+    title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000',
     description:
-      'Join the waitlist, follow @dareappofficial, refer friends, film your dare. Earn ₦2,000 – ₦3,000 paid to your DARE wallet.',
+      'Complete 4 tasks, refer friends, and earn ₦2,000 – ₦3,000 paid to your DARE wallet. Nigeria only.',
     images: ['/og-image.png'],
   },
 };
@@ -50,10 +57,67 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
 
   const filledPct = Math.round((spotsTaken / CHALLENGE_CAP) * 100);
 
+  const eventSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'I Dare You Challenge',
+    description:
+      'Complete 4 tasks, refer friends, and earn ₦2,000 (Standard) or ₦3,000 (Champion) paid to your DARE wallet. Nigeria only. Limited to 300 spots.',
+    url: CANONICAL,
+    startDate: CHALLENGE_START.toISOString(),
+    endDate: CHALLENGE_END.toISOString(),
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+    location: {
+      '@type': 'VirtualLocation',
+      url: CANONICAL,
+    },
+    organizer: {
+      '@type': 'Organization',
+      name: 'DARE',
+      '@id': 'https://daregamesapp.com/#organization',
+    },
+    offers: [
+      {
+        '@type': 'Offer',
+        name: 'Standard Tier',
+        description: 'Complete 2 tasks and earn ₦2,000 to your DARE wallet.',
+        price: '0',
+        priceCurrency: 'NGN',
+        availability: 'https://schema.org/InStock',
+        validFrom: CHALLENGE_START.toISOString(),
+        url: CANONICAL,
+      },
+      {
+        '@type': 'Offer',
+        name: 'Champion Tier',
+        description: 'Complete all 4 tasks and earn ₦3,000 to your DARE wallet.',
+        price: '0',
+        priceCurrency: 'NGN',
+        availability: 'https://schema.org/InStock',
+        validFrom: CHALLENGE_START.toISOString(),
+        url: CANONICAL,
+      },
+    ],
+    image: 'https://daregamesapp.com/og-image.png',
+    maximumAttendeeCapacity: CHALLENGE_CAP,
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(eventSchema)}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(createBreadcrumbSchema([
+          { name: 'Home', path: '/' },
+          { name: 'I Dare You Challenge', path: '/challenge' },
+        ]))}
+      />
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative flex min-h-[72vh] flex-col items-center justify-center overflow-hidden bg-brand-bg px-6 text-center">
+      <section className="relative flex flex-col items-center overflow-hidden bg-brand-bg px-6 pt-20 pb-0 sm:pt-28 text-center">
         {/* Radial glow */}
         <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-[600px] w-[600px] rounded-full bg-brand-primary opacity-[0.07] blur-[130px]" />
@@ -128,16 +192,6 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
             </div>
           </div>
 
-          {isOpen && (
-            <div className="pt-2 w-full sm:w-auto">
-              <a
-                href="#start"
-                className="flex w-full sm:inline-flex sm:w-auto h-12 items-center justify-center gap-2 rounded-xl bg-brand-primary px-8 font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-              >
-                Start the challenge
-              </a>
-            </div>
-          )}
         </div>
       </section>
 

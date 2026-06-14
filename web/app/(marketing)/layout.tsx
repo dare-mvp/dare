@@ -2,26 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DareLogo } from '@/components/brand/dare-logo';
 import { NavMenu } from '@/components/marketing/nav-menu';
+import { createSeoMetadata, siteConfig } from '@/lib/seo';
 
 export const metadata: Metadata = {
+  ...createSeoMetadata({
+    title: siteConfig.title,
+    description: siteConfig.shortDescription,
+    path: '/',
+  }),
   title: {
-    default: 'DARE - Skill Challenges and Task Rewards',
-    template: '%s | DARE',
-  },
-  description:
-    'DARE is a hyper-local platform for user-authored Skill-Based DAREs and Task-Based rewards with escrow-backed, proof-led settlement.',
-  openGraph: {
-    title: 'DARE - Skill Challenges and Task Rewards',
-    description:
-      'Create user-authored Skill-Based and Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'DARE - Skill Challenges and Task Rewards',
-    description: 'User-authored Skill-Based DAREs and Task-Based rewards with escrow-backed settlement.',
-    images: ['/og-image.png'],
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
   },
 };
 

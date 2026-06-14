@@ -4,6 +4,14 @@ import {
   GoogleTagManager,
   GoogleTagManagerNoScript,
 } from '@/components/analytics/google-tag-manager';
+import {
+  SITE_URL,
+  createOrganizationSchema,
+  createSeoMetadata,
+  createWebsiteSchema,
+  jsonLdScript,
+  siteConfig,
+} from '@/lib/seo';
 import './globals.css';
 
 const syne = Syne({ subsets: ['latin'], weight: ['800'], variable: '--font-syne-var' });
@@ -11,11 +19,21 @@ const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans-var' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono-var' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://daregamesapp.com'),
-  applicationName: 'DARE',
-  title: 'DARE - Skill Challenges and Task Rewards',
-  description:
-    'DARE is a hyper-local platform for user-authored Skill-Based DAREs and Task-Based rewards with escrow-backed, proof-led settlement.',
+  metadataBase: new URL(SITE_URL),
+  applicationName: siteConfig.name,
+  ...createSeoMetadata({
+    title: siteConfig.title,
+    description: siteConfig.description,
+    path: '/',
+    keywords: ['DARE Nigeria', 'DARE Kenya', 'skill challenge platform Africa'],
+  }),
+  title: {
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
+  },
+  verification: {
+    google: 'cosXzfZONY6R5Owc42cztN1KIzdbXw8I_ijAK66bcpA',
+  },
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -28,24 +46,13 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: 'DARE',
+    title: siteConfig.name,
     statusBarStyle: 'black-translucent',
   },
-  openGraph: {
-    title: 'DARE - Skill Challenges and Task Rewards',
-    description:
-      'Create Skill-Based or Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
-    url: '/',
-    siteName: 'DARE',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'DARE' }],
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'DARE - Skill Challenges and Task Rewards',
-    description:
-      'Create Skill-Based or Task-Based DAREs with Answer Key, Witnessed, or Evidence resolution.',
-    images: ['/og-image.png'],
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
   },
 };
 
@@ -54,13 +61,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const graphSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [createOrganizationSchema(), createWebsiteSchema()],
+  };
+
   return (
     <html
       lang="en"
       className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+      </head>
       <body className="min-h-full flex flex-col">
         <GoogleTagManagerNoScript />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScript(graphSchema)}
+        />
         {children}
         <GoogleTagManager />
       </body>
