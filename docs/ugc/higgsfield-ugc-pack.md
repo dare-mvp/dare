@@ -276,6 +276,83 @@ Log in at [higgsfield.ai](https://higgsfield.ai) to download, re-generate, or re
 
 ---
 
+---
+
+## Proven 2-Person UGC Formula — Confirmed June 2026
+
+This is the highest-performing UGC format for DARE. Multi-person videos consistently outperform single-presenter based on DARE's own post analytics. Use this as the default approach for all future UGC campaigns.
+
+### What Makes It Work
+
+- Two people in the same frame — no CapCut editing needed
+- Lagos street setting and Pidgin English are auto-generated when prompt includes "Nigerian energy"
+- DareApp product ID locks in exact screenshots — zero UI hallucination possible
+- Interview hook creates a natural two-person dynamic without scripted stiffness
+
+### Higgsfield Settings
+
+| Setting | Value |
+| --- | --- |
+| Model | `marketing_studio_video` |
+| Mode | `ugc` |
+| Hook | Interview — `26cac2dd-99cb-4818-a678-509b0dab2c32` |
+| Product | DareApp — `70b461e0-0746-4475-8abd-12d186755970` |
+| Aspect ratio | `9:16` |
+| Duration | `15` seconds |
+| Audio | `generate_audio: true` |
+| Avatar | Leave unspecified — server auto-picks; man is generated as Nigerian |
+
+### Prompt Template
+
+```text
+Two Nigerian adults, a man and a woman both aged 30-35, both in the same frame together. The woman sees the man on his phone and asks what he is doing. He turns and shows her the DARE app — a challenge platform where you earn money by completing tasks and referring friends. He explains the I Dare You Challenge: sign up on daregamesapp.com, complete 3 tasks, earn ₦2,000 to ₦3,000. She is genuinely impressed and pulls out her own phone to join. Both are natural, confident, Nigerian energy — not scripted or stiff. Casual everyday setting.
+
+STRICT PRODUCT GUARDRAIL: The app UI shown on the phone must use ONLY the exact screens from the provided DareApp product reference images. Do not redesign, recreate, or hallucinate any new UI. The app has a dark near-black background, orange #FF5500 branding, DARE logo, and screens named Feed, Create, Court, Wallet, Profile. Show only these exact screens.
+```
+
+### What Higgsfield Auto-Generates With This Formula
+
+The enhanced prompt Higgsfield writes from this template includes:
+
+- **Location**: Busy Lagos outdoor plaza, late afternoon golden hour. Warm concrete floors, people passing in background, vendor stall visible.
+- **Dialogue**: Written in Pidgin English. Example: "Wetin you dey do?" / "Na DareApp. You set challenges, stake money, winner takes the pot."
+- **Shot breakdown**: 5 timed shots across 15 seconds — scrolling, screen reveal, product demo, signup CTA, wallet reveal.
+- **Specific screens shown**: Court screen (live match, ₦5,000 pot, ACTIVE NOW), Feed screen (Live Pulse), Wallet screen (₦47,350 balance).
+- **Technical spec**: iPhone 26mm wide lens, locked tripod, clean digital sensor, warm Lagos color grade.
+- **Audio**: Natural Lagos street ambient — traffic hum, chatter. No music.
+
+### Key Prompt Phrases — Always Include
+
+These exact phrases trigger the right behavior:
+
+- `"Two Nigerian adults, a man and a woman both aged 30-35, both in the same frame"`
+- `"Nigerian energy — not scripted or stiff. Casual everyday setting."`
+- `"STRICT PRODUCT GUARDRAIL: use ONLY the exact screens from the provided DareApp product reference images"`
+- Mention specific screens by name: Court, Feed, Wallet — with their key UI details
+
+### Adapting for Different Campaigns
+
+To reuse this formula for a different campaign (e.g. Legend Dare, app launch, referral push):
+
+1. Keep all Higgsfield settings identical.
+2. Change the challenge details in the prompt — update the amounts, dates, and CTA.
+3. Keep the guardrail block unchanged.
+4. Keep "Two Nigerian adults" and "Nigerian energy" language unchanged.
+
+Example adaptation for Legend Dare:
+
+```text
+He explains the Legend Dare: complete Standard or Champion first, then unlock Legend Dare on June 15. Complete 3 more tasks and earn ₦9,000.
+```
+
+### Generated Assets — 2-Person Lagos UGC (June 2026)
+
+| Format | Duration | Model | Hook | Direct Link |
+| --- | --- | --- | --- | --- |
+| Vertical — 9:16 | 15s · 720p | marketing_studio_video | Interview | Job ID: `6a5bcbc7-d321-473e-a0d0-798de64cdd9a` |
+
+---
+
 ## Compliance Notes For Creative Review
 
 Before publishing, verify:
