@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { CHALLENGE_END_LABEL, LEGEND_START_LABEL, LEGEND_END_LABEL } from '@/lib/challenge-config';
 
-const FROM = 'DARE <noreply@daregamesapp.com>';
+const FROM = 'DARE <team@daregamesapp.com>';
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
