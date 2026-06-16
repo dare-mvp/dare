@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertTriangle } from 'lucide-react';
 import { MarketingFooter } from '@/components/marketing/footer';
 
 export const metadata: Metadata = {
@@ -18,18 +17,6 @@ export default function TermsPage() {
     <>
       <main className="min-h-screen bg-brand-bg">
         <div className="mx-auto max-w-3xl px-6 py-16">
-
-          {/* Draft banner */}
-          <div className="mb-10 flex items-start gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/8 p-4">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-400" />
-            <div>
-              <p className="text-sm font-semibold text-yellow-300">Draft — pending legal review</p>
-              <p className="mt-0.5 text-xs text-yellow-300/70">
-                This is a working draft. The final version will be supplied by our legal team before
-                public launch. Do not rely on this document for legal advice.
-              </p>
-            </div>
-          </div>
 
           <p className="font-mono text-xs uppercase text-brand-primary">Legal</p>
           <h1 className="mt-2 font-syne text-4xl font-extrabold text-foreground sm:text-5xl">
