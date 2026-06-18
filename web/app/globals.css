@@ -122,3 +122,27 @@ html {
     linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   background-size: 48px 48px;
 }
+
+/* ── Pass-by screensaver animation ──────────────────────────── */
+@keyframes dare-passby-ltr {
+  from { transform: translateX(-120px) rotate(0deg); }
+  to   { transform: translateX(calc(100vw + 120px)) rotate(var(--dare-spin)); }
+}
+@keyframes dare-passby-rtl {
+  from { transform: translateX(calc(100vw + 120px)) rotate(0deg); }
+  to   { transform: translateX(-120px) rotate(var(--dare-spin)); }
+}
+
+.dare-passby-item {
+  position: absolute;
+  font-size: var(--dare-size);
+  top: var(--dare-top);
+  animation-duration: var(--dare-dur);
+  animation-delay: var(--dare-delay);
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  will-change: transform;
+  filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.25));
+}
+.dare-passby-item[data-dir="ltr"] { animation-name: dare-passby-ltr; }
+.dare-passby-item[data-dir="rtl"] { animation-name: dare-passby-rtl; }

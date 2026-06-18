@@ -108,12 +108,14 @@ export default async function ChallengePage({
           <p className="mt-1 font-syne text-3xl font-extrabold text-[#19C37D]">{s.taskDone}</p>
         </div>
         <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
-          <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Approved</p>
+          <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Awaiting payment</p>
           <p className="mt-1 font-syne text-3xl font-extrabold text-brand-primary">{s.approved}</p>
+          <p className="mt-1 text-[10px] text-muted-foreground font-mono">approved, not yet paid</p>
         </div>
         <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Paid out</p>
-          <p className="mt-1 font-syne text-3xl font-extrabold text-foreground">{s.paid}</p>
+          <p className="mt-1 font-syne text-3xl font-extrabold text-[#19C37D]">{s.paid}</p>
+          <p className="mt-1 text-[10px] text-muted-foreground font-mono">approved + paid</p>
         </div>
       </div>
 
