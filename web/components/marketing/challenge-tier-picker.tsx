@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Lock,
 } from 'lucide-react';
 import { LEGEND_START, LEGEND_START_LABEL } from '@/lib/challenge-config';
 
@@ -513,9 +514,10 @@ function TaskList({
 interface ChallengeTierPickerProps {
   referralCode?: string;
   referralUrl?: string;
+  isLegendEligible?: boolean;
 }
 
-export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTierPickerProps) {
+export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligible = false }: ChallengeTierPickerProps) {
   const [selected, setSelected] = useState<Tier | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -841,7 +843,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
           </div>
         </button>
 
-        {/* ── Legend ₦9,000 — coming soon until LEGEND_START, then fully live ── */}
+        {/* ── Legend ₦9,000 — coming soon / locked / live ── */}
         {legendComingSoon ? (
           // Non-interactive preview card
           <div
@@ -900,8 +902,70 @@ export function ChallengeTierPicker({ referralCode, referralUrl }: ChallengeTier
               ))}
             </div>
           </div>
+        ) : !isLegendEligible ? (
+          // Ineligible — visible but locked; user must complete Standard or Champion first
+          <div
+            aria-label="Legend Dare — ₦9,000, locked until you complete Standard or Champion"
+            className={`relative shrink-0 w-[300px] sm:w-[360px] snap-start rounded-2xl border bg-brand-surface p-5 sm:p-8 text-left space-y-5 select-none cursor-not-allowed ${
+              selected !== null ? 'border-[#FBBF24]/10 opacity-30' : 'border-[#FBBF24]/20'
+            }`}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-2xl bg-[#FBBF24] opacity-[0.02]"
+            />
+
+            {/* Lock badge */}
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full border border-[#FBBF24]/30 bg-[#FBBF24]/10 px-2.5 py-1">
+              <Lock className="h-3 w-3 text-[#FBBF24]" aria-hidden />
+              <span className="font-mono text-[10px] text-[#FBBF24]">Locked</span>
+            </div>
+
+            <div className="relative flex items-start justify-between gap-3 pr-28">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#FBBF24]/70">
+                  Legend Dare
+                </span>
+                <h3 className="mt-1 font-syne text-2xl sm:text-3xl font-extrabold text-foreground">
+                  ₦9,000
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  Complete Standard or Champion first
+                </p>
+              </div>
+            </div>
+
+            <div className="relative h-px bg-[#FBBF24]/15" />
+
+            <div className="relative rounded-xl border border-[#FBBF24]/15 bg-[#FBBF24]/5 px-4 py-3 flex gap-3 items-start">
+              <Lock className="h-4 w-4 text-[#FBBF24]/60 shrink-0 mt-0.5" aria-hidden />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Legend is exclusive to players who have already earned Standard (₦2,000) or Champion (₦3,000). Complete one of those tiers first, then Legend unlocks.
+              </p>
+            </div>
+
+            <div className="relative space-y-4 opacity-40">
+              {[
+                { number: 'Gate', Icon: Shield, title: 'Prior Tier Completed' },
+                { number: 'A', Icon: UserPlus, title: 'Refer 5 Friends' },
+                { number: 'B', Icon: Swords, title: 'Film a DARE Battle' },
+                { number: 'C', Icon: Users, title: 'Drop in a WhatsApp Community' },
+                { number: 'D', Icon: MessageCircle, title: 'Join our WhatsApp Channel' },
+              ].map(({ number, Icon, title }) => (
+                <div key={number} className="flex gap-3">
+                  <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg border border-[#FBBF24]/10 bg-[#FBBF24]/5">
+                    <Icon className="h-4 w-4 text-[#FBBF24]/40" aria-hidden />
+                  </div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground/40 self-center">
+                    <span className="font-mono text-[10px] text-[#FBBF24]/40">{number}</span>
+                    {title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
-          // Live — fully interactive
+          // Eligible and live — fully interactive
           <button
             type="button"
             onClick={() => handleTierSelect('legend')}

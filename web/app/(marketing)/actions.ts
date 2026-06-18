@@ -270,14 +270,33 @@ export async function joinChallengeWaitlist(
   return { error: 'unknown' };
 }
 
+export async function checkLegendEligibility(referralCode: string): Promise<boolean> {
+  // Coerce at runtime — TypeScript types are erased at the network boundary
+  const safeCode = String(referralCode ?? '');
+  if (!REFERRAL_CODE_RE.test(safeCode)) return false;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('challenge_tier_selections')
+    .select('tier')
+    .eq('referral_code', safeCode)
+    .in('tier', ['standard', 'champion'])
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
 export type TierSelectionResult = { ok: true } | { error: 'not_eligible' | 'unknown' };
 
-// Upsert approach: referral_code holders update their row; anonymous create a new row.
 export async function recordTierSelection(
   tier: 'standard' | 'champion' | 'legend',
   referralCode?: string,
 ): Promise<TierSelectionResult> {
-  if (tier !== 'standard' && tier !== 'champion' && tier !== 'legend') {
+  // Runtime coercion — TypeScript types are not enforced at the network boundary.
+  // An attacker calling this endpoint directly could pass any value.
+  const safeTier = String(tier ?? '');
+  const safeCode = referralCode ? String(referralCode) : undefined;
+
+  if (safeTier !== 'standard' && safeTier !== 'champion' && safeTier !== 'legend') {
     return { error: 'unknown' };
   }
 
@@ -287,44 +306,56 @@ export async function recordTierSelection(
     const ipHash = hashRateLimitIdentifier(clientIp);
     const now = new Date().toISOString();
 
-    // Legend is exclusive to prior Standard or Champion completers.
-    // Anonymous submissions (no referral code) cannot be verified so are rejected.
-    if (tier === 'legend') {
-      if (!referralCode || !REFERRAL_CODE_RE.test(referralCode)) {
-        return { error: 'not_eligible' };
-      }
+    if (safeCode) {
+      // Reject malformed codes before any DB work
+      if (!REFERRAL_CODE_RE.test(safeCode)) return { error: 'unknown' };
+
+      // Verify the code belongs to a real waitlist entry.
+      // Prevents phantom injections where a valid-format but fake code is submitted.
+      const { data: owner } = await admin
+        .from('marketing_waitlist')
+        .select('referral_code')
+        .eq('referral_code', safeCode)
+        .maybeSingle();
+      if (!owner) return { error: 'unknown' };
+    }
+
+    // Legend gate: requires a prior standard or champion row for the same code.
+    // Anonymous submissions (no code) are rejected — cannot verify eligibility.
+    if (safeTier === 'legend') {
+      if (!safeCode) return { error: 'not_eligible' };
       const { data: prior } = await admin
         .from('challenge_tier_selections')
         .select('tier')
-        .eq('referral_code', referralCode)
+        .eq('referral_code', safeCode)
         .in('tier', ['standard', 'champion'])
         .limit(1)
         .maybeSingle();
       if (!prior) return { error: 'not_eligible' };
     }
 
-    if (referralCode && REFERRAL_CODE_RE.test(referralCode)) {
+    if (safeCode) {
       const { error } = await admin.from('challenge_tier_selections').upsert(
-        { referral_code: referralCode, tier, ip_hash: ipHash, updated_at: now },
+        { referral_code: safeCode, tier: safeTier, ip_hash: ipHash, updated_at: now },
         { onConflict: 'referral_code,tier' },
       );
       if (error) return { error: 'unknown' };
     } else {
       const { error } = await admin
         .from('challenge_tier_selections')
-        .insert({ tier, ip_hash: ipHash });
+        .insert({ tier: safeTier, ip_hash: ipHash });
       if (error) return { error: 'unknown' };
     }
 
-    // Send the Legend welcome email to the confirmed user (fire-and-forget).
-    if (tier === 'legend' && referralCode) {
+    // Fire-and-forget legend welcome email
+    if (safeTier === 'legend' && safeCode) {
       const { data: user } = await admin
         .from('marketing_waitlist')
         .select('email')
-        .eq('referral_code', referralCode)
+        .eq('referral_code', safeCode)
         .maybeSingle();
       if (user?.email) {
-        sendLegendWelcomeEmail(user.email, await buildReferralUrl(referralCode));
+        sendLegendWelcomeEmail(user.email, await buildReferralUrl(safeCode));
       }
     }
 
