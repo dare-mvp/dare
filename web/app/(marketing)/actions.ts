@@ -270,19 +270,40 @@ export async function joinChallengeWaitlist(
   return { error: 'unknown' };
 }
 
+// Shared eligibility logic used by both the UI check and the submission gate.
+// A user is legend-eligible only when they have completed a prior tier:
+//   Standard complete  = tier row exists AND 2+ referrals made
+//   Champion complete  = tier row exists AND 3+ referrals made
+async function resolveLegendEligibility(
+  admin: ReturnType<typeof createAdminClient>,
+  referralCode: string,
+): Promise<boolean> {
+  const [{ data: tiers }, { count: refCount }] = await Promise.all([
+    admin
+      .from('challenge_tier_selections')
+      .select('tier')
+      .eq('referral_code', referralCode)
+      .in('tier', ['standard', 'champion']),
+    admin
+      .from('marketing_waitlist')
+      .select('*', { count: 'exact', head: true })
+      .eq('referred_by', referralCode),
+  ]);
+
+  if (!tiers || tiers.length === 0) return false;
+
+  const refs         = refCount ?? 0;
+  const hasStandard  = tiers.some((t) => t.tier === 'standard');
+  const hasChampion  = tiers.some((t) => t.tier === 'champion');
+
+  return (hasStandard && refs >= 2) || (hasChampion && refs >= 3);
+}
+
 export async function checkLegendEligibility(referralCode: string): Promise<boolean> {
-  // Coerce at runtime — TypeScript types are erased at the network boundary
   const safeCode = String(referralCode ?? '');
   if (!REFERRAL_CODE_RE.test(safeCode)) return false;
   const admin = createAdminClient();
-  const { data } = await admin
-    .from('challenge_tier_selections')
-    .select('tier')
-    .eq('referral_code', safeCode)
-    .in('tier', ['standard', 'champion'])
-    .limit(1)
-    .maybeSingle();
-  return !!data;
+  return resolveLegendEligibility(admin, safeCode);
 }
 
 export type TierSelectionResult = { ok: true } | { error: 'not_eligible' | 'unknown' };
@@ -320,18 +341,12 @@ export async function recordTierSelection(
       if (!owner) return { error: 'unknown' };
     }
 
-    // Legend gate: requires a prior standard or champion row for the same code.
+    // Legend gate: prior tier must be *completed* (tier selected + referral threshold met).
     // Anonymous submissions (no code) are rejected — cannot verify eligibility.
     if (safeTier === 'legend') {
       if (!safeCode) return { error: 'not_eligible' };
-      const { data: prior } = await admin
-        .from('challenge_tier_selections')
-        .select('tier')
-        .eq('referral_code', safeCode)
-        .in('tier', ['standard', 'champion'])
-        .limit(1)
-        .maybeSingle();
-      if (!prior) return { error: 'not_eligible' };
+      const eligible = await resolveLegendEligibility(admin, safeCode);
+      if (!eligible) return { error: 'not_eligible' };
     }
 
     if (safeCode) {
