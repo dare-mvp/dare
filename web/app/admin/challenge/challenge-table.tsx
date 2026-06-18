@@ -92,16 +92,23 @@ function ClaimActions({ referralCode, tier, status }: { referralCode: string; ti
   );
 }
 
-function ProgressBar({ count, required, complete }: { count: number; required: number; complete: boolean }) {
-  const pct = Math.min(count, required);
-  const widthClass = [
-    'w-0', 'w-1/4', 'w-2/4', 'w-3/4', 'w-full',
-  ][pct] ?? 'w-full';
+// Tailwind fraction classes for 2-step (standard) and 3-step (champion) bars.
+// Using a static lookup avoids inline styles while keeping correct proportions.
+const WIDTH_CLASSES: Record<number, string[]> = {
+  2: ['w-0', 'w-1/2', 'w-full'],
+  3: ['w-0', 'w-1/3', 'w-2/3', 'w-full'],
+};
+
+function ProgressBar({ count, required }: { count: number; required: number }) {
+  const done   = count >= required;
+  const steps  = WIDTH_CLASSES[required] ?? ['w-0', 'w-full'];
+  const idx    = Math.min(count, required);
+  const width  = steps[idx] ?? 'w-full';
 
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-16 rounded-full bg-white/10 overflow-hidden shrink-0">
-        <div className={`h-full rounded-full transition-all ${complete ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${widthClass}`} />
+        <div className={`h-full rounded-full transition-all ${done ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${width}`} />
       </div>
       <span className="font-mono text-xs text-foreground whitespace-nowrap">
         {count} / {required}
@@ -130,10 +137,11 @@ export function ChallengeTable({ rows, tier }: { rows: ChallengeRow[]; tier: Tie
     <table className="w-full text-sm">
       <thead className="border-b border-white/8 text-muted-foreground">
         <tr>
+          <th className="px-4 py-3 text-left font-medium">Tier</th>
           <th className="px-4 py-3 text-left font-medium">Email</th>
           <th className="px-4 py-3 text-left font-medium">Code</th>
           <th className="px-4 py-3 text-left font-medium">Selected</th>
-          <th className="px-4 py-3 text-left font-medium">Refs ({config.refRequired} required)</th>
+          <th className="px-4 py-3 text-left font-medium">Refs (need {config.refRequired})</th>
           <th className="px-4 py-3 text-left font-medium">Ref task</th>
           <th className="px-4 py-3 text-left font-medium">Claim</th>
           <th className="px-4 py-3 text-left font-medium">Actions</th>
@@ -144,6 +152,19 @@ export function ChallengeTable({ rows, tier }: { rows: ChallengeRow[]; tier: Tie
           const isRevealed = revealed.has(row.referral_code);
           return (
             <tr key={row.referral_code}>
+
+              {/* Tier badge */}
+              <td className="px-4 py-3 whitespace-nowrap">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold border capitalize ${
+                    tier === 'standard'
+                      ? 'bg-[#19C37D]/10 border-[#19C37D]/25 text-[#19C37D]'
+                      : 'bg-brand-primary/10 border-brand-primary/25 text-brand-primary'
+                  }`}
+                >
+                  {tier}
+                </span>
+              </td>
 
               {/* Email + reveal */}
               <td className="px-4 py-3">
@@ -177,13 +198,12 @@ export function ChallengeTable({ rows, tier }: { rows: ChallengeRow[]; tier: Tie
                 <ProgressBar
                   count={row.referred_count}
                   required={config.refRequired}
-                  complete={row.task_ref_complete}
                 />
               </td>
 
-              {/* Ref task status */}
+              {/* Ref task status — derived from count vs per-tier threshold, not the DB boolean */}
               <td className="px-4 py-3">
-                {row.task_ref_complete ? (
+                {row.referred_count >= config.refRequired ? (
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium bg-[#19C37D]/10 border border-[#19C37D]/20 text-[#19C37D]">
                     Done ✓
                   </span>
