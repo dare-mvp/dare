@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel } from 'lucide-react';
+import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel, Trophy } from 'lucide-react';
 import { DareLogo } from '@/components/brand/dare-logo';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/admin/kyc', label: 'KYC', icon: UserCheck },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/jury', label: 'Jury', icon: Gavel },
+  { href: '/admin/challenge', label: 'Challenge', icon: Trophy },
 ];
 
 export function AdminSidebar() {
