@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { MarketingFooter } from '@/components/marketing/footer';
 import { ChallengeFlow } from '@/components/marketing/challenge-flow';
+import { PassByAnimation } from '@/components/marketing/pass-by-animation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   CHALLENGE_CAP,
@@ -105,6 +106,7 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
 
   return (
     <>
+      <PassByAnimation />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(eventSchema)}
