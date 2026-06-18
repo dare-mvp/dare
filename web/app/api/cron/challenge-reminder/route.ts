@@ -44,10 +44,14 @@ export async function GET(request: NextRequest) {
   }
 
   // Mark as sent so the next day's run moves on to the next 50.
-  await admin
+  const { error: markError } = await admin
     .from('marketing_waitlist')
     .update({ closing_email_sent_at: new Date().toISOString() })
     .in('referral_code', batch.map((u) => u.referral_code));
+
+  if (markError) {
+    return Response.json({ error: 'mark_sent_error' }, { status: 500 });
+  }
 
   return Response.json({ sent: batch.length, total: users?.length ?? 0 });
 }

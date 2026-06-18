@@ -5,6 +5,8 @@ import {
   CHALLENGE_CAP,
   CHALLENGE_START,
   CHALLENGE_END,
+  LEGEND_START,
+  LEGEND_END,
 } from '@/lib/challenge-config';
 import { sendChallengeWelcomeEmail, sendLegendWelcomeEmail } from '@/lib/email';
 import { createHash } from 'node:crypto';
@@ -302,11 +304,15 @@ async function resolveLegendEligibility(
 export async function checkLegendEligibility(referralCode: string): Promise<boolean> {
   const safeCode = String(referralCode ?? '');
   if (!REFERRAL_CODE_RE.test(safeCode)) return false;
-  const admin = createAdminClient();
-  return resolveLegendEligibility(admin, safeCode);
+  try {
+    const admin = createAdminClient();
+    return await resolveLegendEligibility(admin, safeCode);
+  } catch {
+    return false;
+  }
 }
 
-export type TierSelectionResult = { ok: true } | { error: 'not_eligible' | 'unknown' };
+export type TierSelectionResult = { ok: true } | { error: 'challenge_closed' | 'not_eligible' | 'unknown' };
 
 export async function recordTierSelection(
   tier: 'standard' | 'champion' | 'legend',
@@ -325,7 +331,16 @@ export async function recordTierSelection(
     const admin = createAdminClient();
     const clientIp = await getClientIp();
     const ipHash = hashRateLimitIdentifier(clientIp);
-    const now = new Date().toISOString();
+    const selectedAt = new Date();
+    const now = selectedAt.toISOString();
+
+    if (selectedAt < CHALLENGE_START || selectedAt > CHALLENGE_END) {
+      return { error: 'challenge_closed' };
+    }
+
+    if (safeTier === 'legend' && (selectedAt < LEGEND_START || selectedAt > LEGEND_END)) {
+      return { error: 'challenge_closed' };
+    }
 
     if (safeCode) {
       // Reject malformed codes before any DB work
@@ -362,13 +377,19 @@ export async function recordTierSelection(
       if (error) return { error: 'unknown' };
     }
 
-    // Fire-and-forget legend welcome email
+    // Fire once per waitlist member. Updating first prevents repeated direct
+    // server-action calls from resending the same Legend welcome email.
     if (safeTier === 'legend' && safeCode) {
-      const { data: user } = await admin
+      const { data: user, error: emailMarkerError } = await admin
         .from('marketing_waitlist')
-        .select('email')
+        .update({ legend_email_sent_at: now })
         .eq('referral_code', safeCode)
+        .is('legend_email_sent_at', null)
+        .select('email')
         .maybeSingle();
+
+      if (emailMarkerError) return { error: 'unknown' };
+
       if (user?.email) {
         sendLegendWelcomeEmail(user.email, await buildReferralUrl(safeCode));
       }

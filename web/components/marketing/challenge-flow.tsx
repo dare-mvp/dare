@@ -28,10 +28,14 @@ export function ChallengeFlow({
   async function handleWaitlistSuccess(code: string, url: string) {
     setReferralCode(code);
     setReferralUrl(url);
-    // Check legend eligibility immediately — result unlocks the card if they've
-    // already completed a prior tier (returning users).
-    const eligible = await checkLegendEligibility(code);
-    setIsLegendEligible(eligible);
+    // Check legend eligibility immediately — unlocks the card for returning users
+    // who already completed a prior tier. Defaults to false on any error.
+    try {
+      const eligible = await checkLegendEligibility(code);
+      setIsLegendEligible(eligible);
+    } catch {
+      setIsLegendEligible(false);
+    }
   }
 
   return (
