@@ -298,6 +298,7 @@ export async function recordTierSelection(
         .select('tier')
         .eq('referral_code', referralCode)
         .in('tier', ['standard', 'champion'])
+        .limit(1)
         .maybeSingle();
       if (!prior) return { error: 'not_eligible' };
     }
