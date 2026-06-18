@@ -5,15 +5,20 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { updateClaimStatus } from './actions';
 
-export type LegendRow = {
+export type ChallengeRow = {
   referral_code: string;
   email: string;
-  legend_selected_at: string;
-  legend_referred_count: number;
-  total_referred_count: number;
-  task_a_complete: boolean;
-  prior_tiers: string | null;
+  tier_selected_at: string;
+  referred_count: number;
+  task_ref_complete: boolean;
   claim_status: string;
+};
+
+type Tier = 'standard' | 'champion';
+
+const TIER_CONFIG: Record<Tier, { refRequired: number; color: string; reward: string }> = {
+  standard: { refRequired: 2, color: '#19C37D', reward: '₦2,000' },
+  champion: { refRequired: 3, color: '#FF5500',  reward: '₦3,000' },
 };
 
 const CLAIM_BADGE: Record<string, string> = {
@@ -39,27 +44,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function PriorTierBadges({ tiers }: { tiers: string | null }) {
-  if (!tiers) return <span className="text-muted-foreground text-xs">—</span>;
-  return (
-    <div className="flex gap-1 flex-wrap">
-      {tiers.split(' + ').map((tier) => (
-        <span
-          key={tier}
-          className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium border ${
-            tier === 'champion'
-              ? 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary'
-              : 'bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D]'
-          }`}
-        >
-          {tier.charAt(0).toUpperCase() + tier.slice(1)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function ClaimActions({ referralCode, status }: { referralCode: string; status: string }) {
+function ClaimActions({ referralCode, tier, status }: { referralCode: string; tier: Tier; status: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeAction, setActiveAction] = useState<string | null>(null);
@@ -67,7 +52,7 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
   function handleAction(newStatus: 'approved' | 'paid' | 'rejected') {
     setActiveAction(newStatus);
     startTransition(async () => {
-      await updateClaimStatus(referralCode, 'legend', newStatus);
+      await updateClaimStatus(referralCode, tier, newStatus);
       router.refresh();
       setActiveAction(null);
     });
@@ -107,8 +92,27 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
   );
 }
 
-export function LegendTable({ rows }: { rows: LegendRow[] }) {
+function ProgressBar({ count, required, complete }: { count: number; required: number; complete: boolean }) {
+  const pct = Math.min(count, required);
+  const widthClass = [
+    'w-0', 'w-1/4', 'w-2/4', 'w-3/4', 'w-full',
+  ][pct] ?? 'w-full';
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-16 rounded-full bg-white/10 overflow-hidden shrink-0">
+        <div className={`h-full rounded-full transition-all ${complete ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${widthClass}`} />
+      </div>
+      <span className="font-mono text-xs text-foreground whitespace-nowrap">
+        {count} / {required}
+      </span>
+    </div>
+  );
+}
+
+export function ChallengeTable({ rows, tier }: { rows: ChallengeRow[]; tier: Tier }) {
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const config = TIER_CONFIG[tier];
 
   function toggleReveal(code: string) {
     setRevealed((prev) => {
@@ -119,7 +123,7 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
   }
 
   if (rows.length === 0) {
-    return <p className="px-6 py-12 text-center text-sm text-muted-foreground">No legend players yet.</p>;
+    return <p className="px-6 py-12 text-center text-sm text-muted-foreground">No {tier} players yet.</p>;
   }
 
   return (
@@ -128,10 +132,9 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
         <tr>
           <th className="px-4 py-3 text-left font-medium">Email</th>
           <th className="px-4 py-3 text-left font-medium">Code</th>
-          <th className="px-4 py-3 text-left font-medium">Prior tier</th>
           <th className="px-4 py-3 text-left font-medium">Selected</th>
-          <th className="px-4 py-3 text-left font-medium">Task A refs</th>
-          <th className="px-4 py-3 text-left font-medium">Task A</th>
+          <th className="px-4 py-3 text-left font-medium">Refs ({config.refRequired} required)</th>
+          <th className="px-4 py-3 text-left font-medium">Ref task</th>
           <th className="px-4 py-3 text-left font-medium">Claim</th>
           <th className="px-4 py-3 text-left font-medium">Actions</th>
         </tr>
@@ -142,7 +145,7 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
           return (
             <tr key={row.referral_code}>
 
-              {/* Email + reveal toggle */}
+              {/* Email + reveal */}
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="text-foreground">
@@ -154,9 +157,7 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     aria-label={isRevealed ? 'Hide email' : 'Reveal email'}
                   >
-                    {isRevealed
-                      ? <EyeOff className="h-3.5 w-3.5" />
-                      : <Eye className="h-3.5 w-3.5" />}
+                    {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </td>
@@ -166,40 +167,23 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
                 {row.referral_code}
               </td>
 
-              {/* Prior tier badges */}
-              <td className="px-4 py-3">
-                <PriorTierBadges tiers={row.prior_tiers} />
-              </td>
-
-              {/* Legend selected time */}
+              {/* Selected time */}
               <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                {timeAgo(row.legend_selected_at)}
+                {timeAgo(row.tier_selected_at)}
               </td>
 
-              {/* Task A progress */}
+              {/* Referral progress */}
               <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-16 rounded-full bg-white/10 overflow-hidden shrink-0">
-                    <div
-                      className={`h-full rounded-full transition-all ${row.task_a_complete ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${
-                        row.legend_referred_count === 0 ? 'w-0' :
-                        row.legend_referred_count === 1 ? 'w-1/5' :
-                        row.legend_referred_count === 2 ? 'w-2/5' :
-                        row.legend_referred_count === 3 ? 'w-3/5' :
-                        row.legend_referred_count === 4 ? 'w-4/5' : 'w-full'
-                      }`}
-                    />
-                  </div>
-                  <span className="font-mono text-xs text-foreground whitespace-nowrap">
-                    {row.legend_referred_count} / 5
-                    <span className="text-muted-foreground ml-1">({row.total_referred_count} total)</span>
-                  </span>
-                </div>
+                <ProgressBar
+                  count={row.referred_count}
+                  required={config.refRequired}
+                  complete={row.task_ref_complete}
+                />
               </td>
 
-              {/* Task A status */}
+              {/* Ref task status */}
               <td className="px-4 py-3">
-                {row.task_a_complete ? (
+                {row.task_ref_complete ? (
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium bg-[#19C37D]/10 border border-[#19C37D]/20 text-[#19C37D]">
                     Done ✓
                   </span>
@@ -219,7 +203,7 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
 
               {/* Actions */}
               <td className="px-4 py-3">
-                <ClaimActions referralCode={row.referral_code} status={row.claim_status} />
+                <ClaimActions referralCode={row.referral_code} tier={tier} status={row.claim_status} />
               </td>
 
             </tr>
