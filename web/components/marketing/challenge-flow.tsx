@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ListChecks } from 'lucide-react';
 import { ChallengeWaitlist } from './challenge-waitlist';
 import { ChallengeTierPicker } from './challenge-tier-picker';
+import { checkLegendEligibility } from '@/app/(marketing)/actions';
 
 interface ChallengeFlowProps {
   referredBy?: string;
@@ -20,10 +21,18 @@ export function ChallengeFlow({
   isExpired,
   isPending,
 }: ChallengeFlowProps) {
-  // Lifted state: referral code from the waitlist join is passed down to the
-  // tier picker so the tier selection can be linked to this participant.
   const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
   const [referralUrl, setReferralUrl] = useState<string | undefined>(undefined);
+  const [isLegendEligible, setIsLegendEligible] = useState(false);
+
+  async function handleWaitlistSuccess(code: string, url: string) {
+    setReferralCode(code);
+    setReferralUrl(url);
+    // Check legend eligibility immediately — result unlocks the card if they've
+    // already completed a prior tier (returning users).
+    const eligible = await checkLegendEligibility(code);
+    setIsLegendEligible(eligible);
+  }
 
   return (
     <>
@@ -36,7 +45,7 @@ export function ChallengeFlow({
             isFull={isFull}
             isExpired={isExpired}
             isPending={isPending}
-            onSuccess={(code, url) => { setReferralCode(code); setReferralUrl(url); }}
+            onSuccess={handleWaitlistSuccess}
           />
         </div>
       </section>
@@ -57,7 +66,11 @@ export function ChallengeFlow({
             </p>
           </div>
 
-          <ChallengeTierPicker referralCode={referralCode} referralUrl={referralUrl} />
+          <ChallengeTierPicker
+            referralCode={referralCode}
+            referralUrl={referralUrl}
+            isLegendEligible={isLegendEligible}
+          />
         </div>
       </section>
     </>
