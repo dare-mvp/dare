@@ -26,6 +26,7 @@ import {
 import { LEGEND_START, LEGEND_START_LABEL } from '@/lib/challenge-config';
 
 type Tier = 'standard' | 'champion' | 'legend';
+type TierSelectionError = 'challenge_closed' | 'not_eligible' | 'unknown';
 
 const INSTAGRAM_PROFILE = 'https://www.instagram.com/dareappofficial';
 const INSTAGRAM_DM = 'https://ig.me/m/dareappofficial';
@@ -521,7 +522,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
   const [selected, setSelected] = useState<Tier | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [selectionError, setSelectionError] = useState<'not_eligible' | 'unknown' | null>(null);
+  const [selectionError, setSelectionError] = useState<TierSelectionError | null>(null);
   const [hasSwiped, setHasSwiped] = useState(false);
   const legendComingSoon = new Date() < LEGEND_START;
   const taskListRef = useRef<HTMLDivElement>(null);
@@ -1083,7 +1084,9 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
 
           {selectionError && (
             <p className="text-center text-sm text-red-400 max-w-sm">
-              {selectionError === 'not_eligible'
+              {selectionError === 'challenge_closed'
+                ? 'This challenge tier is closed. Follow @dareappofficial for the next challenge.'
+                : selectionError === 'not_eligible'
                 ? 'Legend Dare is only available to previous Standard or Champion completers. Pick one of those tiers to start.'
                 : 'Couldn\'t save your selection — tap Continue to try again.'}
             </p>

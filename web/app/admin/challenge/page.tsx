@@ -21,7 +21,9 @@ export default async function ChallengePage({
 }) {
   await requireAdmin();
   const params = await searchParams;
-  const activeTab: Tab = (params.tab as Tab) ?? 'standard';
+  const VALID_TABS = new Set<Tab>(['standard', 'champion', 'legend']);
+  const rawTab = params.tab as Tab;
+  const activeTab: Tab = VALID_TABS.has(rawTab) ? rawTab : 'standard';
 
   const admin = createAdminClient();
 

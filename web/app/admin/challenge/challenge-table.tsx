@@ -48,12 +48,18 @@ function ClaimActions({ referralCode, tier, status }: { referralCode: string; ti
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   function handleAction(newStatus: 'approved' | 'paid' | 'rejected') {
     setActiveAction(newStatus);
+    setActionError(null);
     startTransition(async () => {
-      await updateClaimStatus(referralCode, tier, newStatus);
-      router.refresh();
+      const result = await updateClaimStatus(referralCode, tier, newStatus);
+      if ('error' in result) {
+        setActionError('Failed — try again');
+      } else {
+        router.refresh();
+      }
       setActiveAction(null);
     });
   }
@@ -63,7 +69,9 @@ function ClaimActions({ referralCode, tier, status }: { referralCode: string; ti
   const btn = 'h-7 px-2.5 rounded-md text-xs font-medium border transition-colors disabled:opacity-50';
 
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-col gap-1">
+      {actionError && <p className="font-mono text-[10px] text-red-400">{actionError}</p>}
+      <div className="flex gap-1.5">
       {status === 'pending' && (
         <>
           <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
@@ -88,6 +96,7 @@ function ClaimActions({ referralCode, tier, status }: { referralCode: string; ti
           {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Re-open'}
         </button>
       )}
+      </div>
     </div>
   );
 }

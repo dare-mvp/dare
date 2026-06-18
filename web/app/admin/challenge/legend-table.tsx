@@ -63,12 +63,18 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   function handleAction(newStatus: 'approved' | 'paid' | 'rejected') {
     setActiveAction(newStatus);
+    setActionError(null);
     startTransition(async () => {
-      await updateClaimStatus(referralCode, 'legend', newStatus);
-      router.refresh();
+      const result = await updateClaimStatus(referralCode, 'legend', newStatus);
+      if ('error' in result) {
+        setActionError('Failed — try again');
+      } else {
+        router.refresh();
+      }
       setActiveAction(null);
     });
   }
@@ -78,31 +84,34 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
   const btn = 'h-7 px-2.5 rounded-md text-xs font-medium border transition-colors disabled:opacity-50';
 
   return (
-    <div className="flex gap-1.5">
-      {status === 'pending' && (
-        <>
+    <div className="flex flex-col gap-1">
+      {actionError && <p className="font-mono text-[10px] text-red-400">{actionError}</p>}
+      <div className="flex gap-1.5">
+        {status === 'pending' && (
+          <>
+            <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
+              className={`${btn} bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D] hover:bg-[#19C37D]/20`}>
+              {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
+            </button>
+            <button type="button" onClick={() => handleAction('rejected')} disabled={isPending}
+              className={`${btn} bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20`}>
+              {isPending && activeAction === 'rejected' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
+            </button>
+          </>
+        )}
+        {status === 'approved' && (
+          <button type="button" onClick={() => handleAction('paid')} disabled={isPending}
+            className={`${btn} bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24] hover:bg-[#FBBF24]/20`}>
+            {isPending && activeAction === 'paid' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Mark Paid'}
+          </button>
+        )}
+        {status === 'rejected' && (
           <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
-            className={`${btn} bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D] hover:bg-[#19C37D]/20`}>
-            {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
+            className={`${btn} bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10`}>
+            {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Re-open'}
           </button>
-          <button type="button" onClick={() => handleAction('rejected')} disabled={isPending}
-            className={`${btn} bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20`}>
-            {isPending && activeAction === 'rejected' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
-          </button>
-        </>
-      )}
-      {status === 'approved' && (
-        <button type="button" onClick={() => handleAction('paid')} disabled={isPending}
-          className={`${btn} bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24] hover:bg-[#FBBF24]/20`}>
-          {isPending && activeAction === 'paid' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Mark Paid'}
-        </button>
-      )}
-      {status === 'rejected' && (
-        <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
-          className={`${btn} bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10`}>
-          {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Re-open'}
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 }
