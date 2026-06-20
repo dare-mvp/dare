@@ -25,11 +25,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-bg">
+    <div className="flex min-h-dvh bg-brand-bg lg:h-screen lg:overflow-hidden">
       <AdminSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col lg:overflow-hidden">
         <AdminTopBar email={admin.user.email ?? ''} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:overflow-y-auto lg:pb-6">
+          {children}
+        </main>
       </div>
     </div>
   );

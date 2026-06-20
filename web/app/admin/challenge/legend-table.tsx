@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { updateClaimStatus } from './actions';
+import { LegendMobileCards } from './mobile-cards';
 
 export type LegendRow = {
   referral_code: string;
@@ -17,9 +18,9 @@ export type LegendRow = {
 };
 
 const CLAIM_BADGE: Record<string, string> = {
-  pending:  'bg-white/10 border-white/10 text-muted-foreground',
+  pending: 'bg-white/10 border-white/10 text-muted-foreground',
   approved: 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary',
-  paid:     'bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24]',
+  paid: 'bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24]',
   rejected: 'bg-red-500/10 border-red-500/20 text-red-400',
 };
 
@@ -40,9 +41,9 @@ function timeAgo(iso: string): string {
 }
 
 function PriorTierBadges({ tiers }: { tiers: string | null }) {
-  if (!tiers) return <span className="text-muted-foreground text-xs">—</span>;
+  if (!tiers) return <span className="text-xs text-muted-foreground">-</span>;
   return (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex flex-wrap gap-1">
       {tiers.split(' + ').map((tier) => (
         <span
           key={tier}
@@ -71,7 +72,7 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
     startTransition(async () => {
       const result = await updateClaimStatus(referralCode, 'legend', newStatus);
       if ('error' in result) {
-        setActionError('Failed — try again');
+        setActionError('Failed. Try again.');
       } else {
         router.refresh();
       }
@@ -81,38 +82,98 @@ function ClaimActions({ referralCode, status }: { referralCode: string; status: 
 
   if (status === 'paid') return null;
 
-  const btn = 'h-7 px-2.5 rounded-md text-xs font-medium border transition-colors disabled:opacity-50';
+  const btn =
+    'inline-flex h-8 items-center justify-center rounded-md border px-2.5 text-xs font-medium transition-colors disabled:opacity-50';
 
   return (
     <div className="flex flex-col gap-1">
       {actionError && <p className="font-mono text-[10px] text-red-400">{actionError}</p>}
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {status === 'pending' && (
           <>
-            <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
-              className={`${btn} bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D] hover:bg-[#19C37D]/20`}>
+            <button
+              type="button"
+              onClick={() => handleAction('approved')}
+              disabled={isPending}
+              className={`${btn} bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D] hover:bg-[#19C37D]/20`}
+            >
               {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
             </button>
-            <button type="button" onClick={() => handleAction('rejected')} disabled={isPending}
-              className={`${btn} bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20`}>
+            <button
+              type="button"
+              onClick={() => handleAction('rejected')}
+              disabled={isPending}
+              className={`${btn} bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20`}
+            >
               {isPending && activeAction === 'rejected' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
             </button>
           </>
         )}
         {status === 'approved' && (
-          <button type="button" onClick={() => handleAction('paid')} disabled={isPending}
-            className={`${btn} bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24] hover:bg-[#FBBF24]/20`}>
+          <button
+            type="button"
+            onClick={() => handleAction('paid')}
+            disabled={isPending}
+            className={`${btn} bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24] hover:bg-[#FBBF24]/20`}
+          >
             {isPending && activeAction === 'paid' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Mark Paid'}
           </button>
         )}
         {status === 'rejected' && (
-          <button type="button" onClick={() => handleAction('approved')} disabled={isPending}
-            className={`${btn} bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10`}>
+          <button
+            type="button"
+            onClick={() => handleAction('approved')}
+            disabled={isPending}
+            className={`${btn} bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10`}
+          >
             {isPending && activeAction === 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Re-open'}
           </button>
         )}
       </div>
     </div>
+  );
+}
+
+function LegendProgress({ row }: { row: LegendRow }) {
+  const width =
+    row.legend_referred_count === 0 ? 'w-0' :
+    row.legend_referred_count === 1 ? 'w-1/5' :
+    row.legend_referred_count === 2 ? 'w-2/5' :
+    row.legend_referred_count === 3 ? 'w-3/5' :
+    row.legend_referred_count === 4 ? 'w-4/5' : 'w-full';
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-white/10">
+        <div className={`h-full rounded-full transition-all ${row.task_a_complete ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${width}`} />
+      </div>
+      <span className="whitespace-nowrap font-mono text-xs text-foreground">
+        {row.legend_referred_count} / 5
+        <span className="ml-1 text-muted-foreground">({row.total_referred_count} total)</span>
+      </span>
+    </div>
+  );
+}
+
+function TaskBadge({ done }: { done: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium border ${
+        done
+          ? 'bg-[#19C37D]/10 border-[#19C37D]/20 text-[#19C37D]'
+          : 'bg-[#FBBF24]/10 border-[#FBBF24]/20 text-[#FBBF24]'
+      }`}
+    >
+      {done ? 'Done' : 'In progress'}
+    </span>
+  );
+}
+
+function ClaimBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium border capitalize ${CLAIM_BADGE[status] ?? CLAIM_BADGE.pending}`}>
+      {status === 'paid' ? 'Paid' : status}
+    </span>
   );
 }
 
@@ -122,7 +183,8 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
   function toggleReveal(code: string) {
     setRevealed((prev) => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code); else next.add(code);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
       return next;
     });
   }
@@ -132,109 +194,63 @@ export function LegendTable({ rows }: { rows: LegendRow[] }) {
   }
 
   return (
-    <table className="w-full text-sm">
-      <thead className="border-b border-white/8 text-muted-foreground">
-        <tr>
-          <th className="px-4 py-3 text-left font-medium">Email</th>
-          <th className="px-4 py-3 text-left font-medium">Code</th>
-          <th className="px-4 py-3 text-left font-medium">Prior tier</th>
-          <th className="px-4 py-3 text-left font-medium">Selected</th>
-          <th className="px-4 py-3 text-left font-medium">Task A refs</th>
-          <th className="px-4 py-3 text-left font-medium">Task A</th>
-          <th className="px-4 py-3 text-left font-medium">Claim</th>
-          <th className="px-4 py-3 text-left font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-white/5">
-        {rows.map((row) => {
-          const isRevealed = revealed.has(row.referral_code);
-          return (
-            <tr key={row.referral_code}>
+    <>
+      <LegendMobileCards
+        rows={rows}
+        revealed={revealed}
+        onToggleReveal={toggleReveal}
+        renderActions={(row) => (
+          <ClaimActions referralCode={row.referral_code} status={row.claim_status} />
+        )}
+      />
 
-              {/* Email + reveal toggle */}
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-foreground">
-                    {isRevealed ? row.email : maskEmail(row.email)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleReveal(row.referral_code)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={isRevealed ? 'Hide email' : 'Reveal email'}
-                  >
-                    {isRevealed
-                      ? <EyeOff className="h-3.5 w-3.5" />
-                      : <Eye className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
-              </td>
-
-              {/* Referral code */}
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                {row.referral_code}
-              </td>
-
-              {/* Prior tier badges */}
-              <td className="px-4 py-3">
-                <PriorTierBadges tiers={row.prior_tiers} />
-              </td>
-
-              {/* Legend selected time */}
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                {timeAgo(row.legend_selected_at)}
-              </td>
-
-              {/* Task A progress */}
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-16 rounded-full bg-white/10 overflow-hidden shrink-0">
-                    <div
-                      className={`h-full rounded-full transition-all ${row.task_a_complete ? 'bg-[#19C37D]' : 'bg-[#FBBF24]'} ${
-                        row.legend_referred_count === 0 ? 'w-0' :
-                        row.legend_referred_count === 1 ? 'w-1/5' :
-                        row.legend_referred_count === 2 ? 'w-2/5' :
-                        row.legend_referred_count === 3 ? 'w-3/5' :
-                        row.legend_referred_count === 4 ? 'w-4/5' : 'w-full'
-                      }`}
-                    />
+      <table className="hidden w-full text-sm md:table">
+        <thead className="border-b border-white/8 text-muted-foreground">
+          <tr>
+            <th className="px-4 py-3 text-left font-medium">Email</th>
+            <th className="px-4 py-3 text-left font-medium">Code</th>
+            <th className="px-4 py-3 text-left font-medium">Prior tier</th>
+            <th className="px-4 py-3 text-left font-medium">Selected</th>
+            <th className="px-4 py-3 text-left font-medium">Task A refs</th>
+            <th className="px-4 py-3 text-left font-medium">Task A</th>
+            <th className="px-4 py-3 text-left font-medium">Claim</th>
+            <th className="px-4 py-3 text-left font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {rows.map((row) => {
+            const isRevealed = revealed.has(row.referral_code);
+            return (
+              <tr key={row.referral_code}>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground">{isRevealed ? row.email : maskEmail(row.email)}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleReveal(row.referral_code)}
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label={isRevealed ? 'Hide email' : 'Reveal email'}
+                    >
+                      {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
-                  <span className="font-mono text-xs text-foreground whitespace-nowrap">
-                    {row.legend_referred_count} / 5
-                    <span className="text-muted-foreground ml-1">({row.total_referred_count} total)</span>
-                  </span>
-                </div>
-              </td>
-
-              {/* Task A status */}
-              <td className="px-4 py-3">
-                {row.task_a_complete ? (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium bg-[#19C37D]/10 border border-[#19C37D]/20 text-[#19C37D]">
-                    Done ✓
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium bg-[#FBBF24]/10 border border-[#FBBF24]/20 text-[#FBBF24]">
-                    In progress
-                  </span>
-                )}
-              </td>
-
-              {/* Claim status */}
-              <td className="px-4 py-3">
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium border capitalize ${CLAIM_BADGE[row.claim_status] ?? CLAIM_BADGE.pending}`}>
-                  {row.claim_status === 'paid' ? 'Paid ✓' : row.claim_status}
-                </span>
-              </td>
-
-              {/* Actions */}
-              <td className="px-4 py-3">
-                <ClaimActions referralCode={row.referral_code} status={row.claim_status} />
-              </td>
-
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.referral_code}</td>
+                <td className="px-4 py-3"><PriorTierBadges tiers={row.prior_tiers} /></td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                  {timeAgo(row.legend_selected_at)}
+                </td>
+                <td className="px-4 py-3"><LegendProgress row={row} /></td>
+                <td className="px-4 py-3"><TaskBadge done={row.task_a_complete} /></td>
+                <td className="px-4 py-3"><ClaimBadge status={row.claim_status} /></td>
+                <td className="px-4 py-3">
+                  <ClaimActions referralCode={row.referral_code} status={row.claim_status} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
   );
 }

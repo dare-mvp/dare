@@ -70,60 +70,64 @@ export default async function ChallengePage({
   const s = summaries[activeTab];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-syne text-2xl font-extrabold text-foreground">Challenge Tracker</h1>
+        <h1 className="font-syne text-xl font-extrabold text-foreground sm:text-2xl">
+          Challenge Tracker
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Referral progress and claim status for each tier.
         </p>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-xl border border-white/8 bg-brand-surface p-1 w-fit">
+      <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-white/8 bg-brand-surface p-1 sm:inline-grid sm:w-auto">
         {TABS.map((tab) => (
           <Link
             key={tab.id}
             href={`/admin/challenge?tab=${tab.id}`}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-2 py-2 text-center text-sm font-medium transition-colors sm:px-4 ${
               activeTab === tab.id
                 ? 'bg-white/10 text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab.label}
-            <span className="ml-1.5 font-mono text-xs opacity-60">{tab.reward}</span>
+            <span className="block sm:inline">{tab.label}</span>
+            <span className="block font-mono text-[10px] opacity-60 sm:ml-1.5 sm:inline sm:text-xs">
+              {tab.reward}
+            </span>
           </Link>
         ))}
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-white/8 bg-brand-surface px-4 py-4 sm:px-5">
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">
             {TABS.find((t) => t.id === activeTab)?.label} players
           </p>
-          <p className="mt-1 font-syne text-3xl font-extrabold text-[#FBBF24]">{s.total}</p>
+          <p className="mt-1 font-syne text-2xl font-extrabold text-[#FBBF24] sm:text-3xl">{s.total}</p>
         </div>
-        <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
+        <div className="rounded-xl border border-white/8 bg-brand-surface px-4 py-4 sm:px-5">
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">{s.taskLabel}</p>
-          <p className="mt-1 font-syne text-3xl font-extrabold text-[#19C37D]">{s.taskDone}</p>
+          <p className="mt-1 font-syne text-2xl font-extrabold text-[#19C37D] sm:text-3xl">{s.taskDone}</p>
         </div>
-        <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
+        <div className="rounded-xl border border-white/8 bg-brand-surface px-4 py-4 sm:px-5">
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Awaiting payment</p>
-          <p className="mt-1 font-syne text-3xl font-extrabold text-brand-primary">{s.approved}</p>
+          <p className="mt-1 font-syne text-2xl font-extrabold text-brand-primary sm:text-3xl">{s.approved}</p>
           <p className="mt-1 text-[10px] text-muted-foreground font-mono">approved, not yet paid</p>
         </div>
-        <div className="rounded-xl border border-white/8 bg-brand-surface px-5 py-4">
+        <div className="rounded-xl border border-white/8 bg-brand-surface px-4 py-4 sm:px-5">
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Paid out</p>
-          <p className="mt-1 font-syne text-3xl font-extrabold text-[#19C37D]">{s.paid}</p>
+          <p className="mt-1 font-syne text-2xl font-extrabold text-[#19C37D] sm:text-3xl">{s.paid}</p>
           <p className="mt-1 text-[10px] text-muted-foreground font-mono">approved + paid</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/8 bg-brand-surface overflow-hidden">
-        <div className="border-b border-white/8 px-6 py-4">
+      <div className="overflow-hidden rounded-xl border border-white/8 bg-brand-surface">
+        <div className="border-b border-white/8 px-4 py-4 sm:px-6">
           <h2 className="font-syne text-base font-bold text-foreground">
             {TABS.find((t) => t.id === activeTab)?.label} player progress
           </h2>
