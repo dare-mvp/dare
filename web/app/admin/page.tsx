@@ -93,40 +93,73 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="rounded-xl border border-white/8 bg-brand-surface">
-        <div className="border-b border-white/8 px-6 py-4">
+        <div className="border-b border-white/8 px-4 py-4 sm:px-6">
           <h2 className="font-syne text-lg font-extrabold text-foreground">Recent activity</h2>
         </div>
         {stats.recentActivity.length === 0 ? (
           <p className="px-6 py-8 text-sm text-muted-foreground">No recent activity.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b border-white/8 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Timestamp</th>
-                <th className="px-4 py-3 text-left font-medium">Action</th>
-                <th className="px-4 py-3 text-left font-medium">Actor</th>
-                <th className="px-4 py-3 text-left font-medium">Target</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
+          <>
+            <div className="divide-y divide-white/5 md:hidden">
               {(stats.recentActivity as ActivityRow[]).map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                    {timeAgo(row.created_at)}
-                  </td>
-                  <td className="px-4 py-3 text-foreground">{row.action}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {row.actor_user_id ? `${row.actor_user_id.slice(0, 8)}` : 'system'}
-                    <span className="ml-1 opacity-60">({row.actor_type})</span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {row.target_type}
-                    {row.target_id ? `:${row.target_id.slice(0, 8)}` : ''}
-                  </td>
-                </tr>
+                <article key={row.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 break-words text-sm font-medium text-foreground">
+                      {row.action}
+                    </p>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                      {timeAgo(row.created_at)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 font-mono text-xs text-muted-foreground">
+                    <div className="min-w-0">
+                      <p className="mb-1 text-[10px] uppercase tracking-widest">Actor</p>
+                      <p className="truncate">
+                        {row.actor_user_id ? row.actor_user_id.slice(0, 8) : 'system'}
+                        <span className="ml-1 opacity-60">({row.actor_type})</span>
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="mb-1 text-[10px] uppercase tracking-widest">Target</p>
+                      <p className="truncate">
+                        {row.target_type}
+                        {row.target_id ? `:${row.target_id.slice(0, 8)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <table className="hidden w-full text-sm md:table">
+              <thead className="border-b border-white/8 text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Timestamp</th>
+                  <th className="px-4 py-3 text-left font-medium">Action</th>
+                  <th className="px-4 py-3 text-left font-medium">Actor</th>
+                  <th className="px-4 py-3 text-left font-medium">Target</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {(stats.recentActivity as ActivityRow[]).map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      {timeAgo(row.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-foreground">{row.action}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {row.actor_user_id ? `${row.actor_user_id.slice(0, 8)}` : 'system'}
+                      <span className="ml-1 opacity-60">({row.actor_type})</span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {row.target_type}
+                      {row.target_id ? `:${row.target_id.slice(0, 8)}` : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>
