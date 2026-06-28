@@ -28,6 +28,7 @@ export function ConstitutionPreview({
       <PreviewRow label="DARE type" value={formatDareTypeLabel(draft.dareType)} />
       <PreviewRow label="Category" value={draft.category.toUpperCase()} />
       <PreviewRow label="Resolution" value={formatResolutionLabel(draft.resolutionType)} />
+      <PreviewRow label="Invite type" value={draft.visibility === 'targeted' ? 'Targeted invite' : 'Open to anyone'} />
       <PreviewRow label="Duration" value={formatDuration(draft.durationSeconds)} />
       <PreviewRow label={draft.dareType === 'task' ? 'Performer' : 'Opponent'} value={draft.opponent || (draft.dareType === 'task' ? 'Open performer slot' : 'Open challenge')} />
       <PreviewRow label="Rules" value={draft.rules || 'Rules not set'} />

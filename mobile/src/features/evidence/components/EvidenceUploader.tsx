@@ -4,12 +4,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../../components/ui/ActionButton';
 import { IconButton } from '../../../components/ui/IconButton';
 import { colors, fonts, radius, spacing, typography } from '../../../theme/tokens';
+import { getEvidenceStatusLabel, type EvidenceUploadStatus } from '../evidenceGuidance';
 
 export type EvidenceDraftFile = {
   id: string;
   name: string;
   sizeLabel: string;
-  status: 'failed' | 'ready' | 'uploaded' | 'uploading';
+  status: EvidenceUploadStatus;
 };
 
 type EvidenceUploaderProps = {
@@ -46,7 +47,7 @@ export function EvidenceUploader({
       <View style={styles.dropzone}>
         <FileUp color={colors.primary} size={22} />
         <Text style={styles.dropTitle}>Add photos or files</Text>
-          <Text style={styles.dropText}>PNG, JPEG, or MP4 only. Maximum file size is 10 MB.</Text>
+        <Text style={styles.dropText}>PNG, JPEG, or MP4 only. Maximum file size is 10 MB.</Text>
         <View style={styles.actionGroup}>
           <ActionButton
             accessibilityLabel="Choose evidence from photo library"
@@ -71,7 +72,7 @@ export function EvidenceUploader({
             <View key={file.id} style={styles.fileRow}>
               <View style={styles.fileCopy}>
                 <Text numberOfLines={1} style={styles.fileName}>{file.name}</Text>
-                <Text style={styles.fileMeta}>{file.sizeLabel} - {file.status}</Text>
+                <Text style={styles.fileMeta}>{file.sizeLabel} - {getEvidenceStatusLabel(file.status)}</Text>
               </View>
               {file.status === 'failed' ? (
                 <IconButton

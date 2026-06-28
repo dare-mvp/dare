@@ -5,6 +5,7 @@ import { ConnectionBanner } from '../../src/components/ui/ConnectionBanner';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
 import { CourtLiveRoomPanel } from '../../src/features/court/components/CourtLiveRoomPanel';
+import { LowDataCourtPanel } from '../../src/features/court/components/LowDataCourtPanel';
 import { CourtPlayActions } from '../../src/features/court/components/CourtPlayActions';
 import { CourtPlayAlerts } from '../../src/features/court/components/CourtPlayAlerts';
 import { CourtResolutionPanel } from '../../src/features/court/components/CourtResolutionPanel';
@@ -59,8 +60,12 @@ export default function CourtPlayScreen() {
   const session = court.session ? withCourtLiveRoom(baseSession, livePresence.liveState) : activeCourtSession;
   const question = courtQuestion.question;
   const isParticipant = session.viewerRole !== 'spectator';
-  const canPlay = session.phase === 'active' || session.phase === 'awaiting_result';
-  const resolutionDisabledReason = getResolutionDisabledReason(session);
+  const courtSessionUnavailable = court.source === 'server' && !court.session;
+  const courtUnavailableReason = courtSessionUnavailable
+    ? 'Court session is not loaded. Return to Court, refresh the active DARE, and retry.'
+    : null;
+  const canPlay = !courtSessionUnavailable && (session.phase === 'active' || session.phase === 'awaiting_result');
+  const resolutionDisabledReason = courtUnavailableReason ?? getResolutionDisabledReason(session);
   const canSubmit = session.resolutionType === 'answer_key' && session.phase === 'active' && isParticipant && data.capabilities.canAcceptDare && answerText.trim().length > 0 && !submitting && !resolutionDisabledReason;
 
   useEffect(() => {
@@ -136,7 +141,7 @@ export default function CourtPlayScreen() {
       <CourtPlayAlerts
         actionError={actionError}
         actionNotice={actionNotice}
-        courtError={court.error}
+        courtError={court.error ?? courtUnavailableReason}
         courtQuestion={courtQuestion}
         courtSource={court.source}
         session={session}
@@ -167,6 +172,7 @@ export default function CourtPlayScreen() {
         witnessVote={witnessVote}
       />
       <CourtStatusPanel session={session} />
+      <LowDataCourtPanel session={session} />
       <CourtPlayActions
         canPlay={canPlay}
         canSubmit={canSubmit}
@@ -186,6 +192,12 @@ export default function CourtPlayScreen() {
   );
 
   async function handleSubmitAnswer() {
+    if (courtSessionUnavailable) {
+      setActionError(courtUnavailableReason);
+      setActionNotice(null);
+      return;
+    }
+
     if (session.resolutionType !== 'answer_key') return;
     if (session.phase !== 'active') {
       setActionError('Answer submission is closed for this Court state.');
@@ -197,6 +209,11 @@ export default function CourtPlayScreen() {
     }
 
     if (!isUuid(resolvedDareId) || courtQuestion.source !== 'server' || !isUuid(question.id)) {
+      if (court.source === 'server') {
+        setActionError('Court question is not ready. Return to Court, refresh this DARE, and retry the answer.');
+        setActionNotice(null);
+        return;
+      }
       router.push('/court/result');
       return;
     }
@@ -243,6 +260,12 @@ export default function CourtPlayScreen() {
   async function handleSubmitResultClaim(
     outcome: 'challenger_won' | 'dispute' | 'issuer_won' | 'performer_completed' | 'void',
   ) {
+    if (courtSessionUnavailable) {
+      setActionError(courtUnavailableReason);
+      setActionNotice(null);
+      return;
+    }
+
     if (resolutionDisabledReason) {
       setActionError(resolutionDisabledReason);
       setActionNotice(null);
@@ -250,6 +273,11 @@ export default function CourtPlayScreen() {
     }
 
     if (!isUuid(resolvedDareId)) {
+      if (court.source === 'server') {
+        setActionError('Court reference is missing. Return to Court and open this DARE again before submitting a result.');
+        setActionNotice(null);
+        return;
+      }
       router.push('/court/result');
       return;
     }
@@ -299,6 +327,12 @@ export default function CourtPlayScreen() {
   }
 
   async function handleSubmitWitnessVote(vote: WitnessVote) {
+    if (courtSessionUnavailable) {
+      setActionError(courtUnavailableReason);
+      setActionNotice(null);
+      return;
+    }
+
     if (session.resolutionType !== 'witnessed' || session.viewerRole !== 'spectator') return;
     if (resolutionDisabledReason) {
       setActionError(resolutionDisabledReason);
@@ -348,8 +382,25 @@ export default function CourtPlayScreen() {
   }
 
   async function handleForfeit() {
+    if (courtSessionUnavailable) {
+      setActionError(courtUnavailableReason);
+      setActionNotice(null);
+      return;
+    }
+
     if (!isUuid(resolvedDareId)) {
+      if (court.source === 'server') {
+        setActionError('Court reference is missing. Return to Court and open this DARE again before forfeiting.');
+        setActionNotice(null);
+        return;
+      }
       router.push('/court/result');
+      return;
+    }
+
+    if (resolutionDisabledReason) {
+      setActionError(resolutionDisabledReason);
+      setActionNotice(null);
       return;
     }
 

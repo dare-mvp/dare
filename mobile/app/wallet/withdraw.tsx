@@ -8,6 +8,8 @@ import { AmountInput } from '../../src/components/ui/AmountInput';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { TextField } from '../../src/components/ui/TextField';
 import { MoneyAmount } from '../../src/components/ui/MoneyAmount';
+import { StepUpVerificationNotice } from '../../src/features/auth/components/StepUpVerificationNotice';
+import { useAuth } from '../../src/features/auth/AuthProvider';
 import { useMe } from '../../src/features/me/useMe';
 import { requestWithdrawal } from '../../src/lib/actions/endpoints';
 import { nairaToKobo, validateWithdrawalInput } from '../../src/features/wallet/validation';
@@ -16,6 +18,7 @@ import { WalletFlowFrame } from '../../src/features/wallet/components/WalletFlow
 
 export default function WithdrawScreen() {
   const router = useRouter();
+  const auth = useAuth();
   const { data, error, loading } = useMe();
   const [amount, setAmount] = useState('8000');
   const [bankCode, setBankCode] = useState('');
@@ -126,6 +129,7 @@ export default function WithdrawScreen() {
         title="Withdrawal checks apply"
         message="KYC, responsible gaming limits, available balance, and pending withdrawals are checked before approval."
       />
+      <StepUpVerificationNotice actionLabel="Withdrawals" hasVerifiedPhone={Boolean(auth.user?.phone)} />
 
       <ActionButton
         accessibilityLabel="Review withdrawal"

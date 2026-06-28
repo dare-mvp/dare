@@ -73,6 +73,13 @@ export default function SettingsScreen() {
         message="Sensitive settings require a confirmed session before changes take effect."
       />
       <ActionButton
+        accessibilityLabel="Verify account phone"
+        icon={<Smartphone color={colors.text} size={17} />}
+        label={auth.user?.phone ? 'Update phone' : 'Verify phone'}
+        onPress={() => router.push('/profile/phone')}
+        variant="secondary"
+      />
+      <ActionButton
         accessibilityLabel="Open support"
         label="Support"
         onPress={() => router.push('/profile/support')}

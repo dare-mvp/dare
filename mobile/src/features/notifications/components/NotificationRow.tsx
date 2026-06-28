@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { colors, fonts, radius, spacing } from '../../../theme/tokens';
+import { hasNotificationDestination } from '../notificationDestinations';
 import { AppNotification, NotificationKind } from '../types';
 
 type NotificationRowProps = {
@@ -19,6 +20,8 @@ const kindIcon: Record<NotificationKind, React.ReactNode> = {
 };
 
 export function NotificationRow({ notification, onPress }: NotificationRowProps) {
+  const hasDestination = hasNotificationDestination(notification);
+
   return (
     <Pressable
       accessibilityLabel={notification.title}
@@ -35,6 +38,7 @@ export function NotificationRow({ notification, onPress }: NotificationRowProps)
         <View style={styles.titleRow}>
           <Text numberOfLines={1} style={styles.title}>{notification.title}</Text>
           {!notification.read ? <StatusBadge label="NEW" tone="warning" /> : null}
+          {hasDestination ? <StatusBadge label="OPEN" tone="info" /> : null}
         </View>
         <Text numberOfLines={2} style={styles.body}>{notification.body}</Text>
         <Text style={styles.time}>{notification.createdLabel}</Text>

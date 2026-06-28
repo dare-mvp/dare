@@ -55,7 +55,7 @@ export function getCourtLiveRoom(
     ? liveState.recordingStatus === 'recording' || liveState.recordingStatus === 'available'
     : recordingRequired && status === 'live' && isPerformancePhase(session.phase);
   const requirementMet = liveState
-    ? liveState.liveRequirementMet
+    ? liveState.liveRequirementMet && liveState.viewerJoined && liveState.roomStatus === 'live'
     : status === 'live' && bothParticipantsLive && (!recordingRequired || recordingActive);
   const statusReason = getStatusReason({
     bothParticipantsLive,

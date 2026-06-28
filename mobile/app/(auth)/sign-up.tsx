@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ArrowRight, LockKeyhole, Mail, UserRound } from 'lucide-react-native';
+import { ArrowRight, LockKeyhole, Mail, Smartphone, UserRound } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -110,6 +110,16 @@ export default function SignUpScreen() {
         icon={<ArrowRight color={colors.text} size={18} />}
         label={loading ? 'Creating account' : 'Continue'}
         onPress={handleContinue}
+      />
+      <ActionButton
+        accessibilityLabel="Create account with phone code"
+        icon={<Smartphone color={colors.text} size={18} />}
+        label="Use phone code"
+        onPress={() => router.push({
+          pathname: '/phone-auth',
+          params: { mode: 'sign-up' },
+        })}
+        variant="secondary"
       />
     </AuthFrame>
   );

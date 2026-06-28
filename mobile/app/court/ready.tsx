@@ -8,7 +8,9 @@ import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { CourtFlowFrame } from '../../src/features/court/components/CourtFlowFrame';
 import { CourtLiveRoomPanel } from '../../src/features/court/components/CourtLiveRoomPanel';
+import { LowDataCourtPanel } from '../../src/features/court/components/LowDataCourtPanel';
 import { CourtPhaseCard } from '../../src/features/court/components/CourtPhaseCard';
+import { getCourtActionDisabledReason } from '../../src/features/court/courtConnectivity';
 import { canUseNativeLiveKit } from '../../src/features/court/liveKitRuntime';
 import { withCourtLiveRoom } from '../../src/features/court/liveRoom';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
@@ -40,7 +42,8 @@ export default function CourtReadyScreen() {
   const session = baseSession ? withCourtLiveRoom(baseSession, livePresence.liveState) : null;
   const viewerReady = getViewerReady(session, readyState);
   const hasSession = Boolean(session);
-  const canReady = Boolean(session?.liveRoom.canEnter && session.liveRoom.viewerJoined) && data.capabilities.canAcceptDare && !submitting && !viewerReady;
+  const readyDisabledReason = session ? getCourtActionDisabledReason(session) : null;
+  const canReady = Boolean(session?.liveRoom.canEnter && session.liveRoom.viewerJoined) && data.capabilities.canAcceptDare && !submitting && !viewerReady && !readyDisabledReason;
 
   useEffect(() => {
     if (court.source !== 'server' || court.session?.phase !== 'active') return;
@@ -135,7 +138,7 @@ export default function CourtReadyScreen() {
         <InlineAlert
           tone={court.loading ? 'info' : 'warning'}
           title={court.loading ? 'Loading court' : 'No active ready-up'}
-          message={court.loading ? 'Checking your court session.' : 'Accept a DARE before entering ready-up.'}
+          message={court.loading ? 'Checking your court session. Keep this screen open, or return to Court and retry if it does not load.' : 'Return to Court, refresh your active DARE, and retry ready-up from the current Court screen.'}
         />
       )}
       {session ? (
@@ -143,6 +146,14 @@ export default function CourtReadyScreen() {
           liveRoom={session.liveRoom}
           liveState={livePresence.liveState}
           onConnectionStatus={livePresence.recordConnectionStatus}
+        />
+      ) : null}
+      {session ? <LowDataCourtPanel session={session} /> : null}
+      {readyDisabledReason ? (
+        <InlineAlert
+          tone="warning"
+          title="Reconnect before ready-up"
+          message={readyDisabledReason}
         />
       ) : null}
       <InlineAlert
@@ -163,8 +174,28 @@ export default function CourtReadyScreen() {
   );
 
   async function handleReady() {
+    if (!session) {
+      setSubmitError('Court ready-up is not loaded yet. Return to Court, refresh the active DARE, and retry.');
+      return;
+    }
+
     if (!isUuid(resolvedDareId)) {
-      router.push('/court/countdown');
+      setSubmitError('Court reference is missing. Return to Court and open this DARE again before readying up.');
+      return;
+    }
+
+    if (readyDisabledReason) {
+      setSubmitError(readyDisabledReason);
+      return;
+    }
+
+    if (!session.liveRoom.viewerJoined) {
+      setSubmitError('Join the live Court room before confirming ready.');
+      return;
+    }
+
+    if (!data.capabilities.canAcceptDare) {
+      setSubmitError('Your account is not eligible to ready up yet. Resolve the account requirement shown above, then retry.');
       return;
     }
 

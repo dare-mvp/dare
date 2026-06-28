@@ -38,6 +38,7 @@ import {
   type SettlementEscrowHoldRow,
   type SettlementJuryCaseRow,
 } from "../actions/routes/settlement_status.ts";
+import { buildSocialProofActivity } from "../actions/routes/social_proof.ts";
 import { createPaystackWebhookHandler } from "../paystack-webhook/handler.ts";
 import { createLiveKitWebhookHandler } from "../livekit-webhook/handler.ts";
 import { createWithdrawalProcessorHandler } from "../withdrawal-processor/handler.ts";
@@ -76,6 +77,134 @@ Deno.test("parseActionEnvelope validates the standard envelope", async () => {
   assertEquals(envelope.requestId, requestId);
   assertEquals(envelope.idempotencyKey, "create-dare:abc123");
   assertEquals(envelope.payload, { amount: 5000, currency: "NGN" });
+});
+
+Deno.test("buildSocialProofActivity returns only server-confirmed public settlement signals", () => {
+  const activity = buildSocialProofActivity({
+    generatedAt: "2026-06-28T12:00:00.000Z",
+    dares: [
+      {
+        category: "Knowledge",
+        challenger_id: "user-b",
+        completed_at: "2026-06-28T11:50:00.000Z",
+        created_at: "2026-06-28T11:00:00.000Z",
+        currency: "NGN",
+        dare_type: "skill",
+        funding_model: "two_sided_stake",
+        id: "dare-settled",
+        issuer_id: "user-a",
+        settled_at: "2026-06-28T11:55:00.000Z",
+        status: "settled",
+        title: "Fastest answer wins",
+        winner_id: "user-b",
+      },
+      {
+        category: "Sports",
+        challenger_id: "user-c",
+        completed_at: "2026-06-28T11:40:00.000Z",
+        created_at: "2026-06-28T10:00:00.000Z",
+        currency: "NGN",
+        dare_type: "skill",
+        funding_model: "two_sided_stake",
+        id: "dare-completed",
+        issuer_id: "user-a",
+        settled_at: null,
+        status: "completed",
+        title: "Not settled yet",
+        winner_id: "user-c",
+      },
+      {
+        category: "Knowledge",
+        challenger_id: null,
+        completed_at: null,
+        created_at: "2026-06-28T09:00:00.000Z",
+        currency: "NGN",
+        dare_type: "task",
+        funding_model: "darer_reward",
+        id: "dare-open",
+        issuer_id: "user-a",
+        settled_at: null,
+        status: "open",
+        title: "Open reward task",
+        winner_id: null,
+      },
+    ],
+    ledgerEntries: [
+      {
+        amount: 950000,
+        created_at: "2026-06-28T11:56:00.000Z",
+        dare_id: "dare-settled",
+        status: "posted",
+        type: "payout",
+      },
+      {
+        amount: 500000,
+        created_at: "2026-06-28T11:41:00.000Z",
+        dare_id: "dare-completed",
+        status: "posted",
+        type: "payout",
+      },
+    ],
+    liveParticipants: [
+      {
+        connection_status: "joined",
+        dare_id: "dare-open",
+        live_court_room_id: "room-1",
+        role: "spectator",
+      },
+      {
+        connection_status: "left",
+        dare_id: "dare-open",
+        live_court_room_id: "room-1",
+        role: "spectator",
+      },
+    ],
+    liveRooms: [
+      {
+        dare_id: "dare-open",
+        id: "room-1",
+        status: "live",
+        updated_at: "2026-06-28T11:58:00.000Z",
+      },
+    ],
+    profiles: [
+      {
+        account_status: "active",
+        display_name: "Ada",
+        id: "user-a",
+        tier: "Champion",
+        trust_score: 700,
+        username: "ada",
+      },
+      {
+        account_status: "active",
+        display_name: "Bayo",
+        id: "user-b",
+        tier: "Elite",
+        trust_score: 930,
+        username: "bayo",
+      },
+      {
+        account_status: "active",
+        display_name: "Platform",
+        id: "platform-user",
+        tier: "System",
+        trust_score: 1000,
+        username: "dare_platform",
+      },
+    ],
+  });
+
+  assertEquals(activity.summary.completedDares, 1);
+  assertEquals(activity.summary.confirmedPayouts, 1);
+  assertEquals(activity.summary.openDares, 1);
+  assertEquals(activity.summary.activeCourts, 1);
+  assertEquals(activity.summary.topCategory, "Knowledge");
+  assertEquals(activity.summary.topTrustedPlayer, { name: "Bayo", score: 930 });
+  assertEquals(activity.recentSettlements[0].label, "Payout confirmed");
+  assertEquals(activity.recentSettlements[0].amountLabel, "NGN 9,500");
+  assertEquals(activity.recentSettlements[0].winnerName, "Bayo");
+  assertEquals(activity.liveCourts[0].spectatorCount, 1);
 });
 
 Deno.test("parseActionEnvelope rejects missing idempotency keys when required", async () => {

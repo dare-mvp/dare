@@ -5,7 +5,7 @@ import { colors, fonts, radius, spacing } from '../../theme/tokens';
 
 type ConnectionBannerProps = {
   message?: string;
-  state: 'connected' | 'reconnecting' | 'offline';
+  state?: 'connected' | 'reconnecting' | 'offline';
 };
 
 const copy = {
@@ -14,19 +14,35 @@ const copy = {
   offline: 'Connection lost',
 } as const;
 
+const defaultMessages = {
+  connected: 'Connection is current. Keep this screen open for the next Court action.',
+  reconnecting: 'Keep this screen open and retry after sync returns.',
+  offline: 'Reconnect now, then retry the action. Offline Court actions are not queued.',
+} as const;
+
 export function ConnectionBanner({ message, state }: ConnectionBannerProps) {
-  const healthy = state === 'connected';
-  const iconColor = healthy ? colors.success : colors.warning;
+  const resolvedState = resolveConnectionState(state);
+  const healthy = resolvedState === 'connected';
+  const iconColor = healthy ? colors.success : resolvedState === 'offline' ? colors.danger : colors.warning;
+  const resolvedMessage = message?.trim() || defaultMessages[resolvedState];
 
   return (
-    <View accessibilityRole={healthy ? undefined : 'alert'} style={[styles.banner, !healthy && styles.warning]}>
+    <View
+      accessibilityRole={healthy ? undefined : 'alert'}
+      style={[styles.banner, resolvedState === 'reconnecting' && styles.warning, resolvedState === 'offline' && styles.danger]}
+    >
       {healthy ? <Wifi color={iconColor} size={18} /> : <WifiOff color={iconColor} size={18} />}
       <View style={styles.copy}>
-        <Text style={styles.title}>{copy[state]}</Text>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        <Text style={styles.title}>{copy[resolvedState]}</Text>
+        <Text style={styles.message}>{resolvedMessage}</Text>
       </View>
     </View>
   );
+}
+
+function resolveConnectionState(state?: ConnectionBannerProps['state']) {
+  if (state === 'connected' || state === 'offline' || state === 'reconnecting') return state;
+  return 'reconnecting';
 }
 
 const styles = StyleSheet.create({
@@ -43,6 +59,10 @@ const styles = StyleSheet.create({
   warning: {
     backgroundColor: colors.warningDim,
     borderColor: colors.warning,
+  },
+  danger: {
+    backgroundColor: colors.dangerDim,
+    borderColor: colors.danger,
   },
   copy: {
     flex: 1,

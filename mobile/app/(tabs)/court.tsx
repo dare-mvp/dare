@@ -10,6 +10,7 @@ import { TopBar } from '../../src/components/ui/TopBar';
 import { CourtArena } from '../../src/features/court/components/CourtArena';
 import { CourtStatusPanel } from '../../src/features/court/components/CourtStatusPanel';
 import { AnswerKeyPanel } from '../../src/features/court/components/AnswerKeyPanel';
+import { LowDataCourtPanel } from '../../src/features/court/components/LowDataCourtPanel';
 import { ResolutionModePanel } from '../../src/features/court/components/ResolutionModePanel';
 import { useActiveCourtSession } from '../../src/features/court/useActiveCourtSession';
 import { useCourtQuestion } from '../../src/features/court/useCourtQuestion';
@@ -104,6 +105,8 @@ export default function CourtScreen() {
         ) : null}
 
         {session ? <CourtStatusPanel session={session} /> : null}
+
+        {session ? <LowDataCourtPanel session={session} /> : null}
 
         <InlineAlert
           tone="warning"

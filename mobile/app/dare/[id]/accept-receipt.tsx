@@ -79,6 +79,9 @@ export default function AcceptReceiptScreen() {
 
       <View style={styles.receipt}>
         <Text style={styles.receiptTitle}>{dare.title}</Text>
+        <ReceiptLine label="Action" value="DARE accepted" />
+        <ReceiptLine label="Status" value={(status ?? 'pending').replace(/[_-]/g, ' ').toUpperCase()} />
+        <ReceiptLine label="Timestamp" value={new Date().toLocaleString()} />
         <ReceiptLine label="Issuer" value={dare.playerA.name} />
         <ReceiptLine label="DARE type" value={formatDareTypeLabel(isTask ? 'task' : 'skill')} />
         {isTask ? (
@@ -97,6 +100,8 @@ export default function AcceptReceiptScreen() {
         ) : null}
         <ReceiptLine label="Reference" value={reference ?? `ACC-${dare.id.toUpperCase()}`} />
         {courtSessionId ? <ReceiptLine label="Court session" value={courtSessionId} /> : null}
+        <ReceiptLine label="Next action" value="Enter Court ready-up" />
+        <ReceiptLine label="Support" value={`Use DARE ${shortId(dare.id)}`} />
       </View>
 
       <View style={styles.actions}>
@@ -138,6 +143,10 @@ function ReceiptMoneyLine({ emphasis = false, label, value }: { emphasis?: boole
       <MoneyAmount amountKobo={value} tone={emphasis ? 'locked' : 'pending'} />
     </View>
   );
+}
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 const styles = StyleSheet.create({

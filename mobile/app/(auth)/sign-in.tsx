@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { LockKeyhole, LogIn, Mail } from 'lucide-react-native';
+import { LockKeyhole, LogIn, Mail, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -75,6 +75,16 @@ export default function SignInScreen() {
         icon={<LogIn color={colors.text} size={18} />}
         label={isBackendConfigured ? (loading ? 'Signing in' : 'Sign in') : 'Open preview'}
         onPress={handleSignIn}
+      />
+      <ActionButton
+        accessibilityLabel="Sign in with phone code"
+        icon={<Smartphone color={colors.text} size={18} />}
+        label="Use phone code"
+        onPress={() => router.push({
+          pathname: '/phone-auth',
+          params: { mode: 'sign-in' },
+        })}
+        variant="secondary"
       />
       <AuthFooterLink label="Forgot password?" onPress={() => router.push('/forgot-password')} />
       {!isBackendConfigured ? (

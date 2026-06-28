@@ -1,6 +1,10 @@
 import { CourtSession } from './types';
+import { getCourtActionDisabledReason } from './courtConnectivity';
 
 export function getResolutionDisabledReason(session: CourtSession) {
+  const connectionDisabledReason = getCourtActionDisabledReason(session);
+  if (connectionDisabledReason) return connectionDisabledReason;
+
   if (isResultActionPhase(session) && !session.liveRoom.requirementMet) {
     return session.liveRoom.requirementLabel;
   }

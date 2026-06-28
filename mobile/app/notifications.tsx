@@ -10,6 +10,7 @@ import { InlineAlert } from '../src/components/ui/InlineAlert';
 import { Screen } from '../src/components/ui/Screen';
 import { StatusBadge } from '../src/components/ui/StatusBadge';
 import { NotificationRow } from '../src/features/notifications/components/NotificationRow';
+import { resolveNotificationHref } from '../src/features/notifications/notificationDestinations';
 import { NotificationKind } from '../src/features/notifications/types';
 import { useNotifications } from '../src/features/notifications/useNotifications';
 import { colors, fonts, radius, spacing, typography } from '../src/theme/tokens';
@@ -107,6 +108,8 @@ export default function NotificationsScreen() {
                   if (!notification.read) {
                     void inbox.markRead(notification.id);
                   }
+                  const href = resolveNotificationHref(notification);
+                  if (href !== '/notifications') router.push(href);
                 }}
               />
             ))

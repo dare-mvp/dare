@@ -14,6 +14,7 @@ import { useAuth } from '../../src/features/auth/AuthProvider';
 import { DareCard, DareFeedItem } from '../../src/features/feed/components/DareCard';
 import { styles } from '../../src/features/feed/FeedScreen.styles';
 import { LivePulsePanel } from '../../src/features/feed/components/LivePulsePanel';
+import { SocialProofPanel } from '../../src/features/feed/components/SocialProofPanel';
 import { TopTrustStrip } from '../../src/features/feed/components/TopTrustStrip';
 import {
   FeedFilter,
@@ -24,10 +25,14 @@ import {
   matchesFeedFilter,
 } from '../../src/features/feed/feedScreenParts';
 import { getLivePulseStats } from '../../src/features/feed/livePulseStats';
+import { getDisplayedSocialProofSummary, getSocialProofSummary } from '../../src/features/feed/socialProof';
 import { usePublicDareFeed } from '../../src/features/feed/usePublicDareFeed';
+import { useSocialProofActivity } from '../../src/features/feed/useSocialProofActivity';
 import { useTopTrustPlayers } from '../../src/features/feed/useTopTrustPlayers';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
+import { FirstSessionGuideCard } from '../../src/features/onboarding/components/FirstSessionGuideCard';
+import { useFirstSessionGuide } from '../../src/features/onboarding/useFirstSessionGuide';
 import { colors } from '../../src/theme/tokens';
 
 export default function FeedScreen() {
@@ -35,6 +40,8 @@ export default function FeedScreen() {
   const auth = useAuth();
   const { data, error, loading } = useMe();
   const feed = usePublicDareFeed();
+  const firstSessionGuide = useFirstSessionGuide(auth.user?.id ?? null);
+  const socialProof = useSocialProofActivity();
   const topTrust = useTopTrustPlayers(5);
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>('All');
   const filteredItems = useMemo(
@@ -42,6 +49,12 @@ export default function FeedScreen() {
     [feed.items, selectedFilter],
   );
   const pulseStats = useMemo(() => getLivePulseStats(feed.items), [feed.items]);
+  const fallbackSocialProofSummary = useMemo(() => getSocialProofSummary(feed.items), [feed.items]);
+  const socialProofSummary = getDisplayedSocialProofSummary(socialProof.data, fallbackSocialProofSummary);
+  const firstLiveDare = useMemo(
+    () => feed.items.find((item) => item.status === 'active' || item.status === 'live') ?? null,
+    [feed.items],
+  );
   const isPublicExplore = auth.status !== 'authenticated';
   const issueGate = isPublicExplore
     ? {
@@ -55,11 +68,25 @@ export default function FeedScreen() {
   const keyExtractor = useCallback((item: DareFeedItem) => item.id, []);
   const handleRefresh = useCallback(() => {
     void feed.refresh();
+    void socialProof.refresh();
     void topTrust.refresh();
-  }, [feed.refresh, topTrust.refresh]);
+  }, [feed.refresh, socialProof.refresh, topTrust.refresh]);
   const handleIssuePress = useCallback(() => {
     router.push(issueGate.route);
   }, [issueGate.route, router]);
+  const handleGuideCreate = useCallback(() => {
+    void firstSessionGuide.dismiss();
+    router.push(issueGate.route);
+  }, [firstSessionGuide, issueGate.route, router]);
+  const handleGuideExploreOpen = useCallback(() => {
+    setSelectedFilter('Open');
+    void firstSessionGuide.dismiss();
+  }, [firstSessionGuide]);
+  const handleGuideWatchCourt = useCallback(() => {
+    if (!firstLiveDare) return;
+    void firstSessionGuide.dismiss();
+    router.push({ pathname: '/court/play', params: { dareId: firstLiveDare.id } });
+  }, [firstLiveDare, firstSessionGuide, router]);
   const handleDarePress = useCallback(
     (item: DareFeedItem) => {
       if (isPublicExplore) {
@@ -148,6 +175,24 @@ export default function FeedScreen() {
 
         <LivePulsePanel loading={feed.loading} stats={pulseStats} />
         <TopTrustStrip loading={topTrust.loading} players={topTrust.players} />
+        <SocialProofPanel
+          loading={socialProof.loading && !socialProof.data}
+          recentSettlements={socialProof.data?.recentSettlements}
+          summary={socialProofSummary}
+        />
+
+        {!isPublicExplore && firstSessionGuide.visible ? (
+          <FirstSessionGuideCard
+            canCreate={data.capabilities.canCreateDare && !loading && !error}
+            hasLiveCourt={Boolean(firstLiveDare)}
+            onCreate={handleGuideCreate}
+            onDismiss={() => {
+              void firstSessionGuide.dismiss();
+            }}
+            onExploreOpen={handleGuideExploreOpen}
+            onWatchCourt={handleGuideWatchCourt}
+          />
+        ) : null}
 
         <View style={styles.cta}>
           <View style={styles.ctaIcon}>
@@ -175,13 +220,21 @@ export default function FeedScreen() {
       feed.loading,
       feed.source,
       handleIssuePress,
+      handleGuideCreate,
+      handleGuideExploreOpen,
+      handleGuideWatchCourt,
       isPublicExplore,
       issueGate.accessibilityLabel,
       issueGate.body,
       issueGate.label,
       loading,
+      firstLiveDare,
+      firstSessionGuide,
       pulseStats,
       selectedFilter,
+      socialProof.data,
+      socialProof.loading,
+      socialProofSummary,
       syncLabel,
       topTrust.loading,
       topTrust.players,

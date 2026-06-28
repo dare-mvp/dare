@@ -8,6 +8,8 @@ import { Screen } from '../../src/components/ui/Screen';
 import { TextField } from '../../src/components/ui/TextField';
 import { TopBar } from '../../src/components/ui/TopBar';
 import { ConstitutionPreview } from '../../src/features/create/components/ConstitutionPreview';
+import { ConstitutionHealthPanel } from '../../src/features/create/components/ConstitutionHealthPanel';
+import { CreateVisibilitySection } from '../../src/features/create/components/CreateVisibilitySection';
 import {
   CreatePressCard as PressCard,
   CreateSectionTitle as SectionTitle,
@@ -17,6 +19,7 @@ import {
 import { CreateStepper } from '../../src/features/create/components/CreateStepper';
 import { SelectPill } from '../../src/features/create/components/SelectPill';
 import { TimeEscrowSection } from '../../src/features/create/components/TimeEscrowSection';
+import { getConstitutionHealth } from '../../src/features/create/constitutionHealth';
 import { getCreateStakeAvailabilityError } from '../../src/features/create/createEligibility';
 import { saveCreateDareDraft } from '../../src/features/create/createDraftStore';
 import {
@@ -25,23 +28,33 @@ import {
   dareTypeOptions,
   resolutionOptions,
 } from '../../src/features/create/createVisuals';
+import { dareTemplates } from '../../src/features/create/dareTemplates';
 import { useCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
 import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
+import { MoneyPreviewPanel } from '../../src/features/money/components/MoneyPreviewPanel';
+import { getCreateMoneyPreview } from '../../src/features/money/moneyPreview';
 import { colors } from '../../src/theme/tokens';
 
 export default function CreateScreen() {
   const router = useRouter();
   const { data, error, loading } = useMe();
-  const { draft, escrowKobo, platformFeeKobo, rewardKobo, stakeKobo, updateDraft, validation } = useCreateDareDraft();
+  const { applyTemplate, draft, escrowKobo, platformFeeKobo, rewardKobo, stakeKobo, updateDraft, validation } = useCreateDareDraft();
+  const constitutionHealth = getConstitutionHealth(draft);
+  const moneyPreview = getCreateMoneyPreview({
+    dareType: draft.dareType,
+    platformFeeKobo,
+    rewardKobo,
+    stakeKobo,
+  });
   const createGate = getCreateGate(data);
   const stakeAvailabilityError = getCreateStakeAvailabilityError(escrowKobo, data);
-  const canReview = validation.isValid && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error;
+  const canReview = validation.isValid && constitutionHealth.blockingCount === 0 && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error;
   const visibleErrors = {
     answerKey: draft.answerKey ? validation.errors.answerKey : undefined,
     answerKeyRules: draft.answerKeyRules ? validation.errors.answerKeyRules : undefined,
     description: draft.description ? validation.errors.description : undefined,
-    opponent: draft.opponent ? validation.errors.opponent : undefined,
+    opponent: draft.visibility === 'targeted' || draft.opponent ? validation.errors.opponent : undefined,
     rewardNaira: draft.rewardNaira ? validation.errors.rewardNaira ?? stakeAvailabilityError ?? undefined : undefined,
     rules: draft.rules ? validation.errors.rules : undefined,
     stakeNaira: draft.stakeNaira ? validation.errors.stakeNaira ?? stakeAvailabilityError ?? undefined : undefined,
@@ -85,6 +98,20 @@ export default function CreateScreen() {
         <CreateStepper />
 
         <View style={styles.section}>
+          <SectionTitle eyebrow="Templates" icon={createSectionIcons.terms} title="Start with a clear DARE format" />
+          {dareTemplates.map((template) => (
+            <PressCard
+              body={`${template.description} Recommended: ${template.recommendedRangeLabel}.`}
+              icon={createSectionIcons.terms}
+              key={template.id}
+              label={template.name}
+              onPress={() => applyTemplate(template)}
+              selected={draft.templateId === template.id}
+            />
+          ))}
+        </View>
+
+        <View style={styles.section}>
           <SectionTitle eyebrow="Funding" icon={createSectionIcons.type} title="Choose the DARE type" />
           {dareTypeOptions.map((option) => (
             <PressCard
@@ -110,6 +137,13 @@ export default function CreateScreen() {
               selected={draft.resolutionType === option.value}
             />
           ))}
+        </View>
+
+        <View style={styles.section}>
+          <CreateVisibilitySection
+            onChange={(visibility) => updateDraft('visibility', visibility)}
+            visibility={draft.visibility}
+          />
         </View>
 
         <View style={styles.section}>
@@ -186,10 +220,13 @@ export default function CreateScreen() {
           <TextField
             autoCapitalize="none"
             error={visibleErrors.opponent}
-            label={draft.dareType === 'task' ? 'Performer (optional)' : 'Opponent (optional)'}
+            label={draft.visibility === 'targeted'
+              ? draft.dareType === 'task' ? 'Target performer username' : 'Target opponent username'
+              : draft.dareType === 'task' ? 'Performer invite' : 'Opponent invite'}
             leftIcon={<UserRound color={colors.textMuted} size={16} />}
             onChangeText={(value) => updateDraft('opponent', value)}
-            placeholder="@username or leave open"
+            placeholder={draft.visibility === 'targeted' ? '@username' : 'Choose "Send to someone" to target this DARE'}
+            editable={draft.visibility === 'targeted'}
             value={draft.opponent}
           />
         </View>
@@ -214,6 +251,10 @@ export default function CreateScreen() {
           rewardKobo={rewardKobo}
           stakeKobo={stakeKobo}
         />
+
+        <ConstitutionHealthPanel health={constitutionHealth} />
+
+        <MoneyPreviewPanel preview={moneyPreview} />
 
         <InlineAlert
           tone="warning"

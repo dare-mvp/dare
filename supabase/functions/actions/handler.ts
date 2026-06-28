@@ -78,6 +78,7 @@ import {
 import { requestWithdrawal } from "./routes/withdrawals.ts";
 import { completeDare, settleDare } from "./routes/settlement.ts";
 import { getSettlementStatus } from "./routes/settlement_status.ts";
+import { getSocialProofActivity } from "./routes/social_proof.ts";
 
 type RouteContext = {
   request: Request;
@@ -157,6 +158,16 @@ async function route(context: RouteContext): Promise<Response> {
         service: "dare-actions",
         status: "ok",
       },
+      context.requestId,
+    );
+  }
+
+  if (
+    context.request.method === "GET" &&
+    matchesPath(actionPath, ["activity", "social-proof"])
+  ) {
+    return successResponse(
+      await getSocialProofActivity(context.getServiceClient()),
       context.requestId,
     );
   }
