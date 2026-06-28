@@ -2,6 +2,7 @@ export type DareCategory = 'knowledge' | 'physical' | 'verbal' | 'sports' | 'cre
 
 export type ResolutionType = 'answer_key' | 'witnessed' | 'evidence';
 export type DareType = 'skill' | 'task';
+export type DareVisibility = 'open' | 'targeted';
 
 export type CreateDareDraft = {
   answerKey: string;
@@ -15,7 +16,10 @@ export type CreateDareDraft = {
   rules: string;
   rewardNaira: string;
   stakeNaira: string;
+  templateId?: string;
+  templateVersion?: number;
   title: string;
+  visibility: DareVisibility;
 };
 
 export type DraftValidation = {

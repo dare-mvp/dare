@@ -1,41 +1,12 @@
-import { Session, User } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import { backendConfig } from '../../lib/config/env';
 import { getAuthUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
-
-type AuthStatus = 'authenticated' | 'error' | 'loading' | 'preview' | 'unauthenticated';
-
-type AuthOperationResult =
-  | {
-      message?: string;
-      needsEmailConfirmation?: boolean;
-      ok: true;
-      passwordRecovery?: boolean;
-    }
-  | {
-      message: string;
-      ok: false;
-    };
-
-type AuthContextValue = {
-  completeEmailConfirmation: (url: string) => Promise<AuthOperationResult>;
-  isBackendConfigured: boolean;
-  requestPasswordReset: (email: string) => Promise<AuthOperationResult>;
-  session: Session | null;
-  signInWithPassword: (email: string, password: string) => Promise<AuthOperationResult>;
-  signOut: () => Promise<AuthOperationResult>;
-  signUpWithPassword: (input: {
-    displayName: string;
-    email: string;
-    password: string;
-  }) => Promise<AuthOperationResult>;
-  status: AuthStatus;
-  updatePassword: (password: string) => Promise<AuthOperationResult>;
-  user: User | null;
-};
+import { createPhoneAuthOperations } from './phoneAuthService';
+import { AuthContextValue, AuthStatus } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_REQUEST_TIMEOUT_MS = 20000;
@@ -112,15 +83,12 @@ function getAuthUrlParams(url: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<AuthStatus>(backendConfig.isConfigured ? 'loading' : 'preview');
-
   useEffect(() => {
     if (!supabaseClient) {
       setStatus('preview');
       return;
     }
-
     let mounted = true;
-
     supabaseClient.auth
       .getSession()
       .then(({ data, error }) => {
@@ -149,8 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
-
-  const value = useMemo<AuthContextValue>(() => ({
+  const value = useMemo<AuthContextValue>(() => {
+    const applySession = (nextSession: Session | null) => {
+      setSession(nextSession);
+      setStatus(nextSession ? 'authenticated' : 'unauthenticated');
+    };
+    const phoneAuth = createPhoneAuthOperations({
+      applySession,
+      client: supabaseClient,
+      withTimeout: withAuthTimeout,
+    });
+    return {
     completeEmailConfirmation: async (url) => {
       if (!supabaseClient) {
         return { message: 'Account confirmation is not available right now.', ok: false };
@@ -163,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (hasError) {
           return { message: getAuthUserMessage(), ok: false };
         }
-
         const code = params.get('code');
         if (code) {
           const { data, error } = await withAuthTimeout(supabaseClient.auth.exchangeCodeForSession(code));
@@ -195,6 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     isBackendConfigured: backendConfig.isConfigured,
+    requestPhoneLinkOtp: phoneAuth.requestPhoneLinkOtp,
+    requestPhoneOtp: phoneAuth.requestPhoneOtp,
     requestPasswordReset: async (email) => {
       if (!supabaseClient) {
         return { message: 'Password reset is not available right now.', ok: false };
@@ -214,6 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { message: getPasswordResetErrorMessage(error), ok: false };
       }
     },
+    resendPhoneLinkOtp: phoneAuth.resendPhoneLinkOtp,
+    resendPhoneOtp: phoneAuth.resendPhoneOtp,
     session,
     signInWithPassword: async (email, password) => {
       if (!supabaseClient) {
@@ -309,9 +289,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { message: getAuthErrorMessage(error), ok: false };
       }
     },
+    verifyPhoneLinkOtp: phoneAuth.verifyPhoneLinkOtp,
+    verifyPhoneOtp: phoneAuth.verifyPhoneOtp,
     user: session?.user ?? null,
-  }), [session, status]);
-
+    };
+  }, [session, status]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

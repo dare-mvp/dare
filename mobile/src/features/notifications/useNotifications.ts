@@ -11,10 +11,12 @@ import { uniqueRealtimeChannelName } from '../../lib/supabase/realtimeChannel';
 import { notifications as mockNotifications } from '../../mocks/notifications';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNotification, NotificationKind } from './types';
+import type { NotificationAction } from './notificationDestinations';
 
 type NotificationSource = 'mock' | 'server';
 
 type NotificationRow = {
+  action: unknown;
   body: string;
   created_at: string;
   id: string;
@@ -64,7 +66,7 @@ export function useNotifications(): NotificationsState {
     setLoading(true);
     const { data, error: queryError } = await supabaseClient
       .from('notifications')
-      .select('id,type,title,body,is_read,created_at')
+      .select('id,type,title,body,is_read,created_at,action')
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -139,7 +141,7 @@ export function useNotifications(): NotificationsState {
       if (mounted) setLoading(true);
       const { data, error: queryError } = await supabaseClient
         .from('notifications')
-        .select('id,type,title,body,is_read,created_at')
+        .select('id,type,title,body,is_read,created_at,action')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -198,13 +200,34 @@ export function useNotifications(): NotificationsState {
 
 function mapNotificationRows(rows: NotificationRow[]): AppNotification[] {
   return rows.map((row) => ({
+    action: mapNotificationAction(row.action),
     body: row.body,
     createdLabel: formatRelativeTime(row.created_at),
     id: row.id,
     kind: mapNotificationKind(row.type),
     read: row.is_read,
     title: row.title,
+    type: row.type,
   }));
+}
+
+function mapNotificationAction(value: unknown): NotificationAction | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+
+  return {
+    dareId: optionalString(record.dareId),
+    evidenceObjectId: optionalString(record.evidenceObjectId),
+    juryCaseId: optionalString(record.juryCaseId),
+    kycVerificationId: optionalString(record.kycVerificationId),
+    transactionId: optionalString(record.transactionId),
+    type: optionalString(record.type),
+    withdrawalId: optionalString(record.withdrawalId),
+  };
+}
+
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function mapNotificationKind(type: string): NotificationKind {

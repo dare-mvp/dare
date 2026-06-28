@@ -1,4 +1,6 @@
 import { draftToCreateDarePayload } from './createDarePayload';
+import { getConstitutionHealth } from './constitutionHealth';
+import { applyDareTemplate, dareTemplates } from './dareTemplates';
 import { TASK_DESCRIPTION_PREFIX, validateCreateDareDraft } from './hooks/useCreateDareDraft';
 import type { CreateDareDraft } from './types';
 
@@ -15,6 +17,7 @@ const baseDraft: CreateDareDraft = {
   rules: 'Answer the prompt before the timer expires.',
   stakeNaira: '500',
   title: 'Name the capital of France',
+  visibility: 'targeted',
 };
 
 function assert(condition: boolean, message: string): asserts condition {
@@ -31,6 +34,7 @@ function testSkillPayloadUsesStake() {
   assert(payload.constitution.test === baseDraft.description, 'Constitution test should use the DARE description.');
   assert(payload.constitution.answerKey === 'Paris', 'Answer Key payload should include answer key.');
   assert(payload.constitution.answerKeyRules === 'Case insensitive', 'Answer Key payload should include judging rules.');
+  assert(payload.targetUsername === 'player_two', 'Targeted payload should normalize the target username.');
 }
 
 function testTaskPayloadUsesReward() {
@@ -44,6 +48,36 @@ function testTaskPayloadUsesReward() {
   assert(payload.dareType === 'task', 'Task payload should use task dareType.');
   assert(payload.stakeAmount === 0, 'Task payload should not lock performer stake.');
   assert(payload.rewardAmount === 75_000, 'Task payload should send Darer reward.');
+}
+
+function testOpenPayloadOmitsTargetUsername() {
+  const payload = draftToCreateDarePayload({
+    ...baseDraft,
+    opponent: '@player_two',
+    visibility: 'open',
+  });
+
+  assert(payload.targetUsername === null, 'Open DARE payload should not send a target username.');
+}
+
+function testOpenValidationIgnoresStaleTargetUsername() {
+  const validation = validateCreateDareDraft({
+    ...baseDraft,
+    opponent: '@@bad username',
+    visibility: 'open',
+  });
+
+  assert(!validation.errors.opponent, 'Open DARE validation should ignore stale target usernames.');
+}
+
+function testTargetedValidationRejectsMalformedUsername() {
+  const validation = validateCreateDareDraft({
+    ...baseDraft,
+    opponent: '@@bad username',
+    visibility: 'targeted',
+  });
+
+  assert(validation.errors.opponent === 'Use a valid username.', 'Targeted DARE validation should reject malformed usernames.');
 }
 
 function testNonAnswerKeyPayloadOmitsAnswerKey() {
@@ -71,7 +105,51 @@ function testTaskDescriptionPrefixAloneIsIncomplete() {
   assert(Boolean(validation.errors.description), 'Task prefix-only description should show a description error.');
 }
 
+function testTemplateMappingPreservesVersion() {
+  const template = dareTemplates.find((item) => item.id === 'proof_upload_task');
+  assert(Boolean(template), 'Proof upload template should exist.');
+  const draft = applyDareTemplate(template!);
+
+  assert(draft.templateId === 'proof_upload_task', 'Template draft should include template ID.');
+  assert(draft.templateVersion === 1, 'Template draft should include template version.');
+  assert(draft.dareType === 'task', 'Proof upload template should create a Task-Based DARE.');
+  assert(draft.resolutionType === 'evidence', 'Proof upload template should use evidence resolution.');
+}
+
+function testConstitutionHealthBlocksMissingProofRule() {
+  const health = getConstitutionHealth({
+    ...baseDraft,
+    answerKey: '',
+    resolutionType: 'answer_key',
+  });
+
+  assert(health.status === 'blocking', 'Missing answer key should block publishing.');
+  assert(
+    health.issues.some((issue) => issue.code === 'MISSING_ANSWER_KEY' && issue.severity === 'blocking'),
+    'Health issues should include blocking answer-key issue.',
+  );
+}
+
+function testConstitutionHealthWarnsBroadWording() {
+  const health = getConstitutionHealth({
+    ...baseDraft,
+    rules: 'Winner has more correct answers. If tied, void and refund. Normal rules apply to anything else.',
+  });
+
+  assert(health.status === 'warning', 'Broad wording should warn but not block.');
+  assert(
+    health.issues.some((issue) => issue.code === 'BROAD_WORDING' && issue.severity === 'warning'),
+    'Health issues should include broad wording warning.',
+  );
+}
+
 testSkillPayloadUsesStake();
 testTaskPayloadUsesReward();
+testOpenPayloadOmitsTargetUsername();
+testOpenValidationIgnoresStaleTargetUsername();
+testTargetedValidationRejectsMalformedUsername();
 testNonAnswerKeyPayloadOmitsAnswerKey();
 testTaskDescriptionPrefixAloneIsIncomplete();
+testTemplateMappingPreservesVersion();
+testConstitutionHealthBlocksMissingProofRule();
+testConstitutionHealthWarnsBroadWording();

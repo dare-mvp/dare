@@ -6,22 +6,7 @@ import { Platform } from 'react-native';
 
 import { registerPushToken } from '../../lib/actions/endpoints';
 import { useAuth } from '../auth/AuthProvider';
-
-type NotificationAction = {
-  dareId?: unknown;
-  evidenceObjectId?: unknown;
-  juryCaseId?: unknown;
-  kycVerificationId?: unknown;
-  transactionId?: unknown;
-  type?: unknown;
-  withdrawalId?: unknown;
-};
-
-type NotificationData = {
-  action?: NotificationAction | null;
-  notificationId?: unknown;
-  type?: unknown;
-};
+import { resolveNotificationHref, type NotificationDestinationData } from './notificationDestinations';
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -47,7 +32,7 @@ export function usePushNotifications() {
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('dare-alerts', {
           importance: Notifications.AndroidImportance.MAX,
-          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
           name: 'DARE alerts',
           sound: 'default',
           vibrationPattern: [0, 250, 250, 250],
@@ -74,8 +59,8 @@ export function usePushNotifications() {
       });
     }
 
-    void registerCurrentDevice().catch((error) => {
-      console.warn('push notification registration failed', error);
+    void registerCurrentDevice().catch(() => {
+      console.warn('push notification registration failed');
     });
 
     return () => {
@@ -92,12 +77,12 @@ export function usePushNotifications() {
     void loadNotifications().then((Notifications) => {
       if (cancelled) return;
       subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as NotificationData;
-        const href = notificationHref(data);
+        const data = response.notification.request.content.data as NotificationDestinationData;
+        const href = resolveNotificationHref(data);
         router.push(href);
       });
-    }).catch((error) => {
-      console.warn('push notification listener setup failed', error);
+    }).catch(() => {
+      console.warn('push notification listener setup failed');
     });
 
     return () => {
@@ -147,96 +132,4 @@ function getExpoProjectId(): string | null {
 function normalizePlatform(platform: typeof Platform.OS) {
   if (platform === 'android' || platform === 'ios' || platform === 'web') return platform;
   return 'unknown';
-}
-
-function notificationHref(data: NotificationData) {
-  const action = data.action;
-  const notificationType = typeof data.type === 'string' ? data.type : null;
-  const actionType = typeof action?.type === 'string' ? action.type : null;
-  const dareId = typeof action?.dareId === 'string' ? action.dareId : null;
-  const evidenceObjectId = typeof action?.evidenceObjectId === 'string' ? action.evidenceObjectId : null;
-  const juryCaseId = typeof action?.juryCaseId === 'string' ? action.juryCaseId : null;
-  const transactionId = typeof action?.transactionId === 'string' ? action.transactionId : null;
-
-  if (
-    ['court_ready', 'court_starting', 'dare_accepted', 'ready_check'].includes(notificationType ?? '') &&
-    dareId
-  ) {
-    return {
-      pathname: '/court/ready',
-      params: { dareId },
-    } as const;
-  }
-
-  if (['match_result', 'result_claimed', 'result_disputed'].includes(notificationType ?? '') && dareId) {
-    return {
-      pathname: '/court/result',
-      params: { dareId },
-    } as const;
-  }
-
-  if (['settlement_pending', 'payout_sent', 'dare_settled'].includes(notificationType ?? '') && dareId) {
-    return {
-      pathname: '/court/settlement-status',
-      params: { dareId },
-    } as const;
-  }
-
-  if (notificationType?.startsWith('wallet_') || notificationType?.startsWith('withdrawal_')) {
-    if (transactionId) {
-      return {
-        pathname: '/wallet/transaction/[id]',
-        params: { id: transactionId },
-      } as const;
-    }
-    return '/(tabs)/wallet';
-  }
-
-  if (notificationType?.startsWith('kyc_') || actionType === 'kyc') {
-    return '/kyc-status';
-  }
-
-  if (notificationType?.startsWith('dispute_') && dareId) {
-    return {
-      pathname: '/disputes/status',
-      params: {
-        dareId,
-        ...(juryCaseId ? { juryCaseId } : {}),
-      },
-    } as const;
-  }
-
-  if (notificationType === 'evidence_uploaded' && dareId) {
-    return {
-      pathname: '/disputes/status',
-      params: {
-        dareId,
-        ...(evidenceObjectId ? { evidenceObjectId } : {}),
-        ...(juryCaseId ? { juryCaseId } : {}),
-      },
-    } as const;
-  }
-
-  if (actionType === 'jury_case') {
-    return {
-      pathname: '/jury/assignment',
-      params: {
-        ...(dareId ? { dareId } : {}),
-        ...(juryCaseId ? { juryCaseId } : {}),
-      },
-    } as const;
-  }
-
-  if (actionType === 'dare' && dareId) {
-    return {
-      pathname: '/dare/[id]',
-      params: { id: dareId },
-    } as const;
-  }
-
-  if (actionType === 'responsible_gaming') {
-    return '/responsible-gaming';
-  }
-
-  return '/notifications';
 }

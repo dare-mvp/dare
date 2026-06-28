@@ -13,13 +13,16 @@ type RouteDraftParams = {
   rewardNaira?: string;
   rules?: string;
   stakeNaira?: string;
+  templateId?: string;
+  templateVersion?: string;
   title?: string;
+  visibility?: string;
 };
 
 export function draftToRouteParams(draft: CreateDareDraft) {
   return {
-    answerKey: draft.answerKey,
-    answerKeyRules: draft.answerKeyRules,
+    answerKey: undefined,
+    answerKeyRules: undefined,
     category: draft.category,
     description: draft.description,
     dareType: draft.dareType,
@@ -29,7 +32,10 @@ export function draftToRouteParams(draft: CreateDareDraft) {
     rewardNaira: draft.rewardNaira,
     rules: draft.rules,
     stakeNaira: draft.stakeNaira,
+    templateId: draft.templateId,
+    templateVersion: draft.templateVersion ? String(draft.templateVersion) : undefined,
     title: draft.title,
+    visibility: draft.visibility,
   };
 }
 
@@ -46,12 +52,15 @@ export function routeParamsToDraft(params: RouteDraftParams): CreateDareDraft {
     rewardNaira: params.rewardNaira ?? '',
     rules: params.rules ?? '',
     stakeNaira: params.stakeNaira ?? '',
+    templateId: params.templateId,
+    templateVersion: parseTemplateVersion(params.templateVersion),
     title: params.title ?? '',
+    visibility: parseVisibility(params.visibility),
   };
 }
 
 export function draftToCreateDarePayload(draft: CreateDareDraft): CreateDarePayload {
-  const targetUsername = normalizeUsername(draft.opponent);
+  const targetUsername = getTargetUsername(draft);
   const stakeAmount = parseStakeNairaToKobo(draft.stakeNaira);
   const rewardAmount = parseStakeNairaToKobo(draft.rewardNaira);
   const isAnswerKey = draft.resolutionType === 'answer_key';
@@ -78,6 +87,11 @@ export function draftToCreateDarePayload(draft: CreateDareDraft): CreateDarePayl
     targetUsername,
     title: draft.title.trim(),
   };
+}
+
+export function getTargetUsername(draft: Pick<CreateDareDraft, 'opponent' | 'visibility'>) {
+  if (draft.visibility !== 'targeted') return null;
+  return normalizeUsername(draft.opponent);
 }
 
 function parseCategory(value: string | undefined): DareCategory {
@@ -108,6 +122,11 @@ function parseDareType(value: string | undefined): CreateDareDraft['dareType'] {
   return 'skill';
 }
 
+function parseVisibility(value: string | undefined): CreateDareDraft['visibility'] {
+  if (value === 'targeted') return 'targeted';
+  return 'open';
+}
+
 function toBackendResolutionType(
   value: ResolutionType,
 ): CreateDarePayload['resolutionType'] {
@@ -123,6 +142,11 @@ function resolutionProofMethod(value: ResolutionType) {
 function parseDuration(value: string | undefined) {
   const duration = Number.parseInt(value ?? '', 10);
   return Number.isFinite(duration) && duration >= 60 && duration <= 3600 ? duration : 180;
+}
+
+function parseTemplateVersion(value: string | undefined) {
+  const version = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(version) && version > 0 ? version : undefined;
 }
 
 export function parseStakeNairaToKobo(value: string) {

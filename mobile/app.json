@@ -59,6 +59,14 @@
           "defaultChannel": "dare-alerts"
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow DARE to use your camera to capture proof inside a challenge.",
+          "microphonePermission": "Allow DARE to use your microphone when recording video evidence.",
+          "recordAudioAndroid": true
+        }
+      ],
       "expo-secure-store"
     ],
     "owner": "dare-mobile-organization"

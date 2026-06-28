@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { parseStakeNairaToKobo } from '../createDarePayload';
+import type { DareTemplate } from '../dareTemplates';
 import type { CreateDareDraft, DraftValidation } from '../types';
 
 export const TASK_DESCRIPTION_PREFIX = 'I dare you to: ';
@@ -17,7 +18,10 @@ const initialDraft: CreateDareDraft = {
   rewardNaira: '',
   rules: '',
   stakeNaira: '',
+  templateId: undefined,
+  templateVersion: undefined,
   title: '',
+  visibility: 'open',
 };
 
 export function useCreateDareDraft() {
@@ -37,11 +41,24 @@ export function useCreateDareDraft() {
         return { ...current, dareType: nextDareType, description };
       }
 
+      if (key === 'visibility' && value === 'open') {
+        return { ...current, visibility: 'open', opponent: '' };
+      }
+
       return { ...current, [key]: value };
     });
   }
 
+  function applyTemplate(template: DareTemplate) {
+    setDraft({
+      ...template.defaultDraft,
+      templateId: template.id,
+      templateVersion: template.version,
+    });
+  }
+
   return {
+    applyTemplate,
     draft,
     escrowKobo,
     platformFeeKobo,
@@ -66,7 +83,7 @@ export function validateCreateDareDraft(draft: CreateDareDraft): DraftValidation
   const descriptionMeaningfulText = getDescriptionMeaningfulText(draft);
   if (descriptionMeaningfulText.length < 5 || draft.description.trim().length < 20) {
     errors.description = draft.dareType === 'task'
-      ? 'Complete the task description after “I dare you to:”.'
+      ? 'Complete the task description after "I dare you to:".'
       : 'Describe the DARE in at least 20 characters.';
   } else if (draft.description.trim().length > 1000) {
     errors.description = 'Use 1,000 characters or fewer.';
@@ -104,8 +121,12 @@ export function validateCreateDareDraft(draft: CreateDareDraft): DraftValidation
     errors.durationSeconds = 'Choose 1 to 60 minutes.';
   }
 
-  if (draft.opponent && !/^@?[a-zA-Z0-9_]{3,30}$/.test(draft.opponent.trim())) {
-    errors.opponent = 'Use a valid username.';
+  if (draft.visibility === 'targeted') {
+    if (!draft.opponent.trim()) {
+      errors.opponent = 'Add the username receiving this invite.';
+    } else if (!/^@?[a-zA-Z0-9_]{3,30}$/.test(draft.opponent.trim())) {
+      errors.opponent = 'Use a valid username.';
+    }
   }
 
   return {

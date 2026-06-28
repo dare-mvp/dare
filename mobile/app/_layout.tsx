@@ -86,6 +86,8 @@ function AppNavigator() {
         authScreen === 'index' ||
         authScreen === 'age-gate' ||
         authScreen === 'forgot-password' ||
+        authScreen === 'phone-auth' ||
+        authScreen === 'phone-verify' ||
         authScreen === 'sign-in' ||
         authScreen === 'sign-up'
       ));
@@ -130,6 +132,8 @@ function AppNavigator() {
       <Stack.Screen name="jury/receipt" />
       <Stack.Screen name="profile/edit" />
       <Stack.Screen name="profile/jury-eligibility" />
+      <Stack.Screen name="profile/phone" />
+      <Stack.Screen name="profile/phone-verify" />
       <Stack.Screen name="profile/settings" />
       <Stack.Screen name="profile/support" />
       <Stack.Screen name="responsible-gaming/index" />

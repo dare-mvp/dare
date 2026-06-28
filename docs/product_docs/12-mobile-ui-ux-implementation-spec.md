@@ -16,6 +16,8 @@ DARE is a high-trust challenge economy. The mobile UI must make three things obv
 
 The app must never imply that a deposit, withdrawal, escrow lock, winner, payout, verdict, or trust change is complete until the backend confirms it.
 
+Additional audience-behavior hardening requirements are documented in [`17-mobile-audience-behavior-hardening.md`](17-mobile-audience-behavior-hardening.md). That document covers DARE templates, constitution health checks, friend-to-friend invites, first-session guidance, low-data Court behavior, actionable notifications, trust warnings, and receipt trails for the core mobile product.
+
 ## Directional Design Principle
 
 DARE's target users in Nigeria and Kenya are mobile-first and **act before reading**. Every screen must answer the question *"what do I tap next?"* with a visible, prominent button — before any explanatory text.

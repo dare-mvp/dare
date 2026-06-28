@@ -451,6 +451,36 @@ export type SettlementStatusResponse = {
   };
 };
 
+export type SocialProofActivityResponse = {
+  generatedAt: string;
+  summary: {
+    activeCourts: number;
+    completedDares: number;
+    confirmedPayouts: number;
+    openDares: number;
+    topCategory: string | null;
+    topTrustedPlayer: {
+      name: string;
+      score: number;
+    } | null;
+  };
+  recentSettlements: Array<{
+    amountLabel: string | null;
+    dareId: string;
+    label: 'Payout confirmed' | 'Refund confirmed' | 'Settlement confirmed';
+    settledAt: string;
+    title: string;
+    winnerName: string | null;
+  }>;
+  liveCourts: Array<{
+    dareId: string;
+    spectatorCount: number;
+    title: string;
+    updatedAt: string;
+  }>;
+  source: 'server';
+};
+
 export type CurrentCourtQuestionResponse = {
   answeredRounds: number;
   courtSessionId: string;
@@ -826,6 +856,10 @@ export function settleDare(dareId: string) {
 
 export function getSettlementStatus(dareId: string) {
   return callAction<SettlementStatusResponse>(`/dares/${dareId}/settlement-status`);
+}
+
+export function getSocialProofActivity() {
+  return callAction<SocialProofActivityResponse>('/activity/social-proof');
 }
 
 export function getCurrentCourtQuestion(dareId: string) {

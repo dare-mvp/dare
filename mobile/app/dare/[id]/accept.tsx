@@ -1,22 +1,30 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { ActionButton } from '../../../src/components/ui/ActionButton';
-import { EscrowBreakdown } from '../../../src/components/ui/EscrowBreakdown';
 import { ErrorState } from '../../../src/components/ui/ErrorState';
 import { InlineAlert } from '../../../src/components/ui/InlineAlert';
-import { StatusBadge } from '../../../src/components/ui/StatusBadge';
-import { TrustBadge } from '../../../src/components/ui/TrustBadge';
 import { DareFlowFrame } from '../../../src/features/dares/components/DareFlowFrame';
-import { formatDareTypeLabel, formatFundingModelLabel } from '../../../src/features/create/createLabels';
-import { CheckLine, acceptDareStyles as styles } from '../../../src/features/feed/components/AcceptDareParts';
+import { getAcceptBlockedMessage } from '../../../src/features/feed/acceptBlockedMessage';
+import {
+  getAcceptTrustWarnings,
+  hasBlockingAcceptWarning,
+  requiresAcceptRiskAcknowledgement,
+} from '../../../src/features/feed/acceptTrustWarnings';
+import {
+  AcceptChallengeCard,
+  AcceptanceChecksPanel,
+  acceptDareStyles as styles,
+} from '../../../src/features/feed/components/AcceptDareParts';
+import { AcceptTrustWarningPanel } from '../../../src/features/feed/components/AcceptTrustWarningPanel';
 import { useDareDetail } from '../../../src/features/feed/useDareDetail';
-import { formatNgnFromKobo } from '../../../src/features/me/format';
 import { useMe } from '../../../src/features/me/useMe';
+import { MoneyPreviewPanel } from '../../../src/features/money/components/MoneyPreviewPanel';
+import { getAcceptMoneyPreview } from '../../../src/features/money/moneyPreview';
 import { acceptDareWithQuote, getAcceptQuote, type AcceptQuoteResponse } from '../../../src/lib/actions/endpoints';
 import type { ActionErrorCode } from '../../../src/lib/actions/types';
-import { ACTIVE_COURT_COMMITMENT_MESSAGE } from '../../../src/lib/errors/userMessages';
+import { isUuid } from '../../../src/lib/ids';
 import { colors } from '../../../src/theme/tokens';
 
 export default function AcceptDareScreen() {
@@ -30,6 +38,7 @@ export default function AcceptDareScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitErrorCode, setSubmitErrorCode] = useState<ActionErrorCode | null>(null);
+  const [riskAcknowledgedKey, setRiskAcknowledgedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dare?.id || !isUuid(dare.id)) {
@@ -44,16 +53,27 @@ export default function AcceptDareScreen() {
     setQuoteError(null);
     setSubmitError(null);
     setSubmitErrorCode(null);
+    setRiskAcknowledgedKey(null);
 
     void getAcceptQuote(dare.id).then((result) => {
       if (!mounted) return;
       if (result.ok) {
-        setQuote(result.data);
-        setQuoteError(null);
+        if (result.data.dareId === dare.id) {
+          setQuote(result.data);
+          setQuoteError(null);
+        } else {
+          setQuote(null);
+          setQuoteError('The accept quote did not match this DARE. Refresh before accepting.');
+        }
       } else {
         setQuote(null);
         setQuoteError(result.error.message);
       }
+      setQuoteLoading(false);
+    }).catch(() => {
+      if (!mounted) return;
+      setQuote(null);
+      setQuoteError('Acceptance details could not load. Check your connection and try again.');
       setQuoteLoading(false);
     });
 
@@ -89,19 +109,41 @@ export default function AcceptDareScreen() {
   }
 
   const isBackendDare = isUuid(dare.id);
-  const dareType = quote?.dareType ?? dare.dareType ?? 'skill';
+  const currentQuote = quote?.dareId === dare.id ? quote : null;
+  const dareType = currentQuote?.dareType ?? dare.dareType ?? 'skill';
   const isTask = dareType === 'task';
-  const fundingModelValue = quote?.fundingModel ?? dare.fundingModel;
-  const fundingModel = formatFundingModelLabel(fundingModelValue, dareType);
-  const rewardKobo = quote?.rewardAmount ?? dare.rewardKobo ?? 0;
-  const challengerStakeKobo = quote?.challengerStakeAmount ?? (isTask ? 0 : dare.stakeKobo);
-  const totalDueKobo = quote?.totalDueAmount ?? challengerStakeKobo;
+  const fundingModelValue = currentQuote?.fundingModel ?? dare.fundingModel;
+  const rewardKobo = currentQuote?.rewardAmount ?? dare.rewardKobo ?? 0;
+  const challengerStakeKobo = currentQuote?.challengerStakeAmount ?? (isTask ? 0 : dare.stakeKobo);
+  const totalDueKobo = currentQuote?.totalDueAmount ?? challengerStakeKobo;
+  const settlementPlatformFeeKobo = currentQuote?.settlementPlatformFeeAmount ?? 0;
+  const winnerPayoutKobo = currentQuote?.winnerPayoutAmount ?? Math.max(0, (isTask ? rewardKobo : dare.stakeKobo * 2) - settlementPlatformFeeKobo);
   const isOpen = dare.status === 'open';
-  const quoteReady = !isBackendDare || Boolean(quote);
-  const quoteAllowsAccept = !isBackendDare || quote?.canAccept === true;
-  const canAccept = isOpen && data.capabilities.canAcceptDare && quoteReady && quoteAllowsAccept && !submitting;
-  const acceptBlockedMessage = getAcceptBlockedMessage(quote);
-  const showGoToCourtAction = quote?.reasonCode === 'ACTIVE_COURT_COMMITMENT' ||
+  const quoteReady = !isBackendDare || Boolean(currentQuote);
+  const quoteAllowsAccept = !isBackendDare || currentQuote?.canAccept === true;
+  const trustWarnings = getAcceptTrustWarnings({ dare, quote: currentQuote });
+  const hasBlockingRisk = hasBlockingAcceptWarning(trustWarnings);
+  const riskAcknowledgementKey = getRiskAcknowledgementKey(trustWarnings);
+  const riskAcknowledgementRequired = requiresAcceptRiskAcknowledgement(trustWarnings);
+  const riskAcknowledged = riskAcknowledgementRequired && riskAcknowledgedKey === riskAcknowledgementKey;
+  const moneyPreview = getAcceptMoneyPreview({
+    dareType,
+    issuerEscrowKobo: currentQuote?.issuerEscrowAmount ?? (isTask ? rewardKobo : dare.stakeKobo),
+    platformFeeKobo: settlementPlatformFeeKobo,
+    rewardKobo,
+    source: currentQuote ? 'server' : 'estimated',
+    totalDueKobo,
+    winnerPayoutKobo,
+  });
+  const canAccept = isOpen &&
+    data.capabilities.canAcceptDare &&
+    quoteReady &&
+    quoteAllowsAccept &&
+    !hasBlockingRisk &&
+    (!riskAcknowledgementRequired || riskAcknowledged) &&
+    !submitting;
+  const acceptBlockedMessage = getAcceptBlockedMessage(currentQuote);
+  const showGoToCourtAction = currentQuote?.reasonCode === 'ACTIVE_COURT_COMMITMENT' ||
     submitErrorCode === 'ACTIVE_COURT_COMMITMENT';
 
   return (
@@ -159,59 +201,43 @@ export default function AcceptDareScreen() {
         />
       ) : null}
 
-      <View style={styles.challengeCard}>
-        <View style={styles.cardHeader}>
-          <StatusBadge label={dare.status.toUpperCase()} tone={isOpen ? 'success' : 'warning'} />
-          <Text style={styles.category}>{dare.category.toUpperCase()}</Text>
-        </View>
-        <Text style={styles.title}>{dare.title}</Text>
-        <View style={styles.issuerRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{dare.playerA.name.charAt(0).toUpperCase()}</Text>
-          </View>
-          <View style={styles.issuerCopy}>
-            <Text style={styles.issuerLabel}>Issuer</Text>
-            <Text style={styles.issuerName}>{dare.playerA.name}</Text>
-          </View>
-          <TrustBadge score={dare.playerA.trustScore} tier={dare.playerA.tier} />
-        </View>
-      </View>
+      <AcceptChallengeCard dare={dare} isOpen={isOpen} />
 
-      <EscrowBreakdown
-        platformFeeKobo={0}
-        stakeKobo={challengerStakeKobo}
-        stakeLabel={quote?.copy.escrowLabel ?? (isTask ? 'Performer money locked' : 'Challenger stake')}
-        title={quote?.copy.title ?? (isTask ? 'Task-Based acceptance' : 'Challenger escrow')}
-        totalKobo={totalDueKobo}
-        totalLabel={isTask ? 'Total to lock from you' : 'Total to lock'}
+      <MoneyPreviewPanel preview={moneyPreview} />
+
+      <AcceptanceChecksPanel
+        dare={dare}
+        dareType={dareType}
+        fundingModel={fundingModelValue}
+        quotePrimary={currentQuote?.copy.primary}
+        rewardKobo={rewardKobo}
       />
-
-      <View style={styles.checkPanel}>
-        <Text style={styles.panelTitle}>Acceptance checks</Text>
-        <CheckLine label="DARE type" value={formatDareTypeLabel(dareType)} />
-        <CheckLine label="Funding" value={fundingModel} />
-        <CheckLine
-          label="Escrow"
-          value={quote?.copy.primary ?? (isTask
-            ? `Performer money is not locked. The Darer reward is ${formatNgnFromKobo(rewardKobo)}.`
-            : 'Challenger stake is reserved after confirmation')}
-        />
-        <CheckLine label={isTask ? 'Reward' : 'Stake'} value={isTask ? formatNgnFromKobo(rewardKobo) : formatNgnFromKobo(dare.stakeKobo)} />
-        <CheckLine label="Resolution" value={`${dare.resolution} with dispute window`} />
-        <CheckLine label="KYC" value="Tier and limits checked before ready-up" />
-      </View>
 
       <InlineAlert
         tone="warning"
         title="Accept only clear rules"
-        message={quote?.copy.confirmation ?? 'Do not accept if the win condition, timing, or dispute path is unclear.'}
+        message={currentQuote?.copy.confirmation ?? 'Do not accept if the win condition, timing, or dispute path is unclear.'}
+      />
+
+      <AcceptTrustWarningPanel
+        acknowledged={riskAcknowledged}
+        onAcknowledge={() => setRiskAcknowledgedKey(riskAcknowledgementKey)}
+        warnings={trustWarnings}
       />
 
       <View style={styles.actions}>
         <ActionButton
           accessibilityLabel="Confirm accept DARE"
           disabled={!canAccept}
-          label={submitting ? 'Accepting' : quoteLoading ? 'Loading quote' : acceptBlockedMessage ? 'Cannot accept' : 'Confirm accept'}
+          label={submitting
+            ? 'Accepting'
+            : quoteLoading
+            ? 'Loading quote'
+            : acceptBlockedMessage || hasBlockingRisk
+            ? 'Cannot accept'
+            : riskAcknowledgementRequired && !riskAcknowledged
+            ? 'Acknowledge risk first'
+            : 'Confirm accept'}
           onPress={() => {
             void handleAcceptDare();
           }}
@@ -243,7 +269,7 @@ export default function AcceptDareScreen() {
       return;
     }
 
-    if (!quote) {
+    if (!currentQuote) {
       setSubmitError('Acceptance details are still loading. Try again in a moment.');
       return;
     }
@@ -252,7 +278,7 @@ export default function AcceptDareScreen() {
     setSubmitError(null);
     setSubmitErrorCode(null);
 
-    const result = await acceptDareWithQuote(currentDare.id, quote);
+    const result = await acceptDareWithQuote(currentDare.id, currentQuote);
     if (!result.ok) {
       setSubmitError(result.error.message);
       setSubmitErrorCode(result.error.code);
@@ -277,36 +303,10 @@ export default function AcceptDareScreen() {
   }
 }
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function getAcceptBlockedMessage(quote: AcceptQuoteResponse | null) {
-  if (!quote || quote.canAccept) return null;
-
-  if (quote.reasonCode === 'SELF_CHALLENGE') {
-    return {
-      title: 'Created by you',
-      message: 'You cannot accept your own DARE. Share it or wait for another eligible player to accept.',
-    };
-  }
-
-  if (quote.reasonCode === 'TARGETED_TO_ANOTHER_USER') {
-    return {
-      title: 'Reserved DARE',
-      message: 'This DARE is reserved for another player.',
-    };
-  }
-
-  if (quote.reasonCode === 'ACTIVE_COURT_COMMITMENT') {
-    return {
-      title: 'Court already active',
-      message: ACTIVE_COURT_COMMITMENT_MESSAGE,
-    };
-  }
-
-  return {
-    title: 'Not open',
-    message: 'This DARE is not accepting players right now.',
-  };
+function getRiskAcknowledgementKey(warnings: ReturnType<typeof getAcceptTrustWarnings>) {
+  return warnings
+    .filter((warning) => warning.acknowledgementRequired && !warning.blocking)
+    .map((warning) => warning.code)
+    .sort()
+    .join('|');
 }

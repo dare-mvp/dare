@@ -5,6 +5,7 @@ import { getLoadUserMessage } from '../../lib/errors/userMessages';
 import { supabaseClient } from '../../lib/supabase/client';
 import { isUuid } from '../../lib/ids';
 import { activeCourtSession } from '../../mocks/court';
+import { getCourtConnectionState } from './courtConnectivity';
 import { withCourtLiveRoom } from './liveRoom';
 import { CourtDareStatus, CourtEvidenceSummary, CourtJuryCaseSummary, CourtResultClaimSummary, CourtSession } from './types';
 
@@ -256,7 +257,7 @@ function mapCourtSession(
   return withCourtLiveRoom({
     ...activeCourtSession,
     challengeType: `${dare.dare_type === 'task' ? 'Task-Based' : 'Skill-Based'} ${formatLabel(dare.category)} DARE - ${formatResolution(dare.resolution_type)}`,
-    connectionState: court.phase === 'active' && heartbeatAgeSeconds > 30 ? 'reconnecting' : 'connected',
+    connectionState: getCourtConnectionState(mapPhase(court.phase, dare.status), heartbeatAgeSeconds),
     dareType: dare.dare_type ?? 'skill',
     dareId: dare.id,
     evidence: metadata.evidence,
@@ -360,8 +361,10 @@ function mapJuryCaseSummary(row: JuryCaseRow): CourtJuryCaseSummary {
 }
 
 function getHeartbeatAgeSeconds(value: string | null) {
-  if (!value) return 0;
-  return Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+  if (!value) return 75;
+  const parsed = new Date(value).getTime();
+  if (!Number.isFinite(parsed)) return 75;
+  return Math.max(0, Math.round((Date.now() - parsed) / 1000));
 }
 
 function getTimeRemainingSeconds(serverEndTime: string | null, fallbackSeconds: number) {

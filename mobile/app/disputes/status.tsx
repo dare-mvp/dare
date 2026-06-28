@@ -3,6 +3,7 @@ import { Scale } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
+import { ErrorState } from '../../src/components/ui/ErrorState';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { DisputeFlowFrame } from '../../src/features/disputes/components/DisputeFlowFrame';
@@ -19,6 +20,30 @@ export default function DisputeStatusScreen() {
     juryCaseId?: string;
   }>();
   const { dare, error: dareError, loading: dareLoading, source } = useDareDetail(dareId);
+
+  if (!dareId) {
+    return (
+      <DisputeFlowFrame
+        eyebrow="Dispute status"
+        onBack={() => router.back()}
+        title="Dispute reference missing."
+        subtitle="Open a dispute from a DARE, Court result, or a complete notification."
+      >
+        <ErrorState
+          body="This status screen needs a DARE reference before it can show evidence, jury, or settlement state."
+          onRetry={() => router.replace('/notifications')}
+          retryLabel="Back to notifications"
+          title="Unable to load dispute"
+        />
+        <ActionButton
+          accessibilityLabel="Back to feed"
+          label="Back to feed"
+          onPress={() => router.replace('/(tabs)')}
+          variant="secondary"
+        />
+      </DisputeFlowFrame>
+    );
+  }
 
   return (
     <DisputeFlowFrame
@@ -63,6 +88,16 @@ export default function DisputeStatusScreen() {
         <DisputeStepRow label="Verdict and settlement" status="pending" />
       </View>
 
+      <View style={styles.receipt}>
+        <ReceiptLine label="Action" value="Dispute evidence submitted" />
+        <ReceiptLine label="Status" value="Under review" />
+        <ReceiptLine label="Timestamp" value={new Date().toLocaleString()} />
+        <ReceiptLine label="DARE reference" value={dareId ?? 'Pending'} />
+        {evidenceObjectId ? <ReceiptLine label="Evidence reference" value={evidenceObjectId} /> : null}
+        {juryCaseId ? <ReceiptLine label="Jury case" value={juryCaseId} /> : null}
+        <ReceiptLine label="Next action" value="Wait for review assignment" />
+      </View>
+
       <InlineAlert
         tone="warning"
         title="Settlement is paused"
@@ -91,6 +126,15 @@ export default function DisputeStatusScreen() {
 
 function shortId(value: string) {
   return value.length > 8 ? value.slice(0, 8) : value;
+}
+
+function ReceiptLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.receiptLine}>
+      <Text style={styles.receiptLabel}>{label}</Text>
+      <Text numberOfLines={1} style={styles.receiptValue}>{value}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -127,5 +171,36 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.card,
     borderWidth: 1,
+  },
+  receipt: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    gap: spacing[10],
+    padding: spacing[16],
+  },
+  receiptLine: {
+    alignItems: 'center',
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: spacing[10],
+    justifyContent: 'space-between',
+    paddingTop: spacing[10],
+  },
+  receiptLabel: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    textTransform: 'uppercase',
+  },
+  receiptValue: {
+    color: colors.text,
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'right',
   },
 });

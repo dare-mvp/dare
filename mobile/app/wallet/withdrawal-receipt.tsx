@@ -17,10 +17,14 @@ export default function WithdrawalReceiptScreen() {
   }>();
   const amountKobo = amount ? Number.parseInt(amount, 10) : 0;
   const receiptLines = [
+    { label: 'Action', value: 'Withdrawal requested' },
+    { label: 'Timestamp', value: new Date().toLocaleString() },
     { label: 'Amount', value: amountKobo > 0 ? formatNgnFromKobo(amountKobo) : 'Pending' },
     { label: 'Destination', value: destination ?? 'Bank account' },
     { label: 'Status', value: 'Pending provider payout' },
     { label: 'Reference', value: reference ?? 'Pending reference' },
+    { label: 'Next action', value: 'Wait for provider confirmation' },
+    { label: 'Support', value: reference ? `Use reference ${shortId(reference)}` : 'Use pending receipt screen' },
   ];
 
   return (
@@ -105,3 +109,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
+}

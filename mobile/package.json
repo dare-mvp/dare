@@ -13,6 +13,7 @@
     "@livekit/react-native-webrtc": "^144.1.0",
     "@supabase/supabase-js": "^2.106.1",
     "expo": "~54.0.34",
+    "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
     "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "tsx": "^4.22.4",
     "typescript": "~5.9.2"
   },
   "scripts": {
@@ -44,7 +46,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/features/auth/phoneOtp.test.ts && tsx src/features/court/courtConnectivity.test.ts && tsx src/features/court/liveRoom.test.ts && tsx src/features/create/createDarePayload.test.ts && tsx src/features/evidence/evidenceGuidance.test.ts && tsx src/features/feed/acceptTrustWarnings.test.ts && tsx src/features/feed/socialProof.test.ts && tsx src/features/jury/juryResultCopy.test.ts && tsx src/features/money/moneyPreview.test.ts && tsx src/features/notifications/notificationDestinations.test.ts && tsx src/features/wallet/transactionCopy.test.ts && tsx src/lib/share/shareContent.test.ts"
   },
   "private": true
 }

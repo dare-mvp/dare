@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Eye, ShieldCheck, Trophy, UserPlus, WalletCards } from 'lucide-react-native';
+import { Eye, ShieldCheck, Smartphone, Trophy, UserPlus, WalletCards } from 'lucide-react-native';
 import { Text, View, StyleSheet } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
@@ -42,6 +42,16 @@ export default function AuthWelcomeScreen() {
         icon={<UserPlus color={colors.text} size={18} />}
         label="Create account"
         onPress={() => router.push('/age-gate')}
+      />
+      <ActionButton
+        accessibilityLabel="Continue with phone code"
+        icon={<Smartphone color={colors.text} size={18} />}
+        label="Use phone code"
+        onPress={() => router.push({
+          pathname: '/phone-auth',
+          params: { mode: 'sign-in' },
+        })}
+        variant="secondary"
       />
       <ActionButton
         accessibilityLabel="Explore public DARE feed"

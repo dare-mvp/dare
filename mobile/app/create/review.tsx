@@ -3,11 +3,12 @@ import { Pencil, PlusCircle, ShieldCheck } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../src/components/ui/ActionButton';
-import { EscrowBreakdown } from '../../src/components/ui/EscrowBreakdown';
 import { InlineAlert } from '../../src/components/ui/InlineAlert';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
+import { ConstitutionHealthPanel } from '../../src/features/create/components/ConstitutionHealthPanel';
 import { ConstitutionPreview } from '../../src/features/create/components/ConstitutionPreview';
 import { CreateFlowFrame } from '../../src/features/create/components/CreateFlowFrame';
+import { getConstitutionHealth } from '../../src/features/create/constitutionHealth';
 import { getCreateStakeAvailabilityError } from '../../src/features/create/createEligibility';
 import {
   draftToCreateDarePayload,
@@ -17,6 +18,8 @@ import {
 import { getCreateDareDraft } from '../../src/features/create/createDraftStore';
 import { validateCreateDareDraft } from '../../src/features/create/hooks/useCreateDareDraft';
 import { useMe } from '../../src/features/me/useMe';
+import { MoneyPreviewPanel } from '../../src/features/money/components/MoneyPreviewPanel';
+import { getCreateMoneyPreview } from '../../src/features/money/moneyPreview';
 import { createDare } from '../../src/lib/actions/endpoints';
 import { colors, fonts, radius, spacing, typography } from '../../src/theme/tokens';
 import { useState } from 'react';
@@ -37,19 +40,31 @@ export default function CreateReviewScreen() {
     stakeNaira?: string;
     title?: string;
     draftId?: string;
+    visibility?: string;
   }>();
   const { data, error, loading } = useMe();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const draft = getCreateDareDraft(params.draftId) ?? routeParamsToDraft(params);
+  const storedDraft = getCreateDareDraft(params.draftId);
+  const draftExpired = Boolean(params.draftId && !storedDraft);
+  const draft = storedDraft ?? routeParamsToDraft(params);
   const validation = validateCreateDareDraft(draft);
+  const constitutionHealth = getConstitutionHealth(draft);
   const stakeKobo = parseStakeNairaToKobo(draft.stakeNaira);
   const rewardKobo = parseStakeNairaToKobo(draft.rewardNaira);
   const escrowKobo = draft.dareType === 'task' ? rewardKobo : stakeKobo;
   const platformFeeKobo = Math.round((draft.dareType === 'task' ? rewardKobo : stakeKobo * 2) * 0.05);
+  const moneyPreview = getCreateMoneyPreview({
+    dareType: draft.dareType,
+    platformFeeKobo,
+    rewardKobo,
+    stakeKobo,
+  });
   const stakeAvailabilityError = getCreateStakeAvailabilityError(escrowKobo, data);
-  const canCreate = validation.isValid && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error && !submitting;
-  const validationMessage = getFirstValidationError(validation.errors) ?? stakeAvailabilityError;
+  const canCreate = validation.isValid && !draftExpired && constitutionHealth.blockingCount === 0 && !stakeAvailabilityError && data.capabilities.canCreateDare && !loading && !error && !submitting;
+  const validationMessage = draftExpired
+    ? 'This review draft expired. Go back to create and review the DARE again before publishing.'
+    : getFirstValidationError(validation.errors) ?? constitutionHealth.issues.find((issue) => issue.severity === 'blocking')?.message ?? stakeAvailabilityError;
 
   return (
     <CreateFlowFrame
@@ -84,8 +99,8 @@ export default function CreateReviewScreen() {
 
       {validationMessage ? (
         <InlineAlert
-          tone="warning"
-          title="Review incomplete"
+          tone={draftExpired ? 'danger' : 'warning'}
+          title={draftExpired ? 'Draft expired' : 'Review incomplete'}
           message={validationMessage}
         />
       ) : null}
@@ -111,15 +126,9 @@ export default function CreateReviewScreen() {
         stakeKobo={stakeKobo}
       />
 
-      <EscrowBreakdown
-        platformFeeLabel="Estimated settlement fee"
-        platformFeeKobo={platformFeeKobo}
-        stakeKobo={draft.dareType === 'task' ? rewardKobo : stakeKobo}
-        stakeLabel={draft.dareType === 'task' ? 'Darer reward' : 'Creator stake'}
-        title={draft.dareType === 'task' ? 'Reward escrow' : 'Creator escrow'}
-        totalKobo={escrowKobo}
-        totalLabel={draft.dareType === 'task' ? 'Reward to lock' : 'Creator stake to lock'}
-      />
+      <ConstitutionHealthPanel health={constitutionHealth} />
+
+      <MoneyPreviewPanel preview={moneyPreview} />
 
       <InlineAlert
         tone="warning"
@@ -173,7 +182,10 @@ export default function CreateReviewScreen() {
         rewardAmount: String(result.data.rewardAmount),
         stakeAmount: String(result.data.stakeAmount),
         status: result.data.status,
+        templateId: draft.templateId,
+        templateVersion: draft.templateVersion ? String(draft.templateVersion) : undefined,
         title: draft.title,
+        visibility: draft.visibility,
       },
     });
   }

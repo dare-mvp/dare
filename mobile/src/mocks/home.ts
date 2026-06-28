@@ -8,6 +8,7 @@ export const featuredDares: DareFeedItem[] = [
     stakeKobo: 250000,
     status: 'open',
     resolution: 'Answer Key',
+    rules: 'Winner has more correct answers before the timer ends. If tied, void and refund.',
     createdAgo: '12 min ago',
     actionLabel: 'Accept this DARE',
     playerA: {
@@ -24,6 +25,7 @@ export const featuredDares: DareFeedItem[] = [
     stakeKobo: 100000,
     status: 'live',
     resolution: 'Answer Key',
+    rules: 'Players answer creator-authored prompts live in Court. If tied, void and refund.',
     createdAgo: '4 min ago',
     actionLabel: 'Players heading to court',
     playerA: {
@@ -46,6 +48,7 @@ export const featuredDares: DareFeedItem[] = [
     stakeKobo: 500000,
     status: 'disputed',
     resolution: 'Evidence',
+    rules: 'Evidence must match the submitted answer-key result. Jury reviews unclear proof.',
     createdAgo: '1 hr ago',
     actionLabel: 'Jury reviewing',
     viewers: 18,
@@ -69,6 +72,7 @@ export const featuredDares: DareFeedItem[] = [
     stakeKobo: 350000,
     status: 'active',
     resolution: 'Live court',
+    rules: 'Winner solves more scenarios during the Court timer. If tied, the result goes to review.',
     createdAgo: 'Now',
     actionLabel: 'Challenge underway',
     viewers: 42,

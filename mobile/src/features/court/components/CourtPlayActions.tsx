@@ -48,9 +48,9 @@ export function CourtPlayActions({
       {isParticipant ? (
         <ActionButton
           accessibilityLabel="Forfeit DARE"
-          disabled={!canPlay || submitting}
+          disabled={!canPlay || submitting || Boolean(submitDisabledReason)}
           icon={<Flag color={colors.text} size={18} />}
-          label="Forfeit"
+          label={submitDisabledReason ? 'Reconnect first' : 'Forfeit'}
           onPress={onForfeit}
           variant="secondary"
         />

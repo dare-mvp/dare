@@ -40,20 +40,23 @@ export async function pickEvidenceFromLibrary() {
   return normalizePickerAsset(result.assets[0]);
 }
 
-export async function captureEvidenceWithCamera() {
-  const permission = await ImagePicker.requestCameraPermissionsAsync();
-  if (!permission.granted) {
-    return { message: 'Camera permission is required to capture evidence.', ok: false as const };
+export async function createSelectedEvidenceFromCapture(input: {
+  fileName?: string;
+  mimeType: EvidenceMimeType;
+  uri: string;
+}) {
+  try {
+    const byteSize = await readEvidenceByteSize(input.uri, input.mimeType);
+
+    return validateSelectedFile({
+      byteSize,
+      fileName: input.fileName ?? fallbackFileName(input.mimeType),
+      mimeType: input.mimeType,
+      uri: input.uri,
+    });
+  } catch {
+    return { message: 'Could not read the captured evidence file. Capture again or choose another source.', ok: false as const };
   }
-
-  const result = await ImagePicker.launchCameraAsync({
-    allowsEditing: false,
-    mediaTypes: ['images', 'videos'],
-    quality: 0.9,
-  });
-
-  if (result.canceled) return { canceled: true as const, ok: true as const };
-  return normalizePickerAsset(result.assets[0]);
 }
 
 export async function pickEvidenceDocument() {
@@ -75,13 +78,19 @@ export async function uploadSelectedEvidence(upload: EvidenceUploadResponse, fil
     };
   }
 
-  const body = file.file ?? await uriToBlob(file.uri, file.mimeType);
-  const { error } = await supabaseClient.storage
-    .from(upload.storageBucket)
-    .uploadToSignedUrl(upload.upload.path, upload.upload.token, body, {
-      contentType: file.mimeType,
-      upsert: true,
-    });
+  let error: unknown = null;
+  try {
+    const body = file.file ?? await uriToBlob(file.uri, file.mimeType);
+    const result = await supabaseClient.storage
+      .from(upload.storageBucket)
+      .uploadToSignedUrl(upload.upload.path, upload.upload.token, body, {
+        contentType: file.mimeType,
+        upsert: true,
+      });
+    error = result.error;
+  } catch {
+    error = true;
+  }
 
   if (error) {
     return {
@@ -171,4 +180,9 @@ async function uriToBlob(uri: string, mimeType: EvidenceMimeType) {
 
   if (blob.type === mimeType) return blob;
   return new Blob([blob], { type: mimeType });
+}
+
+async function readEvidenceByteSize(uri: string, mimeType: EvidenceMimeType) {
+  const blob = await uriToBlob(uri, mimeType);
+  return blob.size;
 }

@@ -18,10 +18,11 @@ import {
   dareDetailStyles as styles,
 } from '../../src/features/feed/components/DareDetailParts';
 import { useDareDetail } from '../../src/features/feed/useDareDetail';
+import { formatNgnFromKobo } from '../../src/features/me/format';
 import { useMe } from '../../src/features/me/useMe';
 import { getAcceptQuote, type AcceptQuoteResponse } from '../../src/lib/actions/endpoints';
 import { ACTIVE_COURT_COMMITMENT_MESSAGE } from '../../src/lib/errors/userMessages';
-import { shareDare } from '../../src/lib/share/shareContent';
+import { shareDare, shareDareToWhatsApp } from '../../src/lib/share/shareContent';
 import { colors } from '../../src/theme/tokens';
 
 const platformFeeRate = 0.05;
@@ -79,20 +80,29 @@ export default function DareDetailScreen() {
   const canEnterAudience = dare.status === 'active' || isLiveCourtPhase(dare.courtPhase);
   const canAccept = dare.status === 'open' && data.capabilities.canAcceptDare && !isCreator && !hasActiveCourtCommitment;
 
-  async function handleShareDare() {
+  async function handleShareDare(channel: 'native' | 'whatsapp') {
     setShareError(null);
 
     try {
-      await shareDare({ id: currentDare.id, title: currentDare.title });
+      const context = {
+        id: currentDare.id,
+        resolutionLabel: currentDare.resolution,
+        stakeLabel: isTask ? `Reward ${formatNgnFromKobo(rewardKobo)}` : `Stake ${formatNgnFromKobo(currentDare.stakeKobo)}`,
+        statusLabel: currentDare.status,
+        title: currentDare.title,
+      };
+      await (channel === 'whatsapp' ? shareDareToWhatsApp(context) : shareDare(context));
     } catch {
-      setShareError('DARE sharing is not available right now.');
+      setShareError(channel === 'whatsapp'
+        ? 'WhatsApp sharing is not available right now. Use Share instead or refresh this DARE and try again.'
+        : 'DARE sharing is not available right now. Refresh this DARE and try again.');
     }
   }
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <DetailHeader onBack={() => router.back()} onShare={handleShareDare} title={canEnterAudience ? 'Live DARE' : 'Accept DARE'} />
+        <DetailHeader onBack={() => router.back()} onShare={() => handleShareDare('native')} title={canEnterAudience ? 'Live DARE' : 'Accept DARE'} />
 
         {(source === 'mock' || data.source === 'mock') && !meError ? (
           <InlineAlert
@@ -262,9 +272,15 @@ export default function DareDetailScreen() {
             />
           ) : null}
           <ActionButton
+            accessibilityLabel="Share this DARE on WhatsApp"
+            label="WhatsApp"
+            onPress={() => handleShareDare('whatsapp')}
+            variant="secondary"
+          />
+          <ActionButton
             accessibilityLabel="Share this DARE"
             label="Share"
-            onPress={handleShareDare}
+            onPress={() => handleShareDare('native')}
             variant="secondary"
           />
         </View>

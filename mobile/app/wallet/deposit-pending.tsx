@@ -34,9 +34,13 @@ export default function DepositPendingScreen() {
 
       <View style={styles.panel}>
         <StatusBadge label="PENDING" tone="warning" />
+        <Text style={styles.reference}>Action deposit initialized</Text>
+        <Text style={styles.reference}>Status provider confirmation pending</Text>
+        <Text style={styles.reference}>Timestamp {new Date().toLocaleString()}</Text>
         {amountKobo > 0 ? <Text style={styles.reference}>{formatNgnFromKobo(amountKobo)}</Text> : null}
         <Text style={styles.reference}>Reference {reference ?? 'Pending checkout'}</Text>
         {mode ? <Text style={styles.mode}>Provider mode: {mode.toUpperCase()}</Text> : null}
+        <Text style={styles.mode}>Support reference: {reference ? shortId(reference) : 'pending'}</Text>
         <Text style={styles.body}>Do not retry the same deposit unless the previous attempt expires or fails.</Text>
       </View>
 
@@ -72,3 +76,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 });
+
+function shortId(value: string) {
+  return value.length > 8 ? value.slice(0, 8) : value;
+}
