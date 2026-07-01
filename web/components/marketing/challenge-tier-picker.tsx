@@ -23,7 +23,7 @@ import {
   Clock,
   Lock,
 } from 'lucide-react';
-import { LEGEND_START, LEGEND_START_LABEL } from '@/lib/challenge-config';
+import { LEGEND_START, LEGEND_START_LABEL, STANDARD_TIER_ACTIVE } from '@/lib/challenge-config';
 
 type Tier = 'standard' | 'champion' | 'legend';
 type TierSelectionError = 'challenge_closed' | 'not_eligible' | 'unknown';
@@ -650,7 +650,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
       >
         <ChevronLeft className="h-4 w-4 animate-pulse text-muted-foreground" />
         <span className="font-mono text-[11px] text-muted-foreground tracking-wide">
-          3 tiers · swipe to explore
+          {STANDARD_TIER_ACTIVE ? '3 tiers' : '2 tiers'} · swipe to explore
         </span>
         <ChevronRight className="h-4 w-4 animate-pulse text-muted-foreground" />
       </div>
@@ -658,7 +658,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
       <div ref={scrollContainerRef} className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
 
         {/* ── Standard ₦2,000 ── */}
-        <button
+        {STANDARD_TIER_ACTIVE && <button
           type="button"
           onClick={() => handleTierSelect('standard')}
           aria-label={`Standard Dare — ₦2,000, 4 tasks${selected === 'standard' ? ' (selected)' : ''}`}
@@ -732,7 +732,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
               </div>
             ))}
           </div>
-        </button>
+        </button>}
 
         {/* ── Champion ₦3,000 ── */}
         <button

@@ -8,7 +8,7 @@ import { trackEvent } from '@/lib/analytics';
 
 const initialState: ChallengeJoinState = {};
 
-const SHARE_TEXT = 'I dare you to try this 👊 Join the DARE I Dare You Challenge and earn up to ₦3,000. Sign up with my link:';
+const SHARE_TEXT = 'I dare you to try this 👊 Join the DARE I Dare You Challenge and earn up to ₦9,000. Sign up with my link:';
 
 function ShareButton({ referralLink }: { referralLink: string }) {
   const [canNativeShare, setCanNativeShare] = useState(false);

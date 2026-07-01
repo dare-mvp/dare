@@ -1,7 +1,11 @@
 // Single source of truth for the I Dare You challenge rules.
 // All times are expressed in West Africa Time (UTC+1) to match the Nigeria target market.
 
-export const CHALLENGE_CAP = 300;
+export const CHALLENGE_CAP = 1000;
+
+// Set to false to hide Standard tier from the UI and block server-side selection.
+// The tier remains in the database — existing Standard completers keep their status.
+export const STANDARD_TIER_ACTIVE = false;
 
 // May 28 2026 00:00 WAT
 export const CHALLENGE_START = new Date('2026-05-28T00:00:00+01:00');
