@@ -7,6 +7,7 @@ import {
   CHALLENGE_END,
   LEGEND_START,
   LEGEND_END,
+  STANDARD_TIER_ACTIVE,
 } from '@/lib/challenge-config';
 import { sendChallengeWelcomeEmail, sendLegendWelcomeEmail } from '@/lib/email';
 import { createHash } from 'node:crypto';
@@ -325,6 +326,10 @@ export async function recordTierSelection(
 
   if (safeTier !== 'standard' && safeTier !== 'champion' && safeTier !== 'legend') {
     return { error: 'unknown' };
+  }
+
+  if (safeTier === 'standard' && !STANDARD_TIER_ACTIVE) {
+    return { error: 'challenge_closed' };
   }
 
   try {

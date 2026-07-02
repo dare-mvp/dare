@@ -16,23 +16,23 @@ import { createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
 const CANONICAL = 'https://daregamesapp.com/challenge';
 
 export const metadata: Metadata = {
-  title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000 in Nigeria',
+  title: 'I Dare You Challenge — Earn ₦3,000 to ₦9,000 in Nigeria',
   description:
-    'Join the DARE Challenge. Complete 4 tasks, refer friends, and earn ₦2,000 (Standard) or ₦3,000 (Champion) paid to your DARE wallet. Nigeria only. 300 spots.',
+    'Join the DARE Challenge. Refer friends, film your dare, and earn ₦3,000 (Champion) or ₦9,000 (Legend) paid to your DARE wallet. Nigeria only. 1,000 spots.',
   alternates: { canonical: CANONICAL },
   openGraph: {
-    title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000',
+    title: 'I Dare You Challenge — Earn ₦3,000 to ₦9,000',
     description:
-      'Complete 4 tasks, refer friends, and earn ₦2,000 – ₦3,000 paid to your DARE wallet. Nigeria only. Limited to 300 spots.',
+      'Refer friends, film your dare, and earn ₦3,000 – ₦9,000 paid to your DARE wallet. Nigeria only. Limited to 1,000 spots.',
     url: CANONICAL,
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'I Dare You Challenge — DARE App' }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'I Dare You Challenge — Earn ₦2,000 to ₦3,000',
+    title: 'I Dare You Challenge — Earn ₦3,000 to ₦9,000',
     description:
-      'Complete 4 tasks, refer friends, and earn ₦2,000 – ₦3,000 paid to your DARE wallet. Nigeria only.',
+      'Refer friends, film your dare, and earn ₦3,000 – ₦9,000 paid to your DARE wallet. Nigeria only.',
     images: ['/og-image.png'],
   },
 };
@@ -63,7 +63,7 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
     '@type': 'Event',
     name: 'I Dare You Challenge',
     description:
-      'Complete 4 tasks, refer friends, and earn ₦2,000 (Standard) or ₦3,000 (Champion) paid to your DARE wallet. Nigeria only. Limited to 300 spots.',
+      'Refer friends, film your dare, and earn ₦3,000 (Champion) or ₦9,000 (Legend) paid to your DARE wallet. Nigeria only. Limited to 1,000 spots.',
     url: CANONICAL,
     startDate: CHALLENGE_START.toISOString(),
     endDate: CHALLENGE_END.toISOString(),
@@ -81,8 +81,8 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
     offers: [
       {
         '@type': 'Offer',
-        name: 'Standard Tier',
-        description: 'Complete 2 tasks and earn ₦2,000 to your DARE wallet.',
+        name: 'Champion Tier',
+        description: 'Refer 3 friends and film a dare video to earn ₦3,000 to your DARE wallet.',
         price: '0',
         priceCurrency: 'NGN',
         availability: 'https://schema.org/InStock',
@@ -91,8 +91,8 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
       },
       {
         '@type': 'Offer',
-        name: 'Champion Tier',
-        description: 'Complete all 4 tasks and earn ₦3,000 to your DARE wallet.',
+        name: 'Legend Tier',
+        description: 'Complete Champion, refer 5 friends, film a dare battle, and earn ₦9,000 to your DARE wallet.',
         price: '0',
         priceCurrency: 'NGN',
         availability: 'https://schema.org/InStock',
@@ -164,13 +164,13 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
 
           {/* Reward pills */}
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <div className="rounded-full border border-white/10 bg-brand-surface px-5 py-2 font-mono text-sm text-foreground">
-              Standard{' '}
-              <span className="text-[#19C37D] font-bold">₦2,000</span>
-            </div>
             <div className="rounded-full border border-brand-primary/40 bg-brand-primary/10 px-5 py-2 font-mono text-sm text-foreground">
               Champion{' '}
               <span className="text-brand-primary font-bold">₦3,000</span>
+            </div>
+            <div className="rounded-full border border-[#FBBF24]/40 bg-[#FBBF24]/10 px-5 py-2 font-mono text-sm text-foreground">
+              Legend{' '}
+              <span className="text-[#FBBF24] font-bold">₦9,000</span>
             </div>
           </div>
 
