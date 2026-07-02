@@ -655,7 +655,7 @@ export function ChallengeTierPicker({ referralCode, referralUrl, isLegendEligibl
         <ChevronRight className="h-4 w-4 animate-pulse text-muted-foreground" />
       </div>
 
-      <div ref={scrollContainerRef} className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+      <div ref={scrollContainerRef} className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory sm:justify-center [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
 
         {/* ── Standard ₦2,000 ── */}
         {STANDARD_TIER_ACTIVE && <button
