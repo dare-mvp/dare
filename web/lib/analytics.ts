@@ -10,13 +10,24 @@ type ChallengeEventMap = {
   challenge_task_whatsapp_channel_click: { tier: 'legend' };
 };
 
-type ChallengeEventName = keyof ChallengeEventMap;
+type TalentEventMap = {
+  talent_waitlist_join: { is_duplicate: boolean; has_referrer: boolean };
+  talent_task_share_click: { source: 'step1'; method: 'native' | 'whatsapp' };
+  talent_referral_link_copied: { source: 'step1' | 'task_list' };
+  talent_ig_follow_click: Record<string, never>;
+  talent_dare_share: { method: 'native' | 'whatsapp' };
+  talent_ref_share: { method: 'native' | 'whatsapp' };
+  talent_claim_dm_click: { referral_code: string };
+};
 
-export function trackEvent<T extends ChallengeEventName>(
+type AppEventMap = ChallengeEventMap & TalentEventMap;
+type AppEventName = keyof AppEventMap;
+
+export function trackEvent<T extends AppEventName>(
   event: T,
-  ...rest: ChallengeEventMap[T] extends Record<string, never>
+  ...rest: AppEventMap[T] extends Record<string, never>
     ? []
-    : [properties: ChallengeEventMap[T]]
+    : [properties: AppEventMap[T]]
 ): void {
   if (typeof window === 'undefined') return;
   window.dataLayer ??= [];

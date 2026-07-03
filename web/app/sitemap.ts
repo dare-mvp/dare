@@ -21,6 +21,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
       images: [defaultImage],
     }),
+    sitemapEntry(publicRoutes.talent, {
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.9,
+      images: [defaultImage],
+    }),
     sitemapEntry(publicRoutes.faq, {
       lastModified: now,
       changeFrequency: 'monthly',

@@ -38,6 +38,7 @@ export const defaultKeywords = [
 export const publicRoutes = {
   home: '/',
   challenge: '/challenge',
+  talent: '/talent',
   faq: '/faq',
   trustSafety: '/trust-safety',
   blog: '/blog',

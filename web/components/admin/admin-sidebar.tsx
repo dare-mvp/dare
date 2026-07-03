@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel, Trophy } from 'lucide-react';
+import { LayoutDashboard, ArrowDownCircle, UserCheck, Users, Gavel, Trophy, Star } from 'lucide-react';
 import { DareLogo } from '@/components/brand/dare-logo';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/jury', label: 'Jury', icon: Gavel },
   { href: '/admin/challenge', label: 'Challenge', icon: Trophy },
+  { href: '/admin/talent', label: 'Talent', icon: Star },
 ];
 
 export function AdminSidebar() {
@@ -58,7 +59,7 @@ export function AdminSidebar() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-brand-surface/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 backdrop-blur lg:hidden"
         aria-label="Admin sections"
       >
-        <ul className="grid grid-cols-6 gap-1">
+        <ul className="grid grid-cols-7 gap-1">
           {navItems.map((item) => (
             <li key={item.href}>
               <Link
