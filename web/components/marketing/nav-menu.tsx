@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/trust-safety', label: 'Trust & Safety', highlight: false },
   { href: '/blog', label: 'Blog', highlight: false },
   { href: '/challenge', label: 'I Dare You 🔥', highlight: true },
+  { href: '/talent', label: 'Show Me Your Talent 🎯', highlight: true },
 ];
 
 export function NavMenu() {
