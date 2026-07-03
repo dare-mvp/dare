@@ -1,6 +1,6 @@
 import type { Metadata, MetadataRoute } from 'next';
 
-export const SITE_URL = 'https://daregamesapp.com';
+export const SITE_URL = 'https://www.daregamesapp.com';
 export const SITE_NAME = 'DARE';
 export const DEFAULT_OG_IMAGE = '/og-image.png';
 export const DEFAULT_OG_ALT = 'DARE - Skill Challenges and Task Rewards';
@@ -8,7 +8,7 @@ export const DEFAULT_OG_ALT = 'DARE - Skill Challenges and Task Rewards';
 export const siteConfig = {
   name: SITE_NAME,
   url: SITE_URL,
-  domain: 'daregamesapp.com',
+  domain: 'www.daregamesapp.com',
   locale: 'en_NG',
   title: 'DARE - Skill Challenges and Task Rewards in Nigeria',
   description:
