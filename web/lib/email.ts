@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { CHALLENGE_END_LABEL, LEGEND_START_LABEL, LEGEND_END_LABEL } from '@/lib/challenge-config';
+import { TALENT_CHALLENGE_END_LABEL, TALENT_REFERRAL_MIN, TALENT_CHALLENGE_REWARD } from '@/lib/talent-challenge-config';
 
 const FROM = 'DARE <team@daregamesapp.com>';
 
@@ -260,5 +261,102 @@ export async function sendClosingSoonEmail(to: string, referralUrl: string): Pro
     await getResend().emails.send(buildLegendClosingSoonPayload(to, referralUrl));
   } catch {
     // Non-critical.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Talent challenge welcome — sent when someone joins the talent waitlist
+// ---------------------------------------------------------------------------
+
+export function buildTalentWelcomePayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
+  return {
+    from: FROM,
+    to,
+    subject: 'Your Show Me Your Talent referral link is ready 🎯',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#050509;color:#ffffff;">
+        <img src="https://www.daregamesapp.com/og-image.png" alt="DARE" style="width:64px;height:64px;margin-bottom:24px;" />
+
+        <p style="font-size:12px;color:#FF5500;text-transform:uppercase;letter-spacing:0.12em;font-family:monospace;margin-bottom:4px;">
+          Show Me Your Talent
+        </p>
+
+        <p style="font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;margin:0 0 16px;">
+          You're in. Task 01 is done.
+        </p>
+
+        <p style="font-size:15px;line-height:1.7;color:#a1a1aa;">
+          Complete all 8 tasks and earn <strong style="color:#FF5500;">₦${TALENT_CHALLENGE_REWARD.toLocaleString()}</strong> to your DARE wallet.
+        </p>
+
+        <p style="font-size:14px;color:#a1a1aa;margin-top:24px;text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;">
+          Your referral link
+        </p>
+
+        <a href="${safeUrl}"
+           style="display:block;margin-top:8px;padding:14px 20px;background:#FF5500;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
+          ${safeUrl}
+        </a>
+
+        <div style="margin:24px 0;padding:20px;background:#0e0e1a;border-radius:12px;border:1px solid rgba(255,85,0,0.15);">
+          <p style="font-size:11px;color:#FF5500;text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;margin:0 0 14px;">Your tasks</p>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">02</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Follow <strong style="color:#fff;">@dareappofficial</strong> on Instagram</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">03</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Record a 15–30s talent video</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">04</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Post it and dare a named friend — use <strong style="color:#fff;">#ShowMeYourDare</strong> and tag @dareappofficial</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">05</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Your dared friend posts their response video</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">06</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Share your referral link on WhatsApp Status or Instagram Story</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">07</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Refer <strong style="color:#fff;">${TALENT_REFERRAL_MIN} friends</strong> via your link (auto-tracked)</p>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">08</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">DM <strong style="color:#fff;">@dareappofficial</strong> with both video links to claim</p>
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:#52525b;">
+          Challenge closes ${TALENT_CHALLENGE_END_LABEL}. Spots are limited to 500.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #1f1f23;margin:32px 0;" />
+
+        <p style="font-size:12px;color:#52525b;">
+          — The DARE Team<br />
+          <a href="https://www.daregamesapp.com" style="color:#FF5500;text-decoration:none;">daregamesapp.com</a>
+        </p>
+      </div>
+    `,
+  };
+}
+
+export async function sendTalentWelcomeEmail(to: string, referralUrl: string): Promise<void> {
+  try {
+    await getResend().emails.send(buildTalentWelcomePayload(to, referralUrl));
+  } catch {
+    // Non-critical — user already has their referral link in the UI.
   }
 }
