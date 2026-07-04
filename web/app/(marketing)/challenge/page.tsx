@@ -11,9 +11,9 @@ import {
   CHALLENGE_END,
   getChallengeStatus,
 } from '@/lib/challenge-config';
-import { createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
+import { absoluteUrl, SITE_URL, createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
 
-const CANONICAL = 'https://daregamesapp.com/challenge';
+const CANONICAL = absoluteUrl('/challenge');
 
 export const metadata: Metadata = {
   title: 'I Dare You Challenge — Earn ₦3,000 to ₦9,000 in Nigeria',
@@ -76,7 +76,7 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
     organizer: {
       '@type': 'Organization',
       name: 'DARE',
-      '@id': 'https://daregamesapp.com/#organization',
+      '@id': `${SITE_URL}/#organization`,
     },
     offers: [
       {
@@ -100,7 +100,7 @@ export default async function ChallengePage(props: { searchParams: SearchParams 
         url: CANONICAL,
       },
     ],
-    image: 'https://daregamesapp.com/og-image.png',
+    image: absoluteUrl('/og-image.png'),
     maximumAttendeeCapacity: CHALLENGE_CAP,
   };
 

@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildLegendClosingSoonPayload } from '@/lib/email';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dareapp.io';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.daregamesapp.com';
 const DAILY_CAP = 50;
 
 function buildReferralUrl(code: string) {

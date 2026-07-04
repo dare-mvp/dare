@@ -11,9 +11,9 @@ import {
   TALENT_CHALLENGE_END,
   getTalentChallengeStatus,
 } from '@/lib/talent-challenge-config';
-import { createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
+import { absoluteUrl, SITE_URL, createBreadcrumbSchema, jsonLdScript } from '@/lib/seo';
 
-const CANONICAL = 'https://daregamesapp.com/talent';
+const CANONICAL = absoluteUrl('/talent');
 
 export const metadata: Metadata = {
   title: 'Show Me Your Talent Dare Challenge — Earn ₦5,000 in Nigeria',
@@ -71,7 +71,7 @@ export default async function TalentPage(props: { searchParams: SearchParams }) 
     organizer: {
       '@type': 'Organization',
       name: 'DARE',
-      '@id': 'https://daregamesapp.com/#organization',
+      '@id': `${SITE_URL}/#organization`,
     },
     offers: [
       {
@@ -86,7 +86,7 @@ export default async function TalentPage(props: { searchParams: SearchParams }) 
         url: CANONICAL,
       },
     ],
-    image: 'https://daregamesapp.com/og-image.png',
+    image: absoluteUrl('/og-image.png'),
     maximumAttendeeCapacity: TALENT_CHALLENGE_CAP,
   };
 
