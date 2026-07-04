@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { buildLegendWelcomePayload } from '@/lib/email';
 import { LEGEND_START } from '@/lib/challenge-config';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://daregamesapp.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.daregamesapp.com';
 const DAILY_CAP = 50;
 
 function buildReferralUrl(code: string) {

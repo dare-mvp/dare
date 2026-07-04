@@ -107,7 +107,7 @@ async function getSiteOrigin() {
   const headerStore = await getRequestHeaders();
   const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host');
 
-  if (!host) return 'https://dareapp.io';
+  if (!host) return 'https://www.daregamesapp.com';
 
   const protocol = headerStore.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
   return `${protocol}://${host}`;
