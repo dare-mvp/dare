@@ -268,6 +268,36 @@ New route: `dare/web/app/admin/talent/`
 - [x] `/talent` added to sitemap
 - [x] Rate limiting applied to `joinTalentWaitlist`
 - [x] Welcome email flow confirmed (`sendTalentWelcomeEmail` in email.ts)
-- [ ] Challenge reminder cron considered
-- [ ] Announcement post drafted (Doc 20 content calendar)
-- [ ] Page live and verified before July 20
+- [x] Challenge reminder cron built (`/api/cron/talent-reminder`, daily, nudges joiners who haven't claimed after 3 days)
+- [x] Announcement post drafted (see Launch Announcement section below — Doc 20 is the Battle Cascade plan for the unrelated I Dare You Challenge and has no Talent content)
+- [x] Page live and verified before July 20 (confirmed live at `/talent`, "LIVE — Closes September 20, 2026" badge showing, spots counter incrementing)
+
+---
+
+## Launch Announcement (July 20)
+
+**Type:** Text post
+**Platforms:** Instagram, Twitter/X, WhatsApp Status, DARE WhatsApp Channel
+**Goal:** Announce the challenge is open today and drive the first wave of `/talent` joins.
+
+**Copy:**
+
+> Show Me Your Talent is live. 🎯
+>
+> Record a 15–30 second video of your skill. Post it and dare one friend by name to top it — tag them, use #ShowMeYourDare, and tag @dareappofficial.
+>
+> Get their response video as proof. Share your referral link. Refer 3 friends.
+>
+> Complete every step and earn ₦5,000 to your DARE wallet — no judging, no voting, just proof.
+>
+> 500 spots. Runs now through September 20.
+>
+> Link in bio. #ShowMeYourDare
+
+**Example dare caption** (shown on the `/talent` page as a template for participants' own Task 04 post):
+
+> @[Friend's name] I dare you to top this. #ShowMeYourDare @dareappofficial
+
+**Compliance with Doc 21 copy rules:** no "competition" or "best talent wins" framing, reward stated as completion-based, poll not mentioned, hashtag and tag present, named-friend framing used in the example, 89 words (under the 150-word cap).
+
+**Optional pairing video:** the I Dare You launch used a 2-person Higgsfield UGC video alongside its text posts. If wanted for this launch too, I'll draft the script (soul `d92c9bd9` + `9b338936`, `marketing_studio_video`, no hook, DareApp product ID, natural Lagos setting) and share it for approval before generating — see [[feedback_video_script_approval]].
