@@ -360,3 +360,75 @@ export async function sendTalentWelcomeEmail(to: string, referralUrl: string): P
     // Non-critical — user already has their referral link in the UI.
   }
 }
+
+// ---------------------------------------------------------------------------
+// Talent challenge reminder — sent once, 3+ days after joining, to anyone
+// who hasn't submitted a claim yet
+// ---------------------------------------------------------------------------
+
+export function buildTalentReminderPayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
+  return {
+    from: FROM,
+    to,
+    subject: `Still time to earn ₦${TALENT_CHALLENGE_REWARD.toLocaleString()} — Show Me Your Talent 🎯`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#050509;color:#ffffff;">
+        <img src="https://www.daregamesapp.com/og-image.png" alt="DARE" style="width:64px;height:64px;margin-bottom:24px;" />
+
+        <p style="font-size:12px;color:#FF5500;text-transform:uppercase;letter-spacing:0.12em;font-family:monospace;margin-bottom:4px;">
+          Show Me Your Talent
+        </p>
+
+        <p style="font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;margin:0 0 16px;">
+          You haven't finished yet.
+        </p>
+
+        <p style="font-size:15px;line-height:1.7;color:#a1a1aa;">
+          You joined the waitlist but haven't sent your proof in. Finish the remaining tasks and claim
+          <strong style="color:#FF5500;">₦${TALENT_CHALLENGE_REWARD.toLocaleString()}</strong> to your DARE wallet.
+        </p>
+
+        <div style="margin:24px 0;padding:20px;background:#0e0e1a;border-radius:12px;border:1px solid rgba(255,85,0,0.15);">
+          <p style="font-size:11px;color:#FF5500;text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;margin:0 0 14px;">What's left</p>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">1</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Record a 15–30s talent video and post it, daring a named friend with <strong style="color:#fff;">#ShowMeYourDare</strong></p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">2</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Get your friend's response video posted publicly</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">3</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">Refer <strong style="color:#fff;">${TALENT_REFERRAL_MIN} friends</strong> with your link (auto-tracked)</p>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <span style="font-family:monospace;font-size:10px;color:#FF5500;min-width:20px;padding-top:2px;">4</span>
+            <p style="margin:0;font-size:14px;color:#a1a1aa;">DM <strong style="color:#fff;">@dareappofficial</strong> with both video links to claim</p>
+          </div>
+        </div>
+
+        <a href="${safeUrl}"
+           style="display:block;padding:14px 20px;background:#FF5500;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
+          ${safeUrl}
+        </a>
+
+        <p style="font-size:13px;color:#52525b;margin-top:16px;">
+          Challenge closes ${TALENT_CHALLENGE_END_LABEL}.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #1f1f23;margin:32px 0;" />
+
+        <p style="font-size:12px;color:#52525b;">
+          — The DARE Team<br />
+          <a href="https://www.daregamesapp.com" style="color:#FF5500;text-decoration:none;">daregamesapp.com</a>
+        </p>
+      </div>
+    `,
+  };
+}
