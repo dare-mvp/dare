@@ -301,3 +301,32 @@ New route: `dare/web/app/admin/talent/`
 **Compliance with Doc 21 copy rules:** no "competition" or "best talent wins" framing, reward stated as completion-based, poll not mentioned, hashtag and tag present, named-friend framing used in the example, 89 words (under the 150-word cap).
 
 **Optional pairing video:** the I Dare You launch used a 2-person Higgsfield UGC video alongside its text posts. If wanted for this launch too, I'll draft the script (soul `d92c9bd9` + `9b338936`, `marketing_studio_video`, no hook, DareApp product ID, natural Lagos setting) and share it for approval before generating — see [[feedback_video_script_approval]].
+
+### Launch assets (generated July 20-21)
+
+1. **Motion graphic** — kinetic-typography poster animation, no people. [Base poster](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260721_012756_7492b7b8-e330-4a96-84fc-92590be6d007.png) / [animated version](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260721_013750_8fcc74f0-ff01-4538-abd4-c48cf9d14092.mp4).
+2. **2-person UGC video** — souls `d92c9bd9` + `9b338936`, `marketing_studio_video`, `ugc` mode, no hook, DareApp product lock. [Result](https://d8j0ntlcm91z4.cloudfront.net/user_3DePm50yJK0kOjVEzWL324s3TiO/hf_20260721_015006_06489e2b-06f2-4c77-8841-2a55d77ca3b4.mp4).
+
+### IG Reel captions
+
+**For the motion graphic:**
+
+> Show Me Your Talent is live. 🎯
+>
+> Record it. Dare a friend. Earn ₦5,000 to your DARE wallet.
+>
+> 500 spots. Live now through September 20.
+>
+> Link in bio. #ShowMeYourDare @dareappofficial
+
+**For the UGC video:**
+
+> She showed her talent. Now she's daring him. 🎯
+>
+> That's the whole challenge: record your talent, dare a friend by name, get their response, refer 3 friends — earn ₦5,000 to your DARE wallet.
+>
+> Tag the friend you're daring. Use #ShowMeYourDare. Tag @dareappofficial.
+>
+> Link in bio.
+
+Both checked against the Doc 21 copy rules above: no competition/judging language, reward stated as completion-based, hashtag + tag present on both, under 150 words each.
