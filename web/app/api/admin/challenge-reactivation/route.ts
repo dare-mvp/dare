@@ -9,6 +9,11 @@ import { buildChallengeReactivationPayload } from '@/lib/email';
 // This is NOT a recurring cron and is intentionally not listed in vercel.json
 // — it is triggered manually, once, by hitting this route with ?confirm=true.
 //
+// Auth uses its own ADMIN_ACTION_SECRET rather than the shared CRON_SECRET —
+// this route is a manual trigger a human runs from a terminal, not something
+// Vercel's Cron feature invokes automatically, so it shouldn't share a secret
+// with the four routes Vercel Cron authenticates on its own.
+//
 // Safety:
 //   - Without ?confirm=true this is a dry run: it reports who WOULD be
 //     emailed and sends nothing.
@@ -32,7 +37,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
+  const secret = process.env.ADMIN_ACTION_SECRET;
   const auth = request.headers.get('authorization');
   if (!secret || auth !== `Bearer ${secret}`) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
