@@ -11,17 +11,20 @@ export const STANDARD_TIER_ACTIVE = false;
 export const CHALLENGE_START = new Date('2026-05-28T00:00:00+01:00');
 export const CHALLENGE_START_LABEL = 'May 28, 2026';
 
-// July 15 2026 23:59 WAT — all tiers (Standard, Champion, Legend) close together
-export const CHALLENGE_END = new Date('2026-07-15T23:59:59+01:00');
-export const CHALLENGE_END_LABEL = 'July 15, 2026';
+// September 20 2026 23:59 WAT — reopened and extended to close alongside the
+// Show Me Your Talent challenge (see talent-challenge-config.ts). Standard is
+// deactivated (STANDARD_TIER_ACTIVE = false above), so only Champion and
+// Legend are live participants of this extension.
+export const CHALLENGE_END = new Date('2026-09-20T23:59:59+01:00');
+export const CHALLENGE_END_LABEL = 'September 20, 2026';
 
 // June 15 2026 00:00 WAT — Legend Dare unlocks (requires Standard or Champion completion)
 export const LEGEND_START = new Date('2026-06-15T00:00:00+01:00');
 export const LEGEND_START_LABEL = 'June 15, 2026';
 
-// July 15 2026 23:59 WAT — Legend Dare closes
-export const LEGEND_END = new Date('2026-07-15T23:59:59+01:00');
-export const LEGEND_END_LABEL = 'July 15, 2026';
+// September 20 2026 23:59 WAT — Legend Dare closes, aligned with CHALLENGE_END above
+export const LEGEND_END = new Date('2026-09-20T23:59:59+01:00');
+export const LEGEND_END_LABEL = 'September 20, 2026';
 
 export function getChallengeStatus(participantCount: number, now = new Date()) {
   const isFull    = participantCount >= CHALLENGE_CAP;

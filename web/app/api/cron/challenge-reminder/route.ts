@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
 
   // Only Standard/Champion completers are eligible for Legend — don't send to
-  // users who never finished a prior tier. Runs July 12, 13, 14 at 50/day.
+  // users who never finished a prior tier. Runs Sept 17, 18, 19 at 50/day,
+  // 3 days before the (reopened) Sept 20 close — see challenge-config.ts.
   const { data: users, error } = await admin.rpc('get_legend_closing_eligible');
 
   if (error) {
