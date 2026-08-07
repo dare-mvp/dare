@@ -265,6 +265,70 @@ export async function sendClosingSoonEmail(to: string, referralUrl: string): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Challenge reactivation — one-time "we're back" email sent to everyone who
+// joined the waitlist while Champion/Legend were closed. Not part of the
+// recurring cron set — triggered once via /api/admin/challenge-reactivation.
+// ---------------------------------------------------------------------------
+
+export function buildChallengeReactivationPayload(to: string, referralUrl: string) {
+  const safeUrl = escapeHtml(referralUrl);
+  return {
+    from: FROM,
+    to,
+    subject: `Champion & Legend are back — closes ${CHALLENGE_END_LABEL} 👑`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#050509;color:#ffffff;">
+        <img src="https://www.daregamesapp.com/og-image.png" alt="DARE" style="width:64px;height:64px;margin-bottom:24px;" />
+
+        <p style="font-size:12px;color:#FF5500;text-transform:uppercase;letter-spacing:0.12em;font-family:monospace;margin-bottom:4px;">
+          We're back
+        </p>
+
+        <p style="font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;margin:0 0 16px;">
+          Champion &amp; Legend are open again.
+        </p>
+
+        <p style="font-size:15px;line-height:1.7;color:#a1a1aa;">
+          You joined the DARE I Dare You Challenge. It closed for a while — it's open again.
+        </p>
+
+        <div style="margin:24px 0;padding:20px;background:#0e0e1a;border-radius:12px;border:1px solid rgba(255,85,0,0.15);">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:14px;color:#ffffff;font-weight:600;">Champion</span>
+            <span style="font-size:14px;color:#FF5500;font-family:monospace;font-weight:700;">₦3,000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:14px;color:#ffffff;font-weight:600;">Legend</span>
+            <span style="font-size:14px;color:#FBBF24;font-family:monospace;font-weight:700;">₦9,000</span>
+          </div>
+          <p style="margin:12px 0 0;font-size:12px;color:#71717a;">Legend unlocks after completing Champion.</p>
+        </div>
+
+        <p style="font-size:15px;line-height:1.7;color:#a1a1aa;">
+          Your referral link and progress are exactly where you left them. Pick up where you stopped.
+        </p>
+
+        <a href="${safeUrl}"
+           style="display:block;margin-top:8px;padding:14px 20px;background:#FF5500;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;word-break:break-all;">
+          ${safeUrl}
+        </a>
+
+        <p style="font-size:13px;color:#52525b;margin-top:16px;">
+          Closes ${CHALLENGE_END_LABEL}.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #1f1f23;margin:32px 0;" />
+
+        <p style="font-size:12px;color:#52525b;">
+          — The DARE Team<br />
+          <a href="https://www.daregamesapp.com" style="color:#FF5500;text-decoration:none;">daregamesapp.com</a>
+        </p>
+      </div>
+    `,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Talent challenge welcome — sent when someone joins the talent waitlist
 // ---------------------------------------------------------------------------
 
